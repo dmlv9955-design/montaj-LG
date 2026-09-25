@@ -1,4 +1,28 @@
 // ============================================
+//  ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ
+// ============================================
+(function initTheme() {
+  const toggle = document.getElementById('theme-toggle');
+  const icon   = document.getElementById('theme-icon');
+
+  // 1. Применяем сохранённую тему при загрузке
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') {
+    document.body.classList.add('dark');
+    icon.textContent = '☀️';
+  } else {
+    icon.textContent = '🌙';
+  }
+
+  // 2. Обработчик клика
+  toggle.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark');
+    icon.textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  });
+})();
+
+// ============================================
 //  НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К GOOGLE SHEETS
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
@@ -386,6 +410,5 @@ rebuildFloors();
 updateRoomState();
 addMaterial();
 
-// Экспортируем функции, которые вызываются из HTML (onclick="...")
 window.addMaterial = addMaterial;
 window.send = send;
