@@ -40,26 +40,66 @@
     border: 1.5px solid #e2e8f0; border-radius: 10px;
     font-size: 16px; font-family: inherit;
     background: #fff; color: #0f172a;
-    transition: border-color .15s, box-shadow .15s, background .15s;
+    transition: border-color .2s, box-shadow .2s, background .2s;
   }
   input:focus, select:focus, textarea:focus {
     outline: none; border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37,99,235,.12);
   }
 
-  /* ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ */
-  input.req-field, select.req-field {
-    background: #fffbfb;
-    border-color: #fecaca;
+  /* ============================================ */
+  /*  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ В РЕАЛЬНОМ ВРЕМЕНИ */
+  /* ============================================ */
+
+  /* ПУСТОЕ обязательное поле — ярко-красное */
+  input.req-field.is-empty,
+  select.req-field.is-empty {
+    background: #fef2f2;
+    border-color: #ef4444;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.10);
   }
-  input.req-field:focus, select.req-field:focus {
+  input.req-field.is-empty:focus,
+  select.req-field.is-empty:focus {
     border-color: #dc2626;
-    box-shadow: 0 0 0 3px rgba(220,38,38,.12);
+    box-shadow: 0 0 0 3px rgba(220,38,38,.20);
   }
-  input.req-field:not(:placeholder-shown):valid,
-  select.req-field:valid:not([value=""]) {
-    background: #fff; border-color: #86efac;
+
+  /* ЗАПОЛНЕННОЕ обязательное поле — зелёное */
+  input.req-field.is-filled,
+  select.req-field.is-filled {
+    background: #f0fdf4;
+    border-color: #22c55e;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.08);
   }
+  input.req-field.is-filled:focus,
+  select.req-field.is-filled:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.20);
+  }
+
+  /* ТРЯСКА при попытке отправить с пустыми полями */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+  .shake {
+    animation: shake .45s ease-in-out;
+  }
+
+  /* КРАСНАЯ ПОДСКАЗКА ПОД ПОЛЕМ */
+  .field-error {
+    display: none;
+    font-size: 13px;
+    color: #dc2626;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .field-error.show { display: block; }
 
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
@@ -120,6 +160,7 @@
 
   <label class="req">Дата <span class="req-star">*</span></label>
   <input type="date" id="date" class="req-field">
+  <div class="field-error" id="err-date">Заполните это поле</div>
 
   <label class="req">Имя Фамилия <span class="req-star">*</span></label>
   <select id="name" class="req-field">
@@ -130,6 +171,7 @@
     <option>Сидоров Сергей</option>
     <!-- ⬆️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬆️ -->
   </select>
+  <div class="field-error" id="err-name">Заполните это поле</div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object" class="req-field">
@@ -137,6 +179,7 @@
     <option>Ларинская гимназия</option>
     <option>ЖЕДЕПОМ</option>
   </select>
+  <div class="field-error" id="err-object">Заполните это поле</div>
 
   <div class="row">
     <div>
@@ -158,6 +201,7 @@
     <option>ТО</option>
     <option>Ремонт</option>
   </select>
+  <div class="field-error" id="err-work">Заполните это поле</div>
 
   <label>Система</label>
   <select id="system">
@@ -197,6 +241,39 @@
   // ⬆️⬆️⬆️ ЗАМЕНИТЕ НА СВОИ ЗНАЧЕНИЯ ⬆️⬆️⬆️
 
   document.getElementById('date').valueAsDate = new Date();
+
+  // ============================================
+  //  ЛОГИКА ПОДСВЕТКИ ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+  // ============================================
+  const REQUIRED_FIELDS = ['date', 'name', 'object', 'work'];
+
+  function updateFieldState(el) {
+    const isEmpty = !el.value || !el.value.trim();
+    if (isEmpty) {
+      el.classList.add('is-empty');
+      el.classList.remove('is-filled');
+    } else {
+      el.classList.add('is-filled');
+      el.classList.remove('is-empty');
+    }
+  }
+
+  // при загрузке и при каждом вводе/изменении — обновляем цвет
+  REQUIRED_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    updateFieldState(el);                              // стартовое состояние
+    el.addEventListener('input', () => updateFieldState(el));
+    el.addEventListener('change', () => {
+      updateFieldState(el);
+      // если поле заполнили — убираем подсказку об ошибке
+      if (el.value.trim()) {
+        const err = document.getElementById('err-' + id);
+        if (err) err.classList.remove('show');
+      }
+    });
+  });
+
+  // ============================================
 
   addMaterial();
 
@@ -244,17 +321,36 @@
   }
 
   async function send() {
-    const required = ['date', 'name', 'object', 'work'];
-    for (const id of required) {
+    let firstEmpty = null;
+
+    // сброс всех подсказок
+    REQUIRED_FIELDS.forEach(id => {
+      const err = document.getElementById('err-' + id);
+      if (err) err.classList.remove('show');
+    });
+
+    // проверяем каждое обязательное поле
+    for (const id of REQUIRED_FIELDS) {
       const el = document.getElementById(id);
       if (!el.value.trim()) {
-        show('⚠️ Заполните обязательные поля', 'err');
-        el.focus();
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
+        el.classList.add('is-empty', 'shake');
+        setTimeout(() => el.classList.remove('shake'), 500);
+
+        const err = document.getElementById('err-' + id);
+        if (err) err.classList.add('show');
+
+        if (!firstEmpty) firstEmpty = el;
       }
     }
 
+    if (firstEmpty) {
+      show('⚠️ Заполните выделенные поля', 'err');
+      firstEmpty.focus();
+      firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // === ФОРМА ЗАПОЛНЕНА — ОТПРАВЛЯЕМ ===
     const payload = {
       key:       SECRET_KEY,
       object:    val('object'),
@@ -284,6 +380,9 @@
       ['object','floor','room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
+
+      // обновляем подсветку после сброса
+      REQUIRED_FIELDS.forEach(id => updateFieldState(document.getElementById(id)));
     } catch (e) {
       show('❌ Ошибка: ' + e.message, 'err');
     } finally {
