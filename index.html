@@ -8,7 +8,6 @@
 </head>
 <body>
 
-<!-- КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ -->
 <button class="theme-toggle" id="theme-toggle" type="button" title="Сменить тему">
   <span id="theme-icon">🌙</span>
 </button>
@@ -37,19 +36,30 @@
   </div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
-  <select id="object" class="req-field">
-    <option value="" disabled selected hidden>— выберите объект —</option>
-    <option>Ларинская гимназия</option>
-    <option>ЖЕДЕПОМ</option>
-  </select>
+  <div class="cselect" data-cselect>
+    <input type="hidden" id="object" class="req-field" value="">
+    <button type="button" class="cselect-btn">
+      <span class="cselect-value placeholder">— выберите объект —</span>
+      <span class="cselect-arrow"></span>
+    </button>
+    <ul class="cselect-list">
+      <li class="cselect-option" data-value="Ларинская гимназия">Ларинская гимназия</li>
+      <li class="cselect-option" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</li>
+    </ul>
+  </div>
   <div class="field-error" id="err-object">Заполните это поле</div>
 
   <div class="row">
     <div class="col-1">
       <label class="req">Этаж <span class="req-star">*</span></label>
-      <select id="floor" class="req-field" disabled>
-        <option value="">🔒 Сначала выберите объект</option>
-      </select>
+      <div class="cselect" data-cselect>
+        <input type="hidden" id="floor" class="req-field" value="" disabled>
+        <button type="button" class="cselect-btn">
+          <span class="cselect-value placeholder">🔒 Сначала объект</span>
+          <span class="cselect-arrow"></span>
+        </button>
+        <ul class="cselect-list"></ul>
+      </div>
       <div class="hint-lock" id="floor-hint">🔒 Сначала выберите объект</div>
       <div class="field-error" id="err-floor">Заполните это поле</div>
     </div>
@@ -71,23 +81,35 @@
   </div>
 
   <label class="req">Тип работ <span class="req-star">*</span></label>
-  <select id="work" class="req-field">
-    <option value="" disabled selected hidden>— выберите —</option>
-    <option>Монтаж</option>
-    <option>Демонтаж</option>
-    <option>Наставничество</option>
-  </select>
+  <div class="cselect" data-cselect>
+    <input type="hidden" id="work" class="req-field" value="">
+    <button type="button" class="cselect-btn">
+      <span class="cselect-value placeholder">— выберите —</span>
+      <span class="cselect-arrow"></span>
+    </button>
+    <ul class="cselect-list">
+      <li class="cselect-option" data-value="Монтаж">Монтаж</li>
+      <li class="cselect-option" data-value="Демонтаж">Демонтаж</li>
+      <li class="cselect-option" data-value="Наставничество">Наставничество</li>
+    </ul>
+  </div>
   <div class="field-error" id="err-work">Заполните это поле</div>
 
   <label>Система</label>
-  <select id="system">
-    <option value="" disabled selected hidden>— не указано —</option>
-    <option>Вентиляция</option>
-    <option>Кондиционирование</option>
-    <option>Отопление</option>
-    <option>Электрика</option>
-    <option>Водоснабжение</option>
-  </select>
+  <div class="cselect" data-cselect>
+    <input type="hidden" id="system" value="">
+    <button type="button" class="cselect-btn">
+      <span class="cselect-value placeholder">— не указано —</span>
+      <span class="cselect-arrow"></span>
+    </button>
+    <ul class="cselect-list">
+      <li class="cselect-option" data-value="Вентиляция">Вентиляция</li>
+      <li class="cselect-option" data-value="Кондиционирование">Кондиционирование</li>
+      <li class="cselect-option" data-value="Отопление">Отопление</li>
+      <li class="cselect-option" data-value="Электрика">Электрика</li>
+      <li class="cselect-option" data-value="Водоснабжение">Водоснабжение</li>
+    </ul>
+  </div>
 </div>
 
 <div class="card">
