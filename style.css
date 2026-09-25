@@ -600,7 +600,7 @@ body, .card, input, .cselect-btn, label, .section-title {
   transition: background-color .3s, color .3s, border-color .3s;
 }
 
-/* ПОДСВЕТКА СТАРОЙ ДАТЫ (не сегодня) */
+/* ПОДСВЕТКА СТАРОЙ ДАТЫ — ВЧЕРА (жёлтая) */
 input[type="date"].is-old-date {
   background: #fef3c7;
   border-color: #f59e0b;
@@ -614,4 +614,20 @@ body.dark input[type="date"].is-old-date {
   border-color: #f59e0b;
   color: #fbbf24;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
+}
+
+/* ПОДСВЕТКА СТАРОЙ ДАТЫ — РАНЬШЕ ВЧЕРАШНЕГО (красная) */
+input[type="date"].is-very-old-date {
+  background: #fee2e2;
+  border-color: #ef4444;
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .12);
+  color: #991b1b;
+  font-weight: 600;
+}
+body.dark input[type="date"].is-very-old-date {
+  background: #3b1416;
+  border-color: #ef4444;
+  color: #f87171;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .18);
 }
