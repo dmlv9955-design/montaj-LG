@@ -46,10 +46,6 @@
   }
   input[type="date"] { padding: 12px 10px; font-size: 15px; }
 
-  /* ============================================ */
-  /*  ЗАБЛОКИРОВАННОЕ ПОЛЕ — серое, пунктирное,   */
-  /*  с запретом курсора                          */
-  /* ============================================ */
   input:disabled, select:disabled {
     background: #f8fafc;
     color: #94a3b8;
@@ -63,12 +59,11 @@
     font-style: italic;
   }
 
-  /* ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ */
+  /* ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ */
   input.req-field.is-empty,
   select.req-field.is-empty {
     background: #fef2f2;
-    border-color: #ef4444;
-    border-width: 2px;
+    border-color: #ef4444; border-width: 2px;
     box-shadow: 0 0 0 3px rgba(239,68,68,.10);
   }
   input.req-field.is-empty:focus,
@@ -79,8 +74,7 @@
   input.req-field.is-filled,
   select.req-field.is-filled {
     background: #f0fdf4;
-    border-color: #22c55e;
-    border-width: 2px;
+    border-color: #22c55e; border-width: 2px;
     box-shadow: 0 0 0 3px rgba(34,197,94,.08);
   }
   input.req-field.is-filled:focus,
@@ -91,16 +85,12 @@
   input.req-field.is-invalid,
   select.req-field.is-invalid {
     background: #fef2f2;
-    border-color: #ef4444;
-    border-width: 2px;
+    border-color: #ef4444; border-width: 2px;
   }
 
-  /* выпадающий список — всегда белый */
   select option {
-    background: #ffffff;
-    color: #0f172a;
-    padding: 8px;
-    font-style: normal;
+    background: #ffffff; color: #0f172a;
+    padding: 8px; font-style: normal;
   }
 
   @keyframes shake {
@@ -123,7 +113,6 @@
     font-size: 12px; color: #94a3b8;
     margin-top: 4px;
   }
-  /* Подсказка о блокировке — заметнее */
   .hint-lock {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 12px; font-weight: 600;
@@ -134,24 +123,51 @@
     margin-top: 4px;
   }
 
+  /* ЗАГОЛОВОК ПОЛЯ + ЧЕКБОКС СПРАВА */
+  .label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+  .label-row > label {
+    margin: 0;   /* отменяем стандартный margin у label */
+  }
+
+  /* Чекбокс «Нет помещения» — компактный, справа */
   .check-none {
-    display: flex; align-items: center; gap: 8px;
-    margin-top: 8px; cursor: pointer;
-    font-size: 13px; font-weight: 600;
-    color: #334155; user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    user-select: none;
+    white-space: nowrap;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: background .15s;
+  }
+  .check-none:hover {
+    background: #f1f5f9;
   }
   .check-none input[type="checkbox"] {
-    width: 18px; height: 18px;
+    width: 16px; height: 16px;
     accent-color: #2563eb;
     cursor: pointer; flex-shrink: 0;
     padding: 0;
+    margin: 0;
   }
   .check-none input[type="checkbox"]:disabled {
     cursor: not-allowed; opacity: .5;
   }
   .check-none.is-disabled {
-    opacity: .55;
+    opacity: .45;
     cursor: not-allowed;
+    pointer-events: none;
   }
 
   .row { display: flex; gap: 10px; align-items: flex-start; }
@@ -243,16 +259,19 @@
       <div class="field-error" id="err-floor">Заполните это поле</div>
     </div>
     <div class="col-2">
-      <label class="req">Помещение <span class="req-star">*</span></label>
+      <!-- ЗАГОЛОВОК + ЧЕКБОКС СПРАВА -->
+      <div class="label-row">
+        <label class="req" style="margin:0;">Помещение <span class="req-star">*</span></label>
+        <label class="check-none is-disabled" id="room-none-label">
+          <input type="checkbox" id="room-none" disabled>
+          Нет помещения
+        </label>
+      </div>
       <input type="text" id="room" class="req-field"
              placeholder="🔒 Сначала выберите этаж"
              inputmode="numeric"
              maxlength="60" disabled>
       <div class="hint-small">Цифры через пробел — сохранятся через запятую</div>
-      <label class="check-none is-disabled" id="room-none-label">
-        <input type="checkbox" id="room-none" disabled>
-        Нет помещений
-      </label>
       <div class="field-error" id="err-room">Заполните это поле</div>
     </div>
   </div>
@@ -304,11 +323,11 @@
     'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
   };
 
-  const objectSelect = document.getElementById('object');
-  const floorSelect  = document.getElementById('floor');
-  const floorHint    = document.getElementById('floor-hint');
-  const roomInput    = document.getElementById('room');
-  const roomNone     = document.getElementById('room-none');
+  const objectSelect  = document.getElementById('object');
+  const floorSelect   = document.getElementById('floor');
+  const floorHint     = document.getElementById('floor-hint');
+  const roomInput     = document.getElementById('room');
+  const roomNone      = document.getElementById('room-none');
   const roomNoneLabel = document.getElementById('room-none-label');
 
   function rebuildFloors() {
