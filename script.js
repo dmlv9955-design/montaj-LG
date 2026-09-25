@@ -4,8 +4,8 @@
 (function initTheme() {
   const toggle = document.getElementById('theme-toggle');
   const icon   = document.getElementById('theme-icon');
+  if (!toggle) return;
 
-  // 1. Применяем сохранённую тему при загрузке
   const saved = localStorage.getItem('theme');
   if (saved === 'dark') {
     document.body.classList.add('dark');
@@ -14,7 +14,6 @@
     icon.textContent = '🌙';
   }
 
-  // 2. Обработчик клика
   toggle.addEventListener('click', () => {
     const isDark = document.body.classList.toggle('dark');
     icon.textContent = isDark ? '☀️' : '🌙';
@@ -23,24 +22,154 @@
 })();
 
 // ============================================
-//  НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К GOOGLE SHEETS
+//  НАСТРОЙКИ
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
 const SECRET_KEY = 'montaj2026';
 
-// ============================================
-//  ЭТАЖИ ПО ОБЪЕКТАМ
-// ============================================
 const FLOORS_BY_OBJECT = {
   'Ларинская гимназия': ['1', '2', '3', 'Чердак', 'Нет'],
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
 // ============================================
+//  КАСТОМНЫЙ SELECT — КОМПОНЕНТ
+// ============================================
+class CustomSelect {
+  constructor(rootEl) {
+    this.root = rootEl;
+    this.input = rootEl.querySelector('input[type="hidden"]');
+    this.btn = rootEl.querySelector('.cselect-btn');
+    this.valueEl = rootEl.querySelector('.cselect-value');
+    this.list = rootEl.querySelector('.cselect-list');
+    this._placeholder = this.valueEl.textContent.trim();
+
+    this.btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.input.disabled) return;
+      this.toggle();
+    });
+
+    this.list.addEventListener('click', (e) => {
+      const li = e.target.closest('.cselect-option');
+      if (!li || li.classList.contains('disabled')) return;
+      this.select(li.dataset.value);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!this.root.contains(e.target)) this.close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close();
+    });
+
+    this.updateDisplay();
+  }
+
+  get value() { return this.input.value; }
+
+  set value(v) {
+    this.input.value = v;
+    this.updateDisplay();
+  }
+
+  get disabled() { return this.input.disabled; }
+
+  set disabled(v) {
+    this.input.disabled = v;
+    this.btn.disabled = v;
+    this.root.classList.toggle('cselect-disabled', v);
+  }
+
+  set placeholder(text) {
+    this._placeholder = text;
+    this.updateDisplay();
+  }
+
+  select(value) {
+    this.input.value = value;
+    this.input.dispatchEvent(new Event('change', { bubbles: true }));
+    this.updateDisplay();
+    this.close();
+  }
+
+  setOptions(arr) {
+    this.list.innerHTML = '';
+    arr.forEach(opt => {
+      const li = document.createElement('li');
+      li.className = 'cselect-option';
+      if (typeof opt === 'string') {
+        li.dataset.value = opt;
+        li.textContent = opt;
+      } else {
+        li.dataset.value = opt.value;
+        li.textContent = opt.label;
+      }
+      this.list.appendChild(li);
+    });
+    // если текущее значение не в списке — сбрасываем
+    const vals = arr.map(o => typeof o === 'string' ? o : o.value);
+    if (!vals.includes(this.input.value)) {
+      this.input.value = '';
+    }
+    this.updateDisplay();
+  }
+
+  updateDisplay() {
+    const v = this.input.value;
+    let label = null;
+    let found = false;
+
+    this.list.querySelectorAll('.cselect-option').forEach(li => {
+      const isSel = li.dataset.value === v && v !== '';
+      li.classList.toggle('selected', isSel);
+      if (isSel) {
+        label = li.textContent.replace(/\s*✓\s*$/, '').trim();
+        found = true;
+      }
+    });
+
+    if (found) {
+      this.valueEl.textContent = label;
+      this.valueEl.classList.remove('placeholder');
+    } else {
+      this.valueEl.textContent = this._placeholder;
+      this.valueEl.classList.add('placeholder');
+    }
+  }
+
+  toggle() {
+    const isOpen = this.root.classList.contains('open');
+    document.querySelectorAll('.cselect.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) {
+      this.root.classList.add('open');
+      const sel = this.list.querySelector('.cselect-option.selected');
+      if (sel) setTimeout(() => sel.scrollIntoView({ block: 'nearest' }), 30);
+    }
+  }
+
+  close() {
+    this.root.classList.remove('open');
+  }
+}
+
+// ============================================
+//  ИНИЦИАЛИЗАЦИЯ ВСЕХ CUSTOM SELECT
+// ============================================
+const customSelects = {};
+
+document.querySelectorAll('[data-cselect]').forEach(rootEl => {
+  const input = rootEl.querySelector('input[type="hidden"]');
+  if (input) customSelects[input.id] = new CustomSelect(rootEl);
+});
+
+// ============================================
 //  ЭЛЕМЕНТЫ
 // ============================================
 const objectSelect  = document.getElementById('object');
-const floorSelect   = document.getElementById('floor');
+const floorInput    = document.getElementById('floor');
+const floorCS       = customSelects.floor;
 const floorHint     = document.getElementById('floor-hint');
 const roomInput     = document.getElementById('room');
 const roomNone      = document.getElementById('room-none');
@@ -51,7 +180,7 @@ const nameErr       = document.getElementById('err-name');
 const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
 
 // ============================================
-//  ИНИЦИАЛИЗАЦИЯ
+//  СТАРТОВАЯ ДАТА
 // ============================================
 document.getElementById('date').valueAsDate = new Date();
 
@@ -61,44 +190,28 @@ document.getElementById('date').valueAsDate = new Date();
 function rebuildFloors() {
   const obj = objectSelect.value;
   const floors = FLOORS_BY_OBJECT[obj];
-  floorSelect.innerHTML = '';
 
   if (!floors) {
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = '🔒 Сначала выберите объект';
-    floorSelect.appendChild(opt);
-    floorSelect.disabled = true;
+    floorCS.setOptions([]);
+    floorCS.placeholder = '🔒 Сначала объект';
+    floorCS.disabled = true;
     floorHint.textContent = '🔒 Сначала выберите объект';
     floorHint.style.display = 'inline-flex';
     return;
   }
 
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = '— выберите —';
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  placeholder.hidden = true;
-  floorSelect.appendChild(placeholder);
-
-  floors.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = f;
-    opt.textContent = f;
-    floorSelect.appendChild(opt);
-  });
-
-  floorSelect.disabled = false;
+  floorCS.setOptions(floors);
+  floorCS.placeholder = '— выберите —';
+  floorCS.disabled = false;
   floorHint.style.display = 'none';
-  updateFieldState(floorSelect);
+  updateFieldState(floorInput);
 }
 
 // ============================================
-//  ПОМЕЩЕНИЕ — ЛОГИКА БЛОКИРОВОК
+//  ПОМЕЩЕНИЕ — БЛОКИРОВКИ
 // ============================================
 function updateRoomState() {
-  const floorVal = floorSelect.value;
+  const floorVal = floorInput.value;
   const noneChecked = roomNone.checked;
 
   roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
@@ -141,20 +254,17 @@ function updateRoomState() {
 // ============================================
 objectSelect.addEventListener('change', () => {
   rebuildFloors();
-  floorSelect.value = '';
   updateRoomState();
   updateFieldState(objectSelect);
 });
 
-floorSelect.addEventListener('change', () => {
-  if (floorSelect.value !== 'Нет') {
+floorInput.addEventListener('change', () => {
+  if (floorInput.value !== 'Нет') {
     roomNone.checked = false;
-    if (roomInput.value === 'Нет') {
-      roomInput.value = '';
-    }
+    if (roomInput.value === 'Нет') roomInput.value = '';
   }
   updateRoomState();
-  updateFieldState(floorSelect);
+  updateFieldState(floorInput);
 });
 
 roomNone.addEventListener('change', () => {
@@ -162,16 +272,14 @@ roomNone.addEventListener('change', () => {
 });
 
 // ============================================
-//  ФОРМАТИРОВАНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
+//  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЯ
 // ============================================
 function formatRoom(value) {
   let cleaned = value.replace(/[^0-9\s]/g, '');
   cleaned = cleaned.replace(/\s+/g, ' ');
   const parts = cleaned.split(' ').filter(p => p !== '');
   let result = parts.join(', ');
-  if (cleaned.endsWith(' ') && parts.length > 0) {
-    result += ', ';
-  }
+  if (cleaned.endsWith(' ') && parts.length > 0) result += ', ';
   return result;
 }
 
@@ -187,7 +295,7 @@ roomInput.addEventListener('input', () => {
 });
 
 // ============================================
-//  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
+//  ФОРМАТ И ВАЛИДАЦИЯ ИМЕНИ
 // ============================================
 function formatName(value) {
   let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
@@ -197,9 +305,7 @@ function formatName(value) {
   cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
                             (m, p1, p2) => p1 + p2.toUpperCase());
   const parts = cleaned.split(' ');
-  if (parts.length > 2) {
-    cleaned = parts.slice(0, 2).join(' ');
-  }
+  if (parts.length > 2) cleaned = parts.slice(0, 2).join(' ');
   return cleaned;
 }
 
@@ -241,21 +347,26 @@ nameInput.addEventListener('blur', () => {
 //  ПОДСВЕТКА ПОЛЕЙ
 // ============================================
 function updateFieldState(el) {
-  if (!el.classList.contains('req-field')) return;
+  // для hidden-input внутри .cselect — подсвечиваем обёртку
+  const wrap = el.closest && el.closest('.cselect');
+  if (wrap) {
+    wrap.classList.remove('is-empty', 'is-filled');
+    if (el.disabled) return;
+    const isEmpty = !el.value || !el.value.trim();
+    wrap.classList.toggle('is-empty', isEmpty);
+    wrap.classList.toggle('is-filled', !isEmpty);
+    return;
+  }
 
+  // обычные поля
+  if (!el.classList.contains('req-field')) return;
   if (el.disabled) {
     el.classList.remove('is-empty', 'is-filled', 'is-invalid');
     return;
   }
-
   const isEmpty = !el.value || !el.value.trim();
-  if (isEmpty) {
-    el.classList.add('is-empty');
-    el.classList.remove('is-filled');
-  } else {
-    el.classList.add('is-filled');
-    el.classList.remove('is-empty');
-  }
+  el.classList.toggle('is-empty', isEmpty);
+  el.classList.toggle('is-filled', !isEmpty);
 }
 
 REQUIRED_IDS.forEach(id => {
@@ -274,21 +385,51 @@ REQUIRED_IDS.forEach(id => {
 // ============================================
 //  МАТЕРИАЛЫ
 // ============================================
+const MATERIAL_UNITS = ['шт', 'м', 'м²', 'м³', 'кг', 'л', 'компл', 'упак'];
+
 function addMaterial() {
   const wrap = document.getElementById('materials');
   const row = document.createElement('div');
   row.className = 'material-row';
-  row.innerHTML = `
-    <input type="text" class="m-name" placeholder="Название">
-    <select class="m-unit">
-      <option value="" disabled selected hidden>ед.</option>
-      <option>шт</option><option>м</option><option>м²</option><option>м³</option>
-      <option>кг</option><option>л</option><option>компл</option><option>упак</option>
-    </select>
-    <input type="number" class="m-qty" placeholder="0" step="0.01" min="0">
-    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+
+  const nameIn = document.createElement('input');
+  nameIn.type = 'text';
+  nameIn.className = 'm-name';
+  nameIn.placeholder = 'Название';
+
+  const unitWrap = document.createElement('div');
+  unitWrap.className = 'cselect';
+  unitWrap.dataset.cselect = '';
+  unitWrap.innerHTML = `
+    <input type="hidden" class="m-unit" value="">
+    <button type="button" class="cselect-btn">
+      <span class="cselect-value placeholder">ед.</span>
+      <span class="cselect-arrow"></span>
+    </button>
+    <ul class="cselect-list"></ul>
   `;
+
+  const qtyIn = document.createElement('input');
+  qtyIn.type = 'number';
+  qtyIn.className = 'm-qty';
+  qtyIn.placeholder = '0';
+  qtyIn.step = '0.01';
+  qtyIn.min = '0';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn-remove';
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => row.remove());
+
+  row.append(nameIn, unitWrap, qtyIn, removeBtn);
   wrap.appendChild(row);
+
+  // инициализируем кастомный селект внутри
+  const cs = new CustomSelect(unitWrap);
+  cs.setOptions(MATERIAL_UNITS);
+  cs.placeholder = 'ед.';
+  cs.updateDisplay();
 }
 
 function collectMaterials() {
@@ -389,7 +530,6 @@ async function send() {
     addMaterial();
 
     rebuildFloors();
-    floorSelect.value = '';
     updateRoomState();
 
     document.getElementById('date').valueAsDate = new Date();
