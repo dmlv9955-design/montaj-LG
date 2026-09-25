@@ -57,9 +57,31 @@ function setupDateRange() {
   dateInput.min = toISODate(minDate);
   dateInput.max = toISODate(today);
 
-  // если поле пустое — поставим сегодня
   if (!dateInput.value) {
     dateInput.value = toISODate(today);
+  }
+}
+
+// подсветка: вчера — жёлтым, старше — красным, сегодня — нейтральным
+function updateDateHighlight() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = toISODate(today);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayISO = toISODate(yesterday);
+
+  const v = dateInput.value;
+
+  // сбрасываем оба класса
+  dateInput.classList.remove('is-old-date', 'is-very-old-date');
+
+  if (!v || v === todayISO) return;              // сегодня или пусто — без подсветки
+  if (v === yesterdayISO) {
+    dateInput.classList.add('is-old-date');      // вчера — жёлтый
+  } else {
+    dateInput.classList.add('is-very-old-date'); // старше — красный
   }
 }
 
