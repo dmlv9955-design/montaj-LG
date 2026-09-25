@@ -27,10 +27,8 @@
     margin: 0 0 12px; padding-bottom: 8px;
     border-bottom: 1px solid #e2e8f0;
   }
-
   label {
-    display: block;
-    margin-top: 14px; margin-bottom: 6px;
+    display: block; margin-top: 14px; margin-bottom: 6px;
     font-weight: 600; font-size: 14px; color: #334155;
   }
   .req-star { color: #ef4444; margin-left: 2px; }
@@ -47,11 +45,7 @@
     box-shadow: 0 0 0 3px rgba(37,99,235,.12);
   }
 
-  /* ============================================ */
-  /*  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ В РЕАЛЬНОМ ВРЕМЕНИ */
-  /* ============================================ */
-
-  /* ПУСТОЕ обязательное поле — ярко-красное */
+  /* ПУСТОЕ обязательное поле — красное */
   input.req-field.is-empty,
   select.req-field.is-empty {
     background: #fef2f2;
@@ -64,8 +58,7 @@
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220,38,38,.20);
   }
-
-  /* ЗАПОЛНЕННОЕ обязательное поле — зелёное */
+  /* ЗАПОЛНЕННОЕ — зелёное */
   input.req-field.is-filled,
   select.req-field.is-filled {
     background: #f0fdf4;
@@ -78,25 +71,25 @@
     border-color: #16a34a;
     box-shadow: 0 0 0 3px rgba(34,197,94,.20);
   }
+  /* Невалидное, но заполненное поле */
+  input.req-field.is-invalid {
+    background: #fef2f2;
+    border-color: #ef4444;
+    border-width: 2px;
+  }
 
-  /* ТРЯСКА при попытке отправить с пустыми полями */
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    20%       { transform: translateX(-6px); }
-    40%       { transform: translateX(6px); }
-    60%       { transform: translateX(-4px); }
-    80%       { transform: translateX(4px); }
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-6px); }
+    40%     { transform: translateX(6px); }
+    60%     { transform: translateX(-4px); }
+    80%     { transform: translateX(4px); }
   }
-  .shake {
-    animation: shake .45s ease-in-out;
-  }
+  .shake { animation: shake .45s ease-in-out; }
 
-  /* КРАСНАЯ ПОДСКАЗКА ПОД ПОЛЕМ */
   .field-error {
     display: none;
-    font-size: 13px;
-    color: #dc2626;
-    font-weight: 600;
+    font-size: 13px; color: #dc2626; font-weight: 600;
     margin-top: 4px;
   }
   .field-error.show { display: block; }
@@ -104,7 +97,6 @@
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
 
-  /* МАТЕРИАЛЫ */
   .material-row {
     display: grid; grid-template-columns: 1fr 90px 80px 36px;
     gap: 8px; margin-bottom: 8px; align-items: center;
@@ -128,7 +120,7 @@
     color: #fff; border: none; border-radius: 12px;
     font-size: 17px; font-weight: 700; cursor: pointer;
     box-shadow: 0 4px 12px rgba(37,99,235,.3);
-    transition: transform .1s, box-shadow .15s;
+    transition: transform .1s;
   }
   button.submit:active { transform: scale(.98); }
   button.submit:disabled { background: #94a3b8; box-shadow: none; cursor: wait; }
@@ -137,7 +129,7 @@
     margin-top: 14px; text-align: center; font-weight: 600;
     min-height: 22px; font-size: 15px;
   }
-  .ok { color: #16a34a; }
+  .ok  { color: #16a34a; }
   .err { color: #dc2626; }
 
   .hint {
@@ -160,18 +152,12 @@
 
   <label class="req">Дата <span class="req-star">*</span></label>
   <input type="date" id="date" class="req-field">
-  <div class="field-error" id="err-date">Заполните это поле</div>
 
   <label class="req">Имя Фамилия <span class="req-star">*</span></label>
-  <select id="name" class="req-field">
-    <option value="">— выберите —</option>
-    <!-- ⬇️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬇️ -->
-    <option>Иванов Иван</option>
-    <option>Петров Петр</option>
-    <option>Сидоров Сергей</option>
-    <!-- ⬆️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬆️ -->
-  </select>
-  <div class="field-error" id="err-name">Заполните это поле</div>
+  <input type="text" id="name" class="req-field"
+         placeholder="Иван Иванов"
+         autocomplete="name" autocapitalize="words" spellcheck="false">
+  <div class="field-error" id="err-name">Введите имя и фамилию, например: Иван Иванов</div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object" class="req-field">
@@ -217,11 +203,7 @@
 <!-- МАТЕРИАЛЫ -->
 <div class="card">
   <div class="section-title">Израсходованные материалы</div>
-
-  <div id="materials">
-    <!-- строки материалов добавляются сюда -->
-  </div>
-
+  <div id="materials"></div>
   <button type="button" class="btn-add" onclick="addMaterial()">+ Добавить материал</button>
 </div>
 
@@ -243,9 +225,65 @@
   document.getElementById('date').valueAsDate = new Date();
 
   // ============================================
-  //  ЛОГИКА ПОДСВЕТКИ ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
   // ============================================
-  const REQUIRED_FIELDS = ['date', 'name', 'object', 'work'];
+
+  // Оставляем только буквы, пробел, дефис. Первая буква каждого слова — заглавная.
+  function formatName(value) {
+    let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');  // убрать цифры и символы
+    cleaned = cleaned.replace(/\s+/g, ' ');                     // двойные пробелы → один
+    cleaned = cleaned.replace(/-+/g, '-');                      // двойные дефисы → один
+    cleaned = cleaned.replace(/\s-|-\s/g, '-');                 // пробел возле дефиса убрать
+    cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
+                              (m, p1, p2) => p1 + p2.toUpperCase());  // Первая → Заглавная
+    return cleaned;
+  }
+
+  // Валидное имя = минимум 2 слова, каждое с заглавной буквы, только буквы и дефис
+  function isNameValid(value) {
+    const v = value.trim();
+    return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?(?:\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?)+$/.test(v);
+  }
+
+  const nameInput = document.getElementById('name');
+  const nameErr = document.getElementById('err-name');
+
+  // Автоформат при вводе + сохранение позиции курсора
+  nameInput.addEventListener('input', () => {
+    const before = nameInput.value;
+    const pos = nameInput.selectionStart;
+    const after = formatName(before);
+    if (before !== after) {
+      nameInput.value = after;
+      const delta = before.length - after.length;
+      const newPos = Math.max(0, Math.min(after.length, pos - delta));
+      nameInput.setSelectionRange(newPos, newPos);
+    }
+    // Если поле стало валидным — прячем ошибку
+    if (isNameValid(nameInput.value)) {
+      nameErr.classList.remove('show');
+      nameInput.classList.remove('is-invalid');
+    }
+    updateFieldState(nameInput);
+  });
+
+  // Проверка при уходе с поля
+  nameInput.addEventListener('blur', () => {
+    const v = nameInput.value.trim();
+    if (v && !isNameValid(v)) {
+      nameErr.textContent = 'Введите имя И фамилию полностью (например: Иван Иванов)';
+      nameErr.classList.add('show');
+      nameInput.classList.add('is-invalid');
+    } else {
+      nameErr.classList.remove('show');
+      nameInput.classList.remove('is-invalid');
+    }
+  });
+
+  // ============================================
+  //  ПОДСВЕТКА ОСТАЛЬНЫХ ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+  // ============================================
+  const REQUIRED_IDS = ['date', 'name', 'object', 'work'];
 
   function updateFieldState(el) {
     const isEmpty = !el.value || !el.value.trim();
@@ -258,14 +296,12 @@
     }
   }
 
-  // при загрузке и при каждом вводе/изменении — обновляем цвет
-  REQUIRED_FIELDS.forEach(id => {
+  REQUIRED_IDS.forEach(id => {
     const el = document.getElementById(id);
-    updateFieldState(el);                              // стартовое состояние
+    updateFieldState(el);
     el.addEventListener('input', () => updateFieldState(el));
     el.addEventListener('change', () => {
       updateFieldState(el);
-      // если поле заполнили — убираем подсказку об ошибке
       if (el.value.trim()) {
         const err = document.getElementById('err-' + id);
         if (err) err.classList.remove('show');
@@ -285,14 +321,8 @@
       <input type="text" class="m-name" placeholder="Название">
       <select class="m-unit">
         <option value="">ед.</option>
-        <option>шт</option>
-        <option>м</option>
-        <option>м²</option>
-        <option>м³</option>
-        <option>кг</option>
-        <option>л</option>
-        <option>компл</option>
-        <option>упак</option>
+        <option>шт</option><option>м</option><option>м²</option><option>м³</option>
+        <option>кг</option><option>л</option><option>компл</option><option>упак</option>
       </select>
       <input type="number" class="m-qty" placeholder="0" step="0.01" min="0">
       <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
@@ -301,15 +331,12 @@
   }
 
   function collectMaterials() {
-    const rows = document.querySelectorAll('.material-row');
     const list = [];
-    rows.forEach(r => {
+    document.querySelectorAll('.material-row').forEach(r => {
       const name = r.querySelector('.m-name').value.trim();
       const unit = r.querySelector('.m-unit').value;
       const qty  = r.querySelector('.m-qty').value.trim();
-      if (name || unit || qty) {
-        list.push({ name, unit, qty });
-      }
+      if (name || unit || qty) list.push({ name, unit, qty });
     });
     return list;
   }
@@ -321,36 +348,49 @@
   }
 
   async function send() {
-    let firstEmpty = null;
-
-    // сброс всех подсказок
-    REQUIRED_FIELDS.forEach(id => {
+    // сброс подсветки ошибок
+    REQUIRED_IDS.forEach(id => {
       const err = document.getElementById('err-' + id);
       if (err) err.classList.remove('show');
     });
 
-    // проверяем каждое обязательное поле
-    for (const id of REQUIRED_FIELDS) {
+    let firstProblem = null;
+
+    // 1) проверка пустоты
+    REQUIRED_IDS.forEach(id => {
       const el = document.getElementById(id);
       if (!el.value.trim()) {
         el.classList.add('is-empty', 'shake');
         setTimeout(() => el.classList.remove('shake'), 500);
-
         const err = document.getElementById('err-' + id);
-        if (err) err.classList.add('show');
-
-        if (!firstEmpty) firstEmpty = el;
+        if (err) {
+          err.textContent = id === 'name'
+            ? 'Заполните имя и фамилию'
+            : 'Заполните это поле';
+          err.classList.add('show');
+        }
+        if (!firstProblem) firstProblem = el;
       }
+    });
+
+    // 2) отдельная проверка формата имени
+    const nameVal = val('name');
+    if (nameVal && !isNameValid(nameVal)) {
+      nameInput.classList.add('is-invalid', 'shake');
+      setTimeout(() => nameInput.classList.remove('shake'), 500);
+      nameErr.textContent = 'Введите имя И фамилию полностью (например: Иван Иванов)';
+      nameErr.classList.add('show');
+      if (!firstProblem) firstProblem = nameInput;
     }
 
-    if (firstEmpty) {
+    if (firstProblem) {
       show('⚠️ Заполните выделенные поля', 'err');
-      firstEmpty.focus();
-      firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstProblem.focus();
+      firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    // === ФОРМА ЗАПОЛНЕНА — ОТПРАВЛЯЕМ ===
+    // === ОТПРАВЛЯЕМ ===
     const payload = {
       key:       SECRET_KEY,
       object:    val('object'),
@@ -377,12 +417,12 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      ['object','floor','room'].forEach(id => document.getElementById(id).value = '');
+      // очистка
+      ['name', 'object', 'floor', 'room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
 
-      // обновляем подсветку после сброса
-      REQUIRED_FIELDS.forEach(id => updateFieldState(document.getElementById(id)));
+      REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
     } catch (e) {
       show('❌ Ошибка: ' + e.message, 'err');
     } finally {
