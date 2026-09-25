@@ -599,3 +599,19 @@ body.dark .err { color: #f87171; }
 body, .card, input, .cselect-btn, label, .section-title {
   transition: background-color .3s, color .3s, border-color .3s;
 }
+
+/* ПОДСВЕТКА СТАРОЙ ДАТЫ (не сегодня) */
+input[type="date"].is-old-date {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .12);
+  color: #92400e;
+  font-weight: 600;
+}
+body.dark input[type="date"].is-old-date {
+  background: #422006;
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
+}
