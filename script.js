@@ -33,7 +33,81 @@ const FLOORS_BY_OBJECT = {
 };
 
 // ============================================
-//  КАСТОМНЫЙ SELECT — КОМПОНЕНТ
+//  ПОЛЕ «ДАТА» — ДИАПАЗОН, ПОДСВЕТКА, АВТОСМЕНА
+// ============================================
+const DATE_MIN_DAYS_AGO = 7;   // на сколько дней назад максимум
+const dateInput = document.getElementById('date');
+
+// утилита: дата в формате YYYY-MM-DD (по локальному времени)
+function toISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// установить min / max и значение по умолчанию
+function setupDateRange() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const minDate = new Date(today);
+  minDate.setDate(minDate.getDate() - DATE_MIN_DAYS_AGO);
+
+  dateInput.min = toISODate(minDate);
+  dateInput.max = toISODate(today);
+
+  // если поле пустое — поставим сегодня
+  if (!dateInput.value) {
+    dateInput.value = toISODate(today);
+  }
+}
+
+// подсветить старую дату (≠ сегодня)
+function updateDateHighlight() {
+  const todayISO = toISODate(new Date());
+  const isOld = dateInput.value && dateInput.value !== todayISO;
+  dateInput.classList.toggle('is-old-date', isOld);
+}
+
+// стартовая настройка
+setupDateRange();
+updateDateHighlight();
+
+// при изменении — обновляем подсветку
+dateInput.addEventListener('change', () => {
+  // проверим, что введённая дата в диапазоне
+  if (dateInput.value) {
+    if (dateInput.value < dateInput.min) {
+      dateInput.value = dateInput.min;
+    }
+    if (dateInput.value > dateInput.max) {
+      dateInput.value = dateInput.max;
+    }
+  }
+  updateDateHighlight();
+  updateFieldState(dateInput);
+});
+
+// автообновление раз в день: раз в минуту проверяем — не наступил ли новый день
+let lastKnownDay = toISODate(new Date());
+setInterval(() => {
+  const todayISO = toISODate(new Date());
+  if (todayISO !== lastKnownDay) {
+    lastKnownDay = todayISO;
+    // новый день — обновим min/max
+    setupDateRange();
+    // если монтажник не менял дату вручную (стояла «вчерашняя»), поставим сегодня
+    if (!dateInput.value || dateInput.value < dateInput.min) {
+      dateInput.value = todayISO;
+    }
+    updateDateHighlight();
+    updateFieldState(dateInput);
+  }
+}, 60 * 1000); // проверка раз в минуту
+
+// ============================================
+//  КАСТОМНЫЙ SELECT
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -68,24 +142,14 @@ class CustomSelect {
   }
 
   get value() { return this.input.value; }
-
-  set value(v) {
-    this.input.value = v;
-    this.updateDisplay();
-  }
-
+  set value(v) { this.input.value = v; this.updateDisplay(); }
   get disabled() { return this.input.disabled; }
-
   set disabled(v) {
     this.input.disabled = v;
     this.btn.disabled = v;
     this.root.classList.toggle('cselect-disabled', v);
   }
-
-  set placeholder(text) {
-    this._placeholder = text;
-    this.updateDisplay();
-  }
+  set placeholder(text) { this._placeholder = text; this.updateDisplay(); }
 
   select(value) {
     this.input.value = value;
@@ -108,11 +172,8 @@ class CustomSelect {
       }
       this.list.appendChild(li);
     });
-    // если текущее значение не в списке — сбрасываем
     const vals = arr.map(o => typeof o === 'string' ? o : o.value);
-    if (!vals.includes(this.input.value)) {
-      this.input.value = '';
-    }
+    if (!vals.includes(this.input.value)) this.input.value = '';
     this.updateDisplay();
   }
 
@@ -149,13 +210,11 @@ class CustomSelect {
     }
   }
 
-  close() {
-    this.root.classList.remove('open');
-  }
+  close() { this.root.classList.remove('open'); }
 }
 
 // ============================================
-//  ИНИЦИАЛИЗАЦИЯ ВСЕХ CUSTOM SELECT
+//  ИНИЦИАЛИЗАЦИЯ CUSTOM SELECT
 // ============================================
 const customSelects = {};
 
@@ -178,11 +237,6 @@ const nameInput     = document.getElementById('name');
 const nameErr       = document.getElementById('err-name');
 
 const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
-
-// ============================================
-//  СТАРТОВАЯ ДАТА
-// ============================================
-document.getElementById('date').valueAsDate = new Date();
 
 // ============================================
 //  ЭТАЖИ
@@ -208,7 +262,7 @@ function rebuildFloors() {
 }
 
 // ============================================
-//  ПОМЕЩЕНИЕ — БЛОКИРОВКИ
+//  ПОМЕЩЕНИЕ
 // ============================================
 function updateRoomState() {
   const floorVal = floorInput.value;
@@ -347,7 +401,6 @@ nameInput.addEventListener('blur', () => {
 //  ПОДСВЕТКА ПОЛЕЙ
 // ============================================
 function updateFieldState(el) {
-  // для hidden-input внутри .cselect — подсвечиваем обёртку
   const wrap = el.closest && el.closest('.cselect');
   if (wrap) {
     wrap.classList.remove('is-empty', 'is-filled');
@@ -358,7 +411,6 @@ function updateFieldState(el) {
     return;
   }
 
-  // обычные поля
   if (!el.classList.contains('req-field')) return;
   if (el.disabled) {
     el.classList.remove('is-empty', 'is-filled', 'is-invalid');
@@ -425,7 +477,6 @@ function addMaterial() {
   row.append(nameIn, unitWrap, qtyIn, removeBtn);
   wrap.appendChild(row);
 
-  // инициализируем кастомный селект внутри
   const cs = new CustomSelect(unitWrap);
   cs.setOptions(MATERIAL_UNITS);
   cs.placeholder = 'ед.';
@@ -532,7 +583,10 @@ async function send() {
     rebuildFloors();
     updateRoomState();
 
-    document.getElementById('date').valueAsDate = new Date();
+    // сброс даты на сегодня
+    setupDateRange();
+    dateInput.value = toISODate(new Date());
+    updateDateHighlight();
 
     REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
   } catch (e) {
