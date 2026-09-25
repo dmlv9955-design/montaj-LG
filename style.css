@@ -24,13 +24,11 @@
   --red-border: #ef4444;
   --red-shadow: rgba(239, 68, 68, .10);
   --red-focus: #dc2626;
-  --red-focus-shadow: rgba(220, 38, 38, .20);
 
   --green-bg: #f0fdf4;
   --green-border: #22c55e;
   --green-shadow: rgba(34, 197, 94, .08);
   --green-focus: #16a34a;
-  --green-focus-shadow: rgba(34, 197, 94, .20);
 
   --btn-from: #2563eb;
   --btn-to: #1d4ed8;
@@ -39,6 +37,9 @@
   --toggle-bg: #ffffff;
   --toggle-border: #e2e8f0;
   --toggle-shadow: 0 2px 8px rgba(15, 23, 42, .08);
+
+  --dropdown-shadow: 0 12px 32px rgba(15, 23, 42, .15);
+  --hover-bg: rgba(37, 99, 235, .08);
 }
 
 body.dark {
@@ -64,13 +65,11 @@ body.dark {
   --red-border: #ef4444;
   --red-shadow: rgba(239, 68, 68, .15);
   --red-focus: #f87171;
-  --red-focus-shadow: rgba(248, 113, 113, .25);
 
   --green-bg: #132a1e;
   --green-border: #22c55e;
   --green-shadow: rgba(34, 197, 94, .15);
   --green-focus: #4ade80;
-  --green-focus-shadow: rgba(74, 222, 128, .25);
 
   --btn-from: #3b82f6;
   --btn-to: #2563eb;
@@ -79,10 +78,13 @@ body.dark {
   --toggle-bg: #1e293b;
   --toggle-border: #334155;
   --toggle-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+
+  --dropdown-shadow: 0 12px 32px rgba(0, 0, 0, .5);
+  --hover-bg: rgba(96, 165, 250, .12);
 }
 
 /* ============================================ */
-/*  СБРОС И БАЗА                                */
+/*  СБРОС                                       */
 /* ============================================ */
 * {
   box-sizing: border-box;
@@ -102,7 +104,7 @@ body {
 }
 
 /* ============================================ */
-/*  КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ                    */
+/*  ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ                          */
 /* ============================================ */
 .theme-toggle {
   position: fixed;
@@ -120,33 +122,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 200;
   transition: transform .15s, background .2s, border-color .2s;
 }
-.theme-toggle:hover {
-  transform: scale(1.08);
-}
-.theme-toggle:active {
-  transform: scale(.94);
-}
+.theme-toggle:hover { transform: scale(1.08); }
+.theme-toggle:active { transform: scale(.94); }
 
 /* ============================================ */
 /*  ШАПКА                                       */
 /* ============================================ */
-.header {
-  text-align: center;
-  padding: 12px 0 20px;
-}
-.header h1 {
-  font-size: 22px;
-  margin: 0 0 4px;
-  color: var(--text-main);
-}
-.header p {
-  font-size: 13px;
-  color: var(--text-title);
-  margin: 0;
-}
+.header { text-align: center; padding: 12px 0 20px; }
+.header h1 { font-size: 22px; margin: 0 0 4px; color: var(--text-main); }
+.header p { font-size: 13px; color: var(--text-title); margin: 0; }
 
 /* ============================================ */
 /*  КАРТОЧКИ                                    */
@@ -182,16 +169,15 @@ label {
   font-size: 14px;
   color: var(--text-label);
 }
-
-.req-star {
-  color: #ef4444;
-  margin-left: 2px;
-}
+.req-star { color: #ef4444; margin-left: 2px; }
 
 /* ============================================ */
-/*  ПОЛЯ ВВОДА                                  */
+/*  ОБЫЧНЫЕ ПОЛЯ ВВОДА                          */
 /* ============================================ */
-input, select, textarea {
+input[type="text"],
+input[type="date"],
+input[type="number"],
+textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1.5px solid var(--border);
@@ -202,25 +188,18 @@ input, select, textarea {
   color: var(--text-main);
   transition: border-color .2s, box-shadow .2s, background .2s, color .2s;
 }
-
-input:focus, select:focus, textarea:focus {
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="number"]:focus,
+textarea:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, .18);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
+input[type="date"] { padding: 12px 10px; font-size: 15px; }
+body.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 
-input[type="date"] {
-  padding: 12px 10px;
-  font-size: 15px;
-}
-
-/* Иконка календаря в тёмной теме */
-body.dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-}
-
-/* ЗАБЛОКИРОВАННЫЕ */
-input:disabled, select:disabled {
+input:disabled, textarea:disabled {
   background: var(--input-disabled-bg);
   color: var(--input-disabled-color);
   cursor: not-allowed;
@@ -228,57 +207,206 @@ input:disabled, select:disabled {
   box-shadow: none;
   font-style: italic;
 }
-input:disabled::placeholder {
-  color: var(--input-disabled-color);
-  font-style: italic;
-}
+input:disabled::placeholder { color: var(--input-disabled-color); font-style: italic; }
 
-/* ============================================ */
-/*  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ                      */
-/* ============================================ */
-
-/* ПУСТОЕ — красное */
-input.req-field.is-empty,
-select.req-field.is-empty {
+/* Подсветка обязательных */
+input.req-field.is-empty {
   background: var(--red-bg);
   border-color: var(--red-border);
   border-width: 2px;
   box-shadow: 0 0 0 3px var(--red-shadow);
 }
-input.req-field.is-empty:focus,
-select.req-field.is-empty:focus {
+input.req-field.is-empty:focus {
   border-color: var(--red-focus);
-  box-shadow: 0 0 0 3px var(--red-focus-shadow);
 }
-
-/* ЗАПОЛНЕННОЕ — зелёное */
-input.req-field.is-filled,
-select.req-field.is-filled {
+input.req-field.is-filled {
   background: var(--green-bg);
   border-color: var(--green-border);
   border-width: 2px;
   box-shadow: 0 0 0 3px var(--green-shadow);
 }
-input.req-field.is-filled:focus,
-select.req-field.is-filled:focus {
-  border-color: var(--green-focus);
-  box-shadow: 0 0 0 3px var(--green-focus-shadow);
-}
-
-/* НЕВАЛИДНОЕ */
-input.req-field.is-invalid,
-select.req-field.is-invalid {
+input.req-field.is-invalid {
   background: var(--red-bg);
   border-color: var(--red-border);
   border-width: 2px;
 }
 
-/* ВЫПАДАЮЩИЙ СПИСОК — всегда белый */
-select option {
-  background: #ffffff;
-  color: #0f172a;
-  padding: 8px;
-  font-style: normal;
+/* ============================================ */
+/*  КАСТОМНЫЙ SELECT                            */
+/* ============================================ */
+.cselect {
+  position: relative;
+  width: 100%;
+}
+
+.cselect input[type="hidden"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cselect-btn {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-size: 16px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: border-color .2s, box-shadow .2s, background .2s, color .2s;
+}
+
+.cselect-btn:hover {
+  border-color: var(--border-focus);
+}
+
+.cselect-btn:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+
+.cselect-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cselect-value.placeholder {
+  color: var(--text-hint);
+}
+
+.cselect-arrow {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--text-title);
+  border-bottom: 2px solid var(--text-title);
+  transform: rotate(45deg);
+  transition: transform .25s;
+  margin-right: 4px;
+  margin-bottom: 3px;
+  flex-shrink: 0;
+}
+
+.cselect.open .cselect-arrow {
+  transform: rotate(-135deg);
+  margin-bottom: -3px;
+}
+
+/* ВЫПАДАЮЩИЙ СПИСОК */
+.cselect-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--dropdown-shadow);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(.98);
+  transform-origin: top center;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+
+.cselect.open .cselect-list {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.cselect-option {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text-main);
+  transition: background .12s, color .12s;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cselect-option:hover {
+  background: var(--hover-bg);
+  color: var(--border-focus);
+}
+
+.cselect-option.selected {
+  background: var(--border-focus);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.cselect-option.selected::after {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cselect-option.selected:hover {
+  background: var(--border-focus);
+  color: #ffffff;
+}
+
+.cselect-option.disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Скроллбар */
+.cselect-list::-webkit-scrollbar { width: 6px; }
+.cselect-list::-webkit-scrollbar-track { background: transparent; }
+.cselect-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+/* ЗАБЛОКИРОВАННЫЙ CUSTOM SELECT */
+.cselect.cselect-disabled .cselect-btn {
+  background: var(--input-disabled-bg);
+  color: var(--input-disabled-color);
+  cursor: not-allowed;
+  border: 1.5px dashed var(--input-disabled-border);
+  font-style: italic;
+}
+.cselect.cselect-disabled .cselect-btn:hover {
+  border-color: var(--input-disabled-border);
+}
+.cselect.cselect-disabled .cselect-arrow { opacity: .5; }
+
+/* ПОДСВЕТКА CUSTOM SELECT — состояния */
+.cselect.is-empty .cselect-btn {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--red-shadow);
+}
+.cselect.is-filled .cselect-btn {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--green-shadow);
 }
 
 /* ============================================ */
@@ -291,12 +419,10 @@ select option {
   60%      { transform: translateX(-4px); }
   80%      { transform: translateX(4px); }
 }
-.shake {
-  animation: shake .45s ease-in-out;
-}
+.shake { animation: shake .45s ease-in-out; }
 
 /* ============================================ */
-/*  ТЕКСТ ОШИБОК И ПОДСКАЗКИ                    */
+/*  ОШИБКИ И ПОДСКАЗКИ                          */
 /* ============================================ */
 .field-error {
   display: none;
@@ -305,15 +431,9 @@ select option {
   font-weight: 600;
   margin-top: 4px;
 }
-.field-error.show {
-  display: block;
-}
+.field-error.show { display: block; }
 
-.hint-small {
-  font-size: 12px;
-  color: var(--text-hint);
-  margin-top: 4px;
-}
+.hint-small { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
 
 .hint-lock {
   display: inline-flex;
@@ -339,9 +459,7 @@ select option {
   margin-top: 14px;
   margin-bottom: 6px;
 }
-.label-row > label {
-  margin: 0;
-}
+.label-row > label { margin: 0; }
 
 .check-none {
   display: inline-flex;
@@ -357,9 +475,7 @@ select option {
   border-radius: 6px;
   transition: background .15s;
 }
-.check-none:hover {
-  background: var(--input-disabled-bg);
-}
+.check-none:hover { background: var(--input-disabled-bg); }
 .check-none input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -369,10 +485,7 @@ select option {
   padding: 0;
   margin: 0;
 }
-.check-none input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-  opacity: .5;
-}
+.check-none input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .5; }
 .check-none.is-disabled {
   opacity: .45;
   cursor: not-allowed;
@@ -380,34 +493,24 @@ select option {
 }
 
 /* ============================================ */
-/*  СТРОКИ С ПРОПОРЦИЯМИ                        */
+/*  ПРОПОРЦИИ                                   */
 /* ============================================ */
-.row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-.row > .col-1 {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.row > .col-2 {
-  flex: 2 1 0;
-  min-width: 0;
-}
+.row { display: flex; gap: 10px; align-items: flex-start; }
+.row > .col-1 { flex: 1 1 0; min-width: 0; }
+.row > .col-2 { flex: 2 1 0; min-width: 0; }
 
 /* ============================================ */
 /*  МАТЕРИАЛЫ                                   */
 /* ============================================ */
 .material-row {
   display: grid;
-  grid-template-columns: 1fr 90px 80px 36px;
+  grid-template-columns: 1fr 100px 70px 36px;
   gap: 8px;
   margin-bottom: 8px;
   align-items: center;
 }
-.material-row input,
-.material-row select {
+.material-row input[type="text"],
+.material-row input[type="number"] {
   padding: 10px;
   font-size: 15px;
 }
@@ -424,12 +527,8 @@ select option {
   font-weight: 700;
   line-height: 1;
 }
-.btn-remove:hover {
-  background: #fecaca;
-}
-body.dark .btn-remove:hover {
-  background: #4c1d24;
-}
+.btn-remove:hover { background: #fecaca; }
+body.dark .btn-remove:hover { background: #4c1d24; }
 
 .btn-add {
   margin-top: 6px;
@@ -444,12 +543,10 @@ body.dark .btn-remove:hover {
   width: 100%;
   transition: background .15s;
 }
-.btn-add:hover {
-  background: var(--border);
-}
+.btn-add:hover { background: var(--border); }
 
 /* ============================================ */
-/*  КНОПКА «ОТПРАВИТЬ»                          */
+/*  КНОПКА ОТПРАВКИ                             */
 /* ============================================ */
 button.submit {
   margin-top: 8px;
@@ -465,17 +562,11 @@ button.submit {
   box-shadow: 0 4px 12px var(--btn-shadow);
   transition: transform .1s;
 }
-button.submit:active {
-  transform: scale(.98);
-}
-button.submit:disabled {
-  background: #94a3b8;
-  box-shadow: none;
-  cursor: wait;
-}
+button.submit:active { transform: scale(.98); }
+button.submit:disabled { background: #94a3b8; box-shadow: none; cursor: wait; }
 
 /* ============================================ */
-/*  СООБЩЕНИЕ ОБ УСПЕХЕ/ОШИБКЕ                  */
+/*  СООБЩЕНИЕ                                   */
 /* ============================================ */
 #msg {
   margin-top: 14px;
@@ -484,7 +575,7 @@ button.submit:disabled {
   min-height: 22px;
   font-size: 15px;
 }
-.ok  { color: #16a34a; }
+.ok { color: #16a34a; }
 body.dark .ok { color: #4ade80; }
 .err { color: #ef4444; }
 body.dark .err { color: #f87171; }
@@ -498,7 +589,6 @@ body.dark .err { color: #f87171; }
   color: var(--text-hint);
   margin: 8px 0 0;
 }
-
 .footer {
   text-align: center;
   padding: 8px 0 24px;
@@ -506,9 +596,6 @@ body.dark .err { color: #f87171; }
   color: var(--text-hint);
 }
 
-/* ============================================ */
-/*  ПЛАВНАЯ СМЕНА ТЕМЫ                          */
-/* ============================================ */
-body, .card, input, select, label, .section-title {
+body, .card, input, .cselect-btn, label, .section-title {
   transition: background-color .3s, color .3s, border-color .3s;
 }
