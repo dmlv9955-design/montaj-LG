@@ -48,10 +48,13 @@
     background: #f1f5f9; color: #64748b;
     cursor: not-allowed; border-color: #e2e8f0;
   }
-  /* Дата в узкой колонке — компактнее */
   input[type="date"] { padding: 12px 10px; font-size: 15px; }
 
-  /* ПОДСВЕТКА ТОЛЬКО У ТЕКСТОВЫХ ПОЛЕЙ */
+  /* ============================================ */
+  /*  ПОДСВЕТКА ТОЛЬКО У ПОЛЕЙ ВВОДА (input)       */
+  /*  Меню выбора (select) — без подсветки         */
+  /* ============================================ */
+
   input.req-field.is-empty {
     background: #fef2f2;
     border-color: #ef4444; border-width: 2px;
@@ -117,7 +120,6 @@
     cursor: not-allowed; opacity: .5;
   }
 
-  /* ПРОПОРЦИЯ 1 : 2 */
   .row { display: flex; gap: 10px; align-items: flex-start; }
   .row > .col-1 { flex: 1 1 0; min-width: 0; }
   .row > .col-2 { flex: 2 1 0; min-width: 0; }
@@ -179,7 +181,7 @@
   <div class="row">
     <div class="col-1">
       <label class="req">Дата <span class="req-star">*</span></label>
-      <input type="date" id="date">
+      <input type="date" id="date" class="req-field">
     </div>
     <div class="col-2">
       <label class="req">Имя Фамилия <span class="req-star">*</span></label>
@@ -268,9 +270,6 @@
 
   document.getElementById('date').valueAsDate = new Date();
 
-  // ============================================
-  //  ЭТАЖИ ПО ОБЪЕКТАМ
-  // ============================================
   const FLOORS_BY_OBJECT = {
     'Ларинская гимназия': ['1', '2', '3', 'Чердак', 'Нет'],
     'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
@@ -317,17 +316,12 @@
     floorHint.style.display = 'none';
   }
 
-  // ============================================
-  //  СОСТОЯНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
-  // ============================================
   function updateRoomState() {
     const floorVal = floorSelect.value;
     const noneChecked = roomNone.checked;
 
-    // сбрасываем визуальные классы
     roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid', 'is-locked');
 
-    // 1. Этаж не выбран — помещение заблокировано
     if (!floorVal) {
       roomInput.value = '';
       roomInput.disabled = true;
@@ -338,7 +332,6 @@
       return;
     }
 
-    // 2. Этаж = «Нет» → помещение автоматически «Нет»
     if (floorVal === 'Нет') {
       roomInput.value = 'Нет';
       roomInput.disabled = true;
@@ -349,7 +342,6 @@
       return;
     }
 
-    // 3. Обычный этаж
     roomNone.disabled = false;
     roomInput.placeholder = '32 105 108';
 
@@ -363,9 +355,6 @@
     }
   }
 
-  // ============================================
-  //  ОБРАБОТЧИКИ
-  // ============================================
   objectSelect.addEventListener('change', () => {
     rebuildFloors();
     floorSelect.value = '';
@@ -373,7 +362,6 @@
   });
 
   floorSelect.addEventListener('change', () => {
-    // При смене этажа — если новый этаж обычный, сбрасываем чекбокс
     if (floorSelect.value !== 'Нет') {
       roomNone.checked = false;
     }
@@ -387,9 +375,6 @@
   rebuildFloors();
   updateRoomState();
 
-  // ============================================
-  //  ФОРМАТИРОВАНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
-  // ============================================
   function formatRoom(value) {
     let cleaned = value.replace(/[^0-9\s]/g, '');
     cleaned = cleaned.replace(/\s+/g, ' ');
@@ -412,9 +397,6 @@
     updateFieldState(roomInput);
   });
 
-  // ============================================
-  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
-  // ============================================
   function formatName(value) {
     let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
     cleaned = cleaned.replace(/\s+/g, ' ');
@@ -467,12 +449,15 @@
   });
 
   // ============================================
-  //  ПОДСВЕТКА ТЕКСТОВЫХ ПОЛЕЙ
+  //  ПОДСВЕТКА ПОЛЕЙ ВВОДА
+  //  (только input с классом req-field)
   // ============================================
   const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
 
   function updateFieldState(el) {
+    // меню выбора не подсвечиваем
     if (!el.classList.contains('req-field')) return;
+
     if (el.disabled) {
       el.classList.remove('is-empty', 'is-filled', 'is-invalid');
       if (el.id === 'room' && el.value) {
@@ -480,6 +465,7 @@
       }
       return;
     }
+
     el.classList.remove('is-locked');
 
     const isEmpty = !el.value || !el.value.trim();
@@ -492,6 +478,7 @@
     }
   }
 
+  // запускаем для всех обязательных
   REQUIRED_IDS.forEach(id => {
     const el = document.getElementById(id);
     updateFieldState(el);
@@ -552,7 +539,6 @@
     REQUIRED_IDS.forEach(id => {
       const el = document.getElementById(id);
 
-      // пропускаем заблокированные поля
       if (el.disabled) return;
 
       if (!el.value.trim()) {
@@ -611,7 +597,6 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      // очистка
       ['name', 'object'].forEach(id => document.getElementById(id).value = '');
       roomNone.checked = false;
 
@@ -621,6 +606,9 @@
       rebuildFloors();
       floorSelect.value = '';
       updateRoomState();
+
+      // сброс даты на сегодня
+      document.getElementById('date').valueAsDate = new Date();
 
       REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
     } catch (e) {
