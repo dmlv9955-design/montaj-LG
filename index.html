@@ -51,36 +51,60 @@
   input[type="date"] { padding: 12px 10px; font-size: 15px; }
 
   /* ============================================ */
-  /*  ПОДСВЕТКА ТОЛЬКО У ПОЛЕЙ ВВОДА (input)       */
-  /*  Меню выбора (select) — без подсветки         */
+  /*  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ                */
+  /*  Работает и для input, и для select          */
   /* ============================================ */
 
-  input.req-field.is-empty {
+  /* ПУСТОЕ — красное */
+  input.req-field.is-empty,
+  select.req-field.is-empty {
     background: #fef2f2;
-    border-color: #ef4444; border-width: 2px;
+    border-color: #ef4444;
+    border-width: 2px;
     box-shadow: 0 0 0 3px rgba(239,68,68,.10);
   }
-  input.req-field.is-empty:focus {
+  input.req-field.is-empty:focus,
+  select.req-field.is-empty:focus {
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220,38,38,.20);
   }
-  input.req-field.is-filled {
+
+  /* ЗАПОЛНЕННОЕ — зелёное */
+  input.req-field.is-filled,
+  select.req-field.is-filled {
     background: #f0fdf4;
-    border-color: #22c55e; border-width: 2px;
+    border-color: #22c55e;
+    border-width: 2px;
     box-shadow: 0 0 0 3px rgba(34,197,94,.08);
   }
-  input.req-field.is-filled:focus {
+  input.req-field.is-filled:focus,
+  select.req-field.is-filled:focus {
     border-color: #16a34a;
     box-shadow: 0 0 0 3px rgba(34,197,94,.20);
   }
-  input.req-field.is-locked {
+
+  /* ЗАБЛОКИРОВАННОЕ (поле «Нет» или не готово) */
+  input.req-field.is-locked,
+  select.req-field.is-locked {
     background: #f1f5f9;
-    border-color: #cbd5e1; border-width: 1.5px;
-    color: #475569; box-shadow: none;
+    border-color: #cbd5e1;
+    border-width: 1.5px;
+    color: #475569;
+    box-shadow: none;
   }
-  input.req-field.is-invalid {
+
+  input.req-field.is-invalid,
+  select.req-field.is-invalid {
     background: #fef2f2;
-    border-color: #ef4444; border-width: 2px;
+    border-color: #ef4444;
+    border-width: 2px;
+  }
+
+  /* ВАЖНО: выпадающий список — белый, без подсветки */
+  select option {
+    background: #ffffff;
+    color: #0f172a;
+    padding: 8px;
   }
 
   @keyframes shake {
@@ -177,7 +201,6 @@
 <div class="card">
   <div class="section-title">Объект и работы</div>
 
-  <!-- ДАТА + ИМЯ (1:2) -->
   <div class="row">
     <div class="col-1">
       <label class="req">Дата <span class="req-star">*</span></label>
@@ -194,18 +217,17 @@
   </div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
-  <select id="object">
+  <select id="object" class="req-field">
     <option value="" disabled selected hidden>— выберите объект —</option>
     <option>Ларинская гимназия</option>
     <option>ЖЕДЕПОМ</option>
   </select>
   <div class="field-error" id="err-object">Заполните это поле</div>
 
-  <!-- ЭТАЖ + ПОМЕЩЕНИЕ (1:2) -->
   <div class="row">
     <div class="col-1">
       <label class="req">Этаж <span class="req-star">*</span></label>
-      <select id="floor" disabled>
+      <select id="floor" class="req-field is-locked" disabled>
         <option value="">— сначала объект —</option>
       </select>
       <div class="hint-small" id="floor-hint">Сначала выберите объект</div>
@@ -227,7 +249,7 @@
   </div>
 
   <label class="req">Тип работ <span class="req-star">*</span></label>
-  <select id="work">
+  <select id="work" class="req-field">
     <option value="" disabled selected hidden>— выберите —</option>
     <option>Монтаж</option>
     <option>Демонтаж</option>
@@ -292,6 +314,7 @@
       opt.textContent = '— сначала объект —';
       floorSelect.appendChild(opt);
       floorSelect.disabled = true;
+      floorSelect.classList.add('is-locked');
       floorHint.textContent = 'Сначала выберите объект';
       floorHint.style.display = 'block';
       return;
@@ -314,6 +337,7 @@
 
     floorSelect.disabled = false;
     floorHint.style.display = 'none';
+    updateFieldState(floorSelect);
   }
 
   function updateRoomState() {
@@ -359,6 +383,8 @@
     rebuildFloors();
     floorSelect.value = '';
     updateRoomState();
+    updateFieldState(objectSelect);
+    updateFieldState(floorSelect);
   });
 
   floorSelect.addEventListener('change', () => {
@@ -366,6 +392,7 @@
       roomNone.checked = false;
     }
     updateRoomState();
+    updateFieldState(floorSelect);
   });
 
   roomNone.addEventListener('change', () => {
@@ -449,18 +476,20 @@
   });
 
   // ============================================
-  //  ПОДСВЕТКА ПОЛЕЙ ВВОДА
-  //  (только input с классом req-field)
+  //  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+  //  Работает и для input, и для select
   // ============================================
   const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
 
   function updateFieldState(el) {
-    // меню выбора не подсвечиваем
     if (!el.classList.contains('req-field')) return;
 
     if (el.disabled) {
       el.classList.remove('is-empty', 'is-filled', 'is-invalid');
+      // если это заблокированное поле «Помещение» с текстом — серая блокировка
       if (el.id === 'room' && el.value) {
+        el.classList.add('is-locked');
+      } else if (el.id === 'floor') {
         el.classList.add('is-locked');
       }
       return;
@@ -478,7 +507,6 @@
     }
   }
 
-  // запускаем для всех обязательных
   REQUIRED_IDS.forEach(id => {
     const el = document.getElementById(id);
     updateFieldState(el);
@@ -607,7 +635,6 @@
       floorSelect.value = '';
       updateRoomState();
 
-      // сброс даты на сегодня
       document.getElementById('date').valueAsDate = new Date();
 
       REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
