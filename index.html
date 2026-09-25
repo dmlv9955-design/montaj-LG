@@ -12,11 +12,9 @@
     background: linear-gradient(180deg, #eef2f7 0%, #f7f9fc 100%);
     color: #1a1a1a; min-height: 100vh;
   }
-  .header {
-    text-align: center; padding: 12px 0 20px;
-  }
+  .header { text-align: center; padding: 12px 0 20px; }
   .header h1 { font-size: 22px; margin: 0 0 4px; color: #0f172a; }
-  .header p { font-size: 13px; color: #64748b; margin: 0; }
+  .header p  { font-size: 13px; color: #64748b; margin: 0; }
 
   .card {
     background: #fff; padding: 20px; border-radius: 16px;
@@ -29,33 +27,58 @@
     margin: 0 0 12px; padding-bottom: 8px;
     border-bottom: 1px solid #e2e8f0;
   }
+
+  /* НУМЕРАЦИЯ ПОЛЕЙ */
   label {
-    display: block; margin-top: 14px; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 14px; margin-bottom: 6px;
     font-weight: 600; font-size: 14px; color: #334155;
   }
-  label .req { color: #ef4444; }
+  .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #eff6ff; color: #2563eb;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  label.req .num { background: #fee2e2; color: #dc2626; }
+  .req-star { color: #ef4444; margin-left: 2px; }
+
   input, select, textarea {
     width: 100%; padding: 12px 14px;
     border: 1.5px solid #e2e8f0; border-radius: 10px;
     font-size: 16px; font-family: inherit;
     background: #fff; color: #0f172a;
-    transition: border-color .15s, box-shadow .15s;
+    transition: border-color .15s, box-shadow .15s, background .15s;
   }
   input:focus, select:focus, textarea:focus {
     outline: none; border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37,99,235,.12);
   }
+
+  /* ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ */
+  input.req-field, select.req-field {
+    background: #fffbfb;
+    border-color: #fecaca;
+  }
+  input.req-field:focus, select.req-field:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.12);
+  }
+  input.req-field:not(:placeholder-shown):valid,
+  select.req-field:valid:not([value=""]) {
+    background: #fff; border-color: #86efac;
+  }
+
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
 
-  /* Материалы */
+  /* МАТЕРИАЛЫ */
   .material-row {
     display: grid; grid-template-columns: 1fr 90px 80px 36px;
     gap: 8px; margin-bottom: 8px; align-items: center;
   }
-  .material-row input, .material-row select {
-    padding: 10px; font-size: 15px;
-  }
+  .material-row input, .material-row select { padding: 10px; font-size: 15px; }
   .btn-remove {
     width: 36px; height: 42px; border: none; background: #fee2e2;
     color: #dc2626; border-radius: 8px; cursor: pointer;
@@ -68,9 +91,8 @@
   }
   .btn-add:active { background: #e2e8f0; }
 
-  /* Основная кнопка */
   button.submit {
-    margin-top: 16px; width: 100%; padding: 16px;
+    margin-top: 8px; width: 100%; padding: 16px;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #fff; border: none; border-radius: 12px;
     font-size: 17px; font-weight: 700; cursor: pointer;
@@ -87,6 +109,10 @@
   .ok { color: #16a34a; }
   .err { color: #dc2626; }
 
+  .hint {
+    text-align: center; font-size: 12px; color: #94a3b8;
+    margin: 8px 0 0;
+  }
   .footer { text-align: center; padding: 8px 0 24px; font-size: 12px; color: #94a3b8; }
 </style>
 </head>
@@ -99,31 +125,13 @@
 
 <!-- ОСНОВНАЯ ИНФОРМАЦИЯ -->
 <div class="card">
-<div class="section-title">Объект и работы</div>
+  <div class="section-title">Объект и работы</div>
 
-<label>Дата <span class="req">*</span></label>
-<input type="date" id="date">
+  <label class="req"><span class="num">1</span> Дата <span class="req-star">*</span></label>
+  <input type="date" id="date" class="req-field">
 
-<label>Имя Фамилия <span class="req">*</span></label>
-<select id="name">
-  <option value="">— выберите —</option>
-  <option>Иванов Иван</option>
-  <option>Петров Петр</option>
-  <option>Сидоров Сергей</option>
-</select>
-
-<label>Объект <span class="req">*</span></label>
-<select id="object">
-  <option value="">— выберите объект —</option>
-  <option>Ларинская гимназия</option>
-  <option>ЖЕДЕПОМ</option>
-</select>
-
-  <label>Дата <span class="req">*</span></label>
-  <input type="date" id="date">
-
-  <label>Имя Фамилия <span class="req">*</span></label>
-  <select id="name">
+  <label class="req"><span class="num">2</span> Имя Фамилия <span class="req-star">*</span></label>
+  <select id="name" class="req-field">
     <option value="">— выберите —</option>
     <!-- ⬇️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬇️ -->
     <option>Иванов Иван</option>
@@ -132,19 +140,26 @@
     <!-- ⬆️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬆️ -->
   </select>
 
+  <label class="req"><span class="num">3</span> Объект <span class="req-star">*</span></label>
+  <select id="object" class="req-field">
+    <option value="">— выберите объект —</option>
+    <option>Ларинская гимназия</option>
+    <option>ЖЕДЕПОМ</option>
+  </select>
+
   <div class="row">
     <div>
-      <label>Этаж</label>
+      <label><span class="num">4</span> Этаж</label>
       <input type="text" id="floor" placeholder="5">
     </div>
     <div>
-      <label>Помещение</label>
+      <label><span class="num">5</span> Помещение</label>
       <input type="text" id="room" placeholder="кв. 32">
     </div>
   </div>
 
-  <label>Тип работ <span class="req">*</span></label>
-  <select id="work">
+  <label class="req"><span class="num">6</span> Тип работ <span class="req-star">*</span></label>
+  <select id="work" class="req-field">
     <option value="">— выберите —</option>
     <option>Монтаж</option>
     <option>Демонтаж</option>
@@ -153,7 +168,7 @@
     <option>Ремонт</option>
   </select>
 
-  <label>Система</label>
+  <label><span class="num">7</span> Система</label>
   <select id="system">
     <option value="">— не указано —</option>
     <option>Вентиляция</option>
@@ -179,17 +194,19 @@
 <div class="card">
   <button class="submit" id="btn" onclick="send()">Отправить отчет</button>
   <div id="msg"></div>
+  <p class="hint">Поля со <span style="color:#ef4444">*</span> обязательны для заполнения</p>
 </div>
 
 <div class="footer">Отчет отправляется в общую базу компании</div>
 
 <script>
-  const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
+  // ⬇️⬇️⬇️ ЗАМЕНИТЕ НА СВОИ ЗНАЧЕНИЯ ⬇️⬇️⬇️
+  const API_URL = 'https://script.google.com/macros/s/ВАШ_ID/exec';
   const SECRET_KEY = 'montaj2026';
+  // ⬆️⬆️⬆️ ЗАМЕНИТЕ НА СВОИ ЗНАЧЕНИЯ ⬆️⬆️⬆️
 
   document.getElementById('date').valueAsDate = new Date();
 
-  // Одна пустая строка материала при загрузке
   addMaterial();
 
   function addMaterial() {
@@ -236,12 +253,13 @@
   }
 
   async function send() {
-    // валидация
-    const required = ['object', 'date', 'name', 'work'];
+    const required = ['date', 'name', 'object', 'work'];
     for (const id of required) {
-      if (!val(id)) {
+      const el = document.getElementById(id);
+      if (!el.value.trim()) {
         show('⚠️ Заполните обязательные поля', 'err');
-        document.getElementById(id).focus();
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
     }
@@ -272,7 +290,6 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      // очистка (ФИО оставляем — удобно для повторных отчетов)
       ['object','floor','room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
