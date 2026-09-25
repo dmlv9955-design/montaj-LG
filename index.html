@@ -412,13 +412,18 @@
     updateFieldState(objectSelect);
   });
 
-  floorSelect.addEventListener('change', () => {
-    if (floorSelect.value !== 'Нет') {
-      roomNone.checked = false;
+floorSelect.addEventListener('change', () => {
+  if (floorSelect.value !== 'Нет') {
+    // выходим из режима «Нет» — сбрасываем чекбокс
+    roomNone.checked = false;
+    // если поле было заполнено авто-значением «Нет» — очищаем его
+    if (roomInput.value === 'Нет') {
+      roomInput.value = '';
     }
-    updateRoomState();
-    updateFieldState(floorSelect);
-  });
+  }
+  updateRoomState();
+  updateFieldState(floorSelect);
+});
 
   roomNone.addEventListener('change', () => {
     updateRoomState();
