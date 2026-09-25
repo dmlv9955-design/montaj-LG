@@ -44,6 +44,10 @@
     outline: none; border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37,99,235,.12);
   }
+  select:disabled {
+    background: #f1f5f9; color: #94a3b8;
+    cursor: not-allowed; border-color: #e2e8f0;
+  }
 
   /* ПУСТОЕ обязательное поле — красное */
   input.req-field.is-empty,
@@ -92,6 +96,11 @@
     margin-top: 4px;
   }
   .field-error.show { display: block; }
+
+  .hint-small {
+    font-size: 12px; color: #94a3b8;
+    margin-top: 4px;
+  }
 
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
@@ -170,7 +179,10 @@
   <div class="row">
     <div>
       <label>Этаж</label>
-      <input type="text" id="floor" placeholder="5">
+      <select id="floor" disabled>
+        <option value="">— сначала объект —</option>
+      </select>
+      <div class="hint-small" id="floor-hint">Сначала выберите объект</div>
     </div>
     <div>
       <label>Помещение</label>
@@ -223,20 +235,71 @@
   document.getElementById('date').valueAsDate = new Date();
 
   // ============================================
+  //  ЭТАЖИ ПО ОБЪЕКТАМ
+  // ============================================
+  const FLOORS_BY_OBJECT = {
+    'Ларинская гимназия': ['1', '2', '3', 'Чердак'],
+    'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак']
+  };
+
+  const objectSelect = document.getElementById('object');
+  const floorSelect  = document.getElementById('floor');
+  const floorHint    = document.getElementById('floor-hint');
+
+  function rebuildFloors() {
+    const obj = objectSelect.value;
+    const floors = FLOORS_BY_OBJECT[obj];
+
+    floorSelect.innerHTML = '';
+
+    if (!floors) {
+      // объект не выбран
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— сначала объект —';
+      floorSelect.appendChild(opt);
+      floorSelect.disabled = true;
+      floorHint.textContent = 'Сначала выберите объект';
+      floorHint.style.display = 'block';
+      return;
+    }
+
+    // объект выбран — заполняем список этажей
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '— выберите этаж —';
+    floorSelect.appendChild(placeholder);
+
+    floors.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f;
+      floorSelect.appendChild(opt);
+    });
+
+    floorSelect.disabled = false;
+    floorHint.style.display = 'none';
+  }
+
+  objectSelect.addEventListener('change', () => {
+    rebuildFloors();
+    // сброс значения этажа при смене объекта
+    floorSelect.value = '';
+  });
+
+  rebuildFloors(); // при загрузке страницы
+
+  // ============================================
   //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ (ровно 2 слова)
   // ============================================
 
   function formatName(value) {
-    // 1. Убираем цифры и символы — оставляем буквы, пробел, дефис
     let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
-    // 2. Нормализуем пробелы/дефисы
     cleaned = cleaned.replace(/\s+/g, ' ');
     cleaned = cleaned.replace(/-+/g, '-');
     cleaned = cleaned.replace(/\s-|-\s/g, '-');
-    // 3. Первая буква каждого слова — заглавная
     cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
                               (m, p1, p2) => p1 + p2.toUpperCase());
-    // 4. ОГРАНИЧЕНИЕ: не больше 2 слов
     const parts = cleaned.split(' ');
     if (parts.length > 2) {
       cleaned = parts.slice(0, 2).join(' ');
@@ -244,7 +307,6 @@
     return cleaned;
   }
 
-  // Валидное имя = РОВНО 2 слова, каждое от 2 букв, с заглавной
   function isNameValid(value) {
     const v = value.trim();
     return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?$/.test(v);
@@ -357,7 +419,6 @@
 
     let firstProblem = null;
 
-    // 1) проверка пустоты
     REQUIRED_IDS.forEach(id => {
       const el = document.getElementById(id);
       if (!el.value.trim()) {
@@ -374,7 +435,6 @@
       }
     });
 
-    // 2) отдельная проверка формата имени
     const nameVal = val('name');
     if (nameVal && !isNameValid(nameVal)) {
       nameInput.classList.add('is-invalid', 'shake');
@@ -418,9 +478,13 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      ['name', 'object', 'floor', 'room'].forEach(id => document.getElementById(id).value = '');
+      // очистка (кроме даты и системы)
+      ['name', 'object', 'room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
+
+      // сброс этажа и блокировка до выбора объекта
+      rebuildFloors();
 
       REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
     } catch (e) {
