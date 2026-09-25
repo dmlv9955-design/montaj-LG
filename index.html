@@ -49,7 +49,6 @@
     cursor: not-allowed; border-color: #e2e8f0;
   }
 
-  /* ПУСТОЕ обязательное поле — красное */
   input.req-field.is-empty,
   select.req-field.is-empty {
     background: #fef2f2;
@@ -62,7 +61,6 @@
     border-color: #dc2626;
     box-shadow: 0 0 0 3px rgba(220,38,38,.20);
   }
-  /* ЗАПОЛНЕННОЕ — зелёное */
   input.req-field.is-filled,
   select.req-field.is-filled {
     background: #f0fdf4;
@@ -170,7 +168,7 @@
 
   <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object" class="req-field">
-    <option value="">— выберите объект —</option>
+    <option value="" disabled selected hidden>— выберите объект —</option>
     <option>Ларинская гимназия</option>
     <option>ЖЕДЕПОМ</option>
   </select>
@@ -192,7 +190,7 @@
 
   <label class="req">Тип работ <span class="req-star">*</span></label>
   <select id="work" class="req-field">
-    <option value="">— выберите —</option>
+    <option value="" disabled selected hidden>— выберите —</option>
     <option>Монтаж</option>
     <option>Демонтаж</option>
     <option>Наладка</option>
@@ -203,7 +201,7 @@
 
   <label>Система</label>
   <select id="system">
-    <option value="">— не указано —</option>
+    <option value="" disabled selected hidden>— не указано —</option>
     <option>Вентиляция</option>
     <option>Кондиционирование</option>
     <option>Отопление</option>
@@ -253,7 +251,6 @@
     floorSelect.innerHTML = '';
 
     if (!floors) {
-      // объект не выбран
       const opt = document.createElement('option');
       opt.value = '';
       opt.textContent = '— сначала объект —';
@@ -264,10 +261,13 @@
       return;
     }
 
-    // объект выбран — заполняем список этажей
+    // placeholder скрыт из списка
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = '— выберите этаж —';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.hidden = true;
     floorSelect.appendChild(placeholder);
 
     floors.forEach(f => {
@@ -283,14 +283,13 @@
 
   objectSelect.addEventListener('change', () => {
     rebuildFloors();
-    // сброс значения этажа при смене объекта
     floorSelect.value = '';
   });
 
-  rebuildFloors(); // при загрузке страницы
+  rebuildFloors();
 
   // ============================================
-  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ (ровно 2 слова)
+  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
   // ============================================
 
   function formatName(value) {
@@ -384,7 +383,7 @@
     row.innerHTML = `
       <input type="text" class="m-name" placeholder="Название">
       <select class="m-unit">
-        <option value="">ед.</option>
+        <option value="" disabled selected hidden>ед.</option>
         <option>шт</option><option>м</option><option>м²</option><option>м³</option>
         <option>кг</option><option>л</option><option>компл</option><option>упак</option>
       </select>
@@ -478,12 +477,10 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      // очистка (кроме даты и системы)
       ['name', 'object', 'room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
 
-      // сброс этажа и блокировка до выбора объекта
       rebuildFloors();
 
       REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
