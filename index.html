@@ -28,20 +28,11 @@
     border-bottom: 1px solid #e2e8f0;
   }
 
-  /* НУМЕРАЦИЯ ПОЛЕЙ */
   label {
-    display: flex; align-items: center; gap: 8px;
+    display: block;
     margin-top: 14px; margin-bottom: 6px;
     font-weight: 600; font-size: 14px; color: #334155;
   }
-  .num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: #eff6ff; color: #2563eb;
-    font-size: 12px; font-weight: 700;
-    flex-shrink: 0;
-  }
-  label.req .num { background: #fee2e2; color: #dc2626; }
   .req-star { color: #ef4444; margin-left: 2px; }
 
   input, select, textarea {
@@ -127,10 +118,10 @@
 <div class="card">
   <div class="section-title">Объект и работы</div>
 
-  <label class="req"><span class="num">1</span> Дата <span class="req-star">*</span></label>
+  <label class="req">Дата <span class="req-star">*</span></label>
   <input type="date" id="date" class="req-field">
 
-  <label class="req"><span class="num">2</span> Имя Фамилия <span class="req-star">*</span></label>
+  <label class="req">Имя Фамилия <span class="req-star">*</span></label>
   <select id="name" class="req-field">
     <option value="">— выберите —</option>
     <!-- ⬇️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬇️ -->
@@ -140,7 +131,7 @@
     <!-- ⬆️ ЗАМЕНИТЕ НА СВОИХ МОНТАЖНИКОВ ⬆️ -->
   </select>
 
-  <label class="req"><span class="num">3</span> Объект <span class="req-star">*</span></label>
+  <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object" class="req-field">
     <option value="">— выберите объект —</option>
     <option>Ларинская гимназия</option>
@@ -149,16 +140,16 @@
 
   <div class="row">
     <div>
-      <label><span class="num">4</span> Этаж</label>
+      <label>Этаж</label>
       <input type="text" id="floor" placeholder="5">
     </div>
     <div>
-      <label><span class="num">5</span> Помещение</label>
+      <label>Помещение</label>
       <input type="text" id="room" placeholder="кв. 32">
     </div>
   </div>
 
-  <label class="req"><span class="num">6</span> Тип работ <span class="req-star">*</span></label>
+  <label class="req">Тип работ <span class="req-star">*</span></label>
   <select id="work" class="req-field">
     <option value="">— выберите —</option>
     <option>Монтаж</option>
@@ -168,7 +159,7 @@
     <option>Ремонт</option>
   </select>
 
-  <label><span class="num">7</span> Система</label>
+  <label>Система</label>
   <select id="system">
     <option value="">— не указано —</option>
     <option>Вентиляция</option>
