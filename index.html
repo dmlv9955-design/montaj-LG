@@ -184,7 +184,11 @@
     </div>
     <div>
       <label>Помещение</label>
-      <input type="text" id="room" placeholder="кв. 32">
+      <input type="text" id="room"
+             placeholder="32 105 108"
+             inputmode="numeric"
+             maxlength="60">
+      <div class="hint-small">Цифры через пробел — сохранятся через запятую</div>
     </div>
   </div>
 
@@ -261,7 +265,6 @@
       return;
     }
 
-    // placeholder скрыт из списка
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = '— выберите этаж —';
@@ -287,6 +290,38 @@
   });
 
   rebuildFloors();
+
+  // ============================================
+  //  ФОРМАТИРОВАНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
+  //  Разрешаем только цифры и пробелы.
+  //  Пробел автоматически превращается в «, »
+  // ============================================
+  const roomInput = document.getElementById('room');
+
+  function formatRoom(value) {
+    // убираем всё кроме цифр и пробелов
+    let cleaned = value.replace(/[^0-9\s]/g, '');
+    // схлопываем повторные пробелы
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    // разбиваем по пробелам, оставляем только непустые части
+    const parts = cleaned.split(' ').filter(p => p !== '');
+    let result = parts.join(', ');
+    // если строка заканчивается на пробел и есть части — добавляем «, » для продолжения ввода
+    if (cleaned.endsWith(' ') && parts.length > 0) {
+      result += ', ';
+    }
+    return result;
+  }
+
+  roomInput.addEventListener('input', () => {
+    const before = roomInput.value;
+    const after  = formatRoom(before);
+    if (before !== after) {
+      roomInput.value = after;
+      // курсор в конец (учитывая, что все правки — ввод/удаление в конце строки)
+      roomInput.setSelectionRange(after.length, after.length);
+    }
+  });
 
   // ============================================
   //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
@@ -451,13 +486,16 @@
     }
 
     // === ОТПРАВЛЯЕМ ===
+    // В помещении убираем завершающую «, » перед отправкой
+    const roomValue = val('room').replace(/,\s*$/, '');
+
     const payload = {
       key:       SECRET_KEY,
       object:    val('object'),
       date:      val('date'),
       name:      val('name'),
       floor:     val('floor'),
-      room:      val('room'),
+      room:      roomValue,
       work:      val('work'),
       system:    val('system'),
       materials: collectMaterials()
