@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ежедневный отчет монтажника</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    max-width: 520px; margin: 0 auto; padding: 16px;
+    background: #f5f7fa; color: #1a1a1a;
+  }
+  h1 { font-size: 20px; margin: 8px 0 16px; }
+  .card {
+    background: #fff; padding: 16px; border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  label { display: block; margin-top: 14px; font-weight: 600; font-size: 14px; }
+  input, select, textarea {
+    width: 100%; padding: 12px; margin-top: 4px;
+    border: 1px solid #d0d7de; border-radius: 8px;
+    font-size: 16px; font-family: inherit; background: #fff;
+  }
+  textarea { resize: vertical; }
+  button {
+    margin-top: 20px; width: 100%; padding: 14px;
+    background: #2563eb; color: #fff; border: none;
+    border-radius: 8px; font-size: 16px; font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { background: #94a3b8; cursor: wait; }
+  #msg { margin-top: 12px; text-align: center; font-weight: 600; min-height: 20px; }
+  .ok { color: #16a34a; }
+  .err { color: #dc2626; }
+</style>
+</head>
+<body>
+
+<h1>📋 Ежедневный отчет</h1>
+
+<div class="card">
+  <label>ФИО монтажника *</label>
+  <select id="name">
+    <option value="">— выберите —</option>
+    <option>Иванов Иван</option>
+    <option>Петров Петр</option>
+    <option>Сидоров Сергей</option>
+  </select>
+
+  <label>Дата *</label>
+  <input type="date" id="date">
+
+  <label>Объект / адрес *</label>
+  <input type="text" id="object" placeholder="ул. Ленина, 15, кв. 32">
+
+  <label>Вид работ *</label>
+  <select id="work">
+    <option value="">— выберите —</option>
+    <option>Монтаж</option>
+    <option>Демонтаж</option>
+    <option>Наладка</option>
+    <option>ТО</option>
+    <option>Ремонт</option>
+  </select>
+
+  <label>Что сделано за день *</label>
+  <textarea id="done" rows="3" placeholder="Кратко опишите выполненное"></textarea>
+
+  <label>Отработано часов *</label>
+  <input type="number" id="hours" step="0.5" min="0" max="24" placeholder="8">
+
+  <label>Израсходованные материалы</label>
+  <textarea id="materials" rows="2" placeholder="Кабель 20м, крепеж, ..."></textarea>
+
+  <label>Проблемы / замечания</label>
+  <textarea id="issues" rows="2"></textarea>
+
+  <button id="btn" onclick="send()">Отправить отчет</button>
+  <div id="msg"></div>
+</div>
+
+<script>
+  // https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec
+  const API_URL = 'https://script.google.com/macros/s/1efw1m4gDsA1pQiTKlSzIh5WDI1ViCiAmI5m9K5MCRcE/exec';
+  const SECRET_KEY = 'montaj2026';
+
+  // сегодняшняя дата по умолчанию
+  document.getElementById('date').valueAsDate = new Date();
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+  function show(text, cls) {
+    const m = document.getElementById('msg');
+    m.textContent = text;
+    m.className = cls || '';
+  }
+
+  async function send() {
+    // простая валидация
+    const required = ['name', 'date', 'object', 'work', 'done', 'hours'];
+    for (const id of required) {
+      if (!val(id)) {
+        show('⚠️ Заполните обязательные поля', 'err');
+        document.getElementById(id).focus();
+        return;
+      }
+    }
+
+    const payload = {
+      key:       SECRET_KEY,
+      name:      val('name'),
+      date:      val('date'),
+      object:    val('object'),
+      work:      val('work'),
+      done:      val('done'),
+      hours:     val('hours'),
+      materials: val('materials'),
+      issues:    val('issues')
+    };
+
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+    btn.textContent = 'Отправляем...';
+    show('');
+
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',           // обход CORS для Google Apps Script
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+
+      // при mode:'no-cors' ответ не читается, поэтому просто считаем успехом
+      show('✅ Отчет отправлен!', 'ok');
+
+      // очистка (кроме ФИО — удобно для повторных отправок)
+      ['done', 'materials', 'issues', 'hours', 'object'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+
+    } catch (e) {
+      show('❌ Ошибка: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Отправить отчет';
+    }
+  }
+</script>
+</body>
+</html>
