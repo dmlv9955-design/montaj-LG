@@ -71,7 +71,6 @@
     border-color: #16a34a;
     box-shadow: 0 0 0 3px rgba(34,197,94,.20);
   }
-  /* Невалидное, но заполненное поле */
   input.req-field.is-invalid {
     background: #fef2f2;
     border-color: #ef4444;
@@ -154,11 +153,11 @@
   <input type="date" id="date" class="req-field">
 
   <label class="req">Имя Фамилия <span class="req-star">*</span></label>
-<input type="text" id="name" class="req-field"
-       placeholder="Иван Иванов"
-       autocomplete="name" autocapitalize="words" spellcheck="false"
-       maxlength="40">
-  <div class="field-error" id="err-name">Введите имя и фамилию, например: Иван Иванов</div>
+  <input type="text" id="name" class="req-field"
+         placeholder="Иван Иванов"
+         autocomplete="name" autocapitalize="words" spellcheck="false"
+         maxlength="40">
+  <div class="field-error" id="err-name">Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)</div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object" class="req-field">
@@ -218,38 +217,42 @@
 <div class="footer">Отчет отправляется в общую базу компании</div>
 
 <script>
-  // ⬇️⬇️⬇️ ЗАМЕНИТЕ НА СВОИ ЗНАЧЕНИЯ ⬇️⬇️⬇️
-  const API_URL = 'https://script.google.com/macros/s/ВАШ_ID/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
   const SECRET_KEY = 'montaj2026';
-  // ⬆️⬆️⬆️ ЗАМЕНИТЕ НА СВОИ ЗНАЧЕНИЯ ⬆️⬆️⬆️
 
   document.getElementById('date').valueAsDate = new Date();
 
   // ============================================
-  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
+  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ (ровно 2 слова)
   // ============================================
 
-  // Оставляем только буквы, пробел, дефис. Первая буква каждого слова — заглавная.
   function formatName(value) {
-    let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');  // убрать цифры и символы
-    cleaned = cleaned.replace(/\s+/g, ' ');                     // двойные пробелы → один
-    cleaned = cleaned.replace(/-+/g, '-');                      // двойные дефисы → один
-    cleaned = cleaned.replace(/\s-|-\s/g, '-');                 // пробел возле дефиса убрать
+    // 1. Убираем цифры и символы — оставляем буквы, пробел, дефис
+    let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
+    // 2. Нормализуем пробелы/дефисы
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    cleaned = cleaned.replace(/-+/g, '-');
+    cleaned = cleaned.replace(/\s-|-\s/g, '-');
+    // 3. Первая буква каждого слова — заглавная
     cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
-                              (m, p1, p2) => p1 + p2.toUpperCase());  // Первая → Заглавная
+                              (m, p1, p2) => p1 + p2.toUpperCase());
+    // 4. ОГРАНИЧЕНИЕ: не больше 2 слов
+    const parts = cleaned.split(' ');
+    if (parts.length > 2) {
+      cleaned = parts.slice(0, 2).join(' ');
+    }
     return cleaned;
   }
 
-  // Валидное имя = минимум 2 слова, каждое с заглавной буквы, только буквы и дефис
+  // Валидное имя = РОВНО 2 слова, каждое от 2 букв, с заглавной
   function isNameValid(value) {
     const v = value.trim();
-    return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?(?:\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?)+$/.test(v);
+    return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?$/.test(v);
   }
 
   const nameInput = document.getElementById('name');
   const nameErr = document.getElementById('err-name');
 
-  // Автоформат при вводе + сохранение позиции курсора
   nameInput.addEventListener('input', () => {
     const before = nameInput.value;
     const pos = nameInput.selectionStart;
@@ -260,7 +263,6 @@
       const newPos = Math.max(0, Math.min(after.length, pos - delta));
       nameInput.setSelectionRange(newPos, newPos);
     }
-    // Если поле стало валидным — прячем ошибку
     if (isNameValid(nameInput.value)) {
       nameErr.classList.remove('show');
       nameInput.classList.remove('is-invalid');
@@ -268,11 +270,10 @@
     updateFieldState(nameInput);
   });
 
-  // Проверка при уходе с поля
   nameInput.addEventListener('blur', () => {
     const v = nameInput.value.trim();
     if (v && !isNameValid(v)) {
-      nameErr.textContent = 'Введите имя И фамилию полностью (например: Иван Иванов)';
+      nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)';
       nameErr.classList.add('show');
       nameInput.classList.add('is-invalid');
     } else {
@@ -282,7 +283,7 @@
   });
 
   // ============================================
-  //  ПОДСВЕТКА ОСТАЛЬНЫХ ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+  //  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
   // ============================================
   const REQUIRED_IDS = ['date', 'name', 'object', 'work'];
 
@@ -349,7 +350,6 @@
   }
 
   async function send() {
-    // сброс подсветки ошибок
     REQUIRED_IDS.forEach(id => {
       const err = document.getElementById('err-' + id);
       if (err) err.classList.remove('show');
@@ -366,7 +366,7 @@
         const err = document.getElementById('err-' + id);
         if (err) {
           err.textContent = id === 'name'
-            ? 'Заполните имя и фамилию'
+            ? 'Введите Имя и Фамилию — ровно 2 слова'
             : 'Заполните это поле';
           err.classList.add('show');
         }
@@ -379,7 +379,7 @@
     if (nameVal && !isNameValid(nameVal)) {
       nameInput.classList.add('is-invalid', 'shake');
       setTimeout(() => nameInput.classList.remove('shake'), 500);
-      nameErr.textContent = 'Введите имя И фамилию полностью (например: Иван Иванов)';
+      nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)';
       nameErr.classList.add('show');
       if (!firstProblem) firstProblem = nameInput;
     }
@@ -418,7 +418,6 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
-      // очистка
       ['name', 'object', 'floor', 'room'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('materials').innerHTML = '';
       addMaterial();
