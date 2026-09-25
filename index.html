@@ -48,16 +48,13 @@
     background: #f1f5f9; color: #64748b;
     cursor: not-allowed; border-color: #e2e8f0;
   }
+  /* Дата в узкой колонке — компактнее */
+  input[type="date"] { padding: 12px 10px; font-size: 15px; }
 
-  /* ============================================ */
-  /* ПОДСВЕТКА ТОЛЬКО У ТЕКСТОВЫХ ПОЛЕЙ (input)    */
-  /* Списки (select) — без цветной подсветки      */
-  /* ============================================ */
-
+  /* ПОДСВЕТКА ТОЛЬКО У ТЕКСТОВЫХ ПОЛЕЙ */
   input.req-field.is-empty {
     background: #fef2f2;
-    border-color: #ef4444;
-    border-width: 2px;
+    border-color: #ef4444; border-width: 2px;
     box-shadow: 0 0 0 3px rgba(239,68,68,.10);
   }
   input.req-field.is-empty:focus {
@@ -66,8 +63,7 @@
   }
   input.req-field.is-filled {
     background: #f0fdf4;
-    border-color: #22c55e;
-    border-width: 2px;
+    border-color: #22c55e; border-width: 2px;
     box-shadow: 0 0 0 3px rgba(34,197,94,.08);
   }
   input.req-field.is-filled:focus {
@@ -76,15 +72,12 @@
   }
   input.req-field.is-locked {
     background: #f1f5f9;
-    border-color: #cbd5e1;
-    border-width: 1.5px;
-    color: #475569;
-    box-shadow: none;
+    border-color: #cbd5e1; border-width: 1.5px;
+    color: #475569; box-shadow: none;
   }
   input.req-field.is-invalid {
     background: #fef2f2;
-    border-color: #ef4444;
-    border-width: 2px;
+    border-color: #ef4444; border-width: 2px;
   }
 
   @keyframes shake {
@@ -120,11 +113,14 @@
     cursor: pointer; flex-shrink: 0;
     padding: 0;
   }
+  .check-none input[type="checkbox"]:disabled {
+    cursor: not-allowed; opacity: .5;
+  }
 
-  /* ПРОПОРЦИЯ ЭТАЖ : ПОМЕЩЕНИЕ = 1 : 3 */
+  /* ПРОПОРЦИЯ 1 : 2 */
   .row { display: flex; gap: 10px; align-items: flex-start; }
-  .row > div.col-floor { flex: 1 1 0; min-width: 0; }
-  .row > div.col-room  { flex: 3 1 0; min-width: 0; }
+  .row > .col-1 { flex: 1 1 0; min-width: 0; }
+  .row > .col-2 { flex: 2 1 0; min-width: 0; }
 
   .material-row {
     display: grid; grid-template-columns: 1fr 90px 80px 36px;
@@ -179,15 +175,21 @@
 <div class="card">
   <div class="section-title">Объект и работы</div>
 
-  <label class="req">Дата <span class="req-star">*</span></label>
-  <input type="date" id="date" class="req-field">
-
-  <label class="req">Имя Фамилия <span class="req-star">*</span></label>
-  <input type="text" id="name" class="req-field"
-         placeholder="Иван Иванов"
-         autocomplete="name" autocapitalize="words" spellcheck="false"
-         maxlength="40">
-  <div class="field-error" id="err-name">Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)</div>
+  <!-- ДАТА + ИМЯ (1:2) -->
+  <div class="row">
+    <div class="col-1">
+      <label class="req">Дата <span class="req-star">*</span></label>
+      <input type="date" id="date">
+    </div>
+    <div class="col-2">
+      <label class="req">Имя Фамилия <span class="req-star">*</span></label>
+      <input type="text" id="name" class="req-field"
+             placeholder="Иван Иванов"
+             autocomplete="name" autocapitalize="words" spellcheck="false"
+             maxlength="40">
+      <div class="field-error" id="err-name">Введите Имя и Фамилию — ровно 2 слова</div>
+    </div>
+  </div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
   <select id="object">
@@ -197,8 +199,9 @@
   </select>
   <div class="field-error" id="err-object">Заполните это поле</div>
 
+  <!-- ЭТАЖ + ПОМЕЩЕНИЕ (1:2) -->
   <div class="row">
-    <div class="col-floor">
+    <div class="col-1">
       <label class="req">Этаж <span class="req-star">*</span></label>
       <select id="floor" disabled>
         <option value="">— сначала объект —</option>
@@ -206,15 +209,15 @@
       <div class="hint-small" id="floor-hint">Сначала выберите объект</div>
       <div class="field-error" id="err-floor">Заполните это поле</div>
     </div>
-    <div class="col-room">
+    <div class="col-2">
       <label class="req">Помещение <span class="req-star">*</span></label>
-      <input type="text" id="room" class="req-field"
-             placeholder="32 105 108"
+      <input type="text" id="room" class="req-field is-locked"
+             placeholder="— сначала выберите этаж —"
              inputmode="numeric"
-             maxlength="60">
+             maxlength="60" disabled>
       <div class="hint-small">Цифры через пробел — сохранятся через запятую</div>
       <label class="check-none">
-        <input type="checkbox" id="room-none">
+        <input type="checkbox" id="room-none" disabled>
         Нет помещений
       </label>
       <div class="field-error" id="err-room">Заполните это поле</div>
@@ -265,6 +268,9 @@
 
   document.getElementById('date').valueAsDate = new Date();
 
+  // ============================================
+  //  ЭТАЖИ ПО ОБЪЕКТАМ
+  // ============================================
   const FLOORS_BY_OBJECT = {
     'Ларинская гимназия': ['1', '2', '3', 'Чердак', 'Нет'],
     'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
@@ -273,6 +279,8 @@
   const objectSelect = document.getElementById('object');
   const floorSelect  = document.getElementById('floor');
   const floorHint    = document.getElementById('floor-hint');
+  const roomInput    = document.getElementById('room');
+  const roomNone     = document.getElementById('room-none');
 
   function rebuildFloors() {
     const obj = objectSelect.value;
@@ -309,32 +317,79 @@
     floorHint.style.display = 'none';
   }
 
+  // ============================================
+  //  СОСТОЯНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
+  // ============================================
+  function updateRoomState() {
+    const floorVal = floorSelect.value;
+    const noneChecked = roomNone.checked;
+
+    // сбрасываем визуальные классы
+    roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid', 'is-locked');
+
+    // 1. Этаж не выбран — помещение заблокировано
+    if (!floorVal) {
+      roomInput.value = '';
+      roomInput.disabled = true;
+      roomInput.classList.add('is-locked');
+      roomInput.placeholder = '— сначала выберите этаж —';
+      roomNone.checked = false;
+      roomNone.disabled = true;
+      return;
+    }
+
+    // 2. Этаж = «Нет» → помещение автоматически «Нет»
+    if (floorVal === 'Нет') {
+      roomInput.value = 'Нет';
+      roomInput.disabled = true;
+      roomInput.classList.add('is-locked');
+      roomInput.placeholder = '';
+      roomNone.checked = false;
+      roomNone.disabled = true;
+      return;
+    }
+
+    // 3. Обычный этаж
+    roomNone.disabled = false;
+    roomInput.placeholder = '32 105 108';
+
+    if (noneChecked) {
+      roomInput.value = 'Нет';
+      roomInput.disabled = true;
+      roomInput.classList.add('is-locked');
+    } else {
+      roomInput.disabled = false;
+      updateFieldState(roomInput);
+    }
+  }
+
+  // ============================================
+  //  ОБРАБОТЧИКИ
+  // ============================================
   objectSelect.addEventListener('change', () => {
     rebuildFloors();
     floorSelect.value = '';
+    updateRoomState();
+  });
+
+  floorSelect.addEventListener('change', () => {
+    // При смене этажа — если новый этаж обычный, сбрасываем чекбокс
+    if (floorSelect.value !== 'Нет') {
+      roomNone.checked = false;
+    }
+    updateRoomState();
+  });
+
+  roomNone.addEventListener('change', () => {
+    updateRoomState();
   });
 
   rebuildFloors();
+  updateRoomState();
 
-  // ЧЕКБОКС «НЕТ ПОМЕЩЕНИЙ»
-  const roomInput = document.getElementById('room');
-  const roomNone  = document.getElementById('room-none');
-
-  roomNone.addEventListener('change', () => {
-    if (roomNone.checked) {
-      roomInput.value = 'Нет';
-      roomInput.disabled = true;
-      roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
-      roomInput.classList.add('is-locked');
-      document.getElementById('err-room').classList.remove('show');
-    } else {
-      roomInput.value = '';
-      roomInput.disabled = false;
-      roomInput.classList.remove('is-locked');
-      updateFieldState(roomInput);
-    }
-  });
-
+  // ============================================
+  //  ФОРМАТИРОВАНИЕ ПОЛЯ «ПОМЕЩЕНИЕ»
+  // ============================================
   function formatRoom(value) {
     let cleaned = value.replace(/[^0-9\s]/g, '');
     cleaned = cleaned.replace(/\s+/g, ' ');
@@ -357,6 +412,9 @@
     updateFieldState(roomInput);
   });
 
+  // ============================================
+  //  ФОРМАТИРОВАНИЕ И ВАЛИДАЦИЯ ИМЕНИ
+  // ============================================
   function formatName(value) {
     let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
     cleaned = cleaned.replace(/\s+/g, ' ');
@@ -409,17 +467,14 @@
   });
 
   // ============================================
-  //  ОБЯЗАТЕЛЬНЫЕ ПОЛЯ
-  //  Подсветка — только для input (name, room).
-  //  Для select — только подсказка при отправке.
+  //  ПОДСВЕТКА ТЕКСТОВЫХ ПОЛЕЙ
   // ============================================
   const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
 
   function updateFieldState(el) {
-    // подсвечиваем только input.req-field
     if (!el.classList.contains('req-field')) return;
     if (el.disabled) {
-      el.classList.remove('is-empty', 'is-filled');
+      el.classList.remove('is-empty', 'is-filled', 'is-invalid');
       if (el.id === 'room' && el.value) {
         el.classList.add('is-locked');
       }
@@ -497,8 +552,8 @@
     REQUIRED_IDS.forEach(id => {
       const el = document.getElementById(id);
 
-      if (id === 'room' && roomNone.checked) return;
-      if (id === 'floor' && el.disabled) return;
+      // пропускаем заблокированные поля
+      if (el.disabled) return;
 
       if (!el.value.trim()) {
         el.classList.add('shake');
@@ -530,15 +585,13 @@
       return;
     }
 
-    const roomValue = roomNone.checked ? 'Нет' : val('room').replace(/,\s*$/, '');
-
     const payload = {
       key:       SECRET_KEY,
       object:    val('object'),
       date:      val('date'),
       name:      val('name'),
       floor:     val('floor'),
-      room:      roomValue,
+      room:      val('room').replace(/,\s*$/, ''),
       work:      val('work'),
       system:    val('system'),
       materials: collectMaterials()
@@ -558,19 +611,18 @@
       });
       show('✅ Отчет отправлен!', 'ok');
 
+      // очистка
       ['name', 'object'].forEach(id => document.getElementById(id).value = '');
       roomNone.checked = false;
-      roomInput.value = '';
-      roomInput.disabled = false;
-      roomInput.classList.remove('is-locked');
 
       document.getElementById('materials').innerHTML = '';
       addMaterial();
 
       rebuildFloors();
-      REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
+      floorSelect.value = '';
+      updateRoomState();
 
-      roomNone.dispatchEvent(new Event('change'));
+      REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
     } catch (e) {
       show('❌ Ошибка: ' + e.message, 'err');
     } finally {
