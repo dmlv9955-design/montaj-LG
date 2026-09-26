@@ -1239,6 +1239,11 @@ objectSelect.addEventListener('change', () => {
 });
 
 buildingInput.addEventListener('change', () => {
+  // при смене корпуса сбрасываем этаж и помещение
+  floorInput.value = '';
+  if (floorCS) floorCS.value = '';
+  roomInput.value = '';
+
   updateFieldState(buildingInput);
   updateFloorVisibility();
   updateRoomPrefix();
@@ -1369,7 +1374,6 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА
-//  floor теперь внутри каждой записи, а не в шапке.
 // ============================================
 async function sendAll() {
   show('');
@@ -1401,7 +1405,7 @@ async function sendAll() {
     return {
       room: room,
       room_none: entry.room_none,
-      floor: entry.floor,             // ← этаж внутри каждой записи
+      floor: entry.floor,
       work: entry.work,
       materials: materialStateToArrayFromState(entry.materialState)
     };
@@ -1411,7 +1415,7 @@ async function sendAll() {
     object:  objectSelect.value.trim(),
     date:    dateInput.value.trim(),
     name:    nameInput.value.trim(),
-    records: records                 // ← floor убран из шапки
+    records: records
   };
 
   const btn = document.getElementById('btn');
