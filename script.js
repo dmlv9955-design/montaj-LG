@@ -62,15 +62,11 @@ function setupDateRange() {
   }
 }
 
-// подсветка: вчера — жёлтым, старше — красным, сегодня — нейтральным
+// подсветка: любой день раньше сегодняшнего — жёлтый, сегодня — нейтральный
 function updateDateHighlight() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayISO = toISODate(today);
-
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayISO = toISODate(yesterday);
 
   const v = dateInput.value;
 
@@ -78,11 +74,7 @@ function updateDateHighlight() {
   dateInput.classList.remove('is-old-date', 'is-very-old-date');
 
   if (!v || v === todayISO) return;              // сегодня или пусто — без подсветки
-  if (v === yesterdayISO) {
-    dateInput.classList.add('is-old-date');      // вчера — жёлтый
-  } else {
-    dateInput.classList.add('is-very-old-date'); // старше — красный
-  }
+  dateInput.classList.add('is-old-date');        // любой день раньше — жёлтый
 }
 
 // стартовая настройка
