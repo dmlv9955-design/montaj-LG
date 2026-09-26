@@ -188,6 +188,17 @@ function sumMaterialStates(a, b) {
 }
 
 // ============================================
+//  ВЕС ТИПА РАБОТ
+//  Демонтаж → Монтаж → Иные работы
+// ============================================
+function workWeight(work) {
+  if (work === 'Демонтаж')     return 0;
+  if (work === 'Монтаж')       return 1;
+  if (work === 'Иные работы')  return 2;
+  return 99;
+}
+
+// ============================================
 //  СОРТИРОВКА
 // ============================================
 function floorWeight(floor) {
@@ -221,7 +232,9 @@ function compareEntries(a, b) {
   const kb = b.is_master_wing ? 1 : 0;
   if (ka !== kb) return ka - kb;
 
-  return String(a.work || '').localeCompare(String(b.work || ''));
+  const wa = workWeight(a.work);
+  const wb = workWeight(b.work);
+  return wa - wb;
 }
 
 // ============================================
@@ -1481,6 +1494,8 @@ function updateFieldState(el) {
 //  ОТПРАВКА
 //  Один запрос — всё гарантированно доходит.
 //  Прогресс — визуальная анимация.
+//  Порядок записей совпадает с журналом:
+//  этаж → помещение → Демонтаж → Монтаж.
 // ============================================
 async function sendAll() {
   show('');
@@ -1504,8 +1519,12 @@ async function sendAll() {
     return;
   }
 
+  // Сортируем как в журнале:
+  // этаж → помещение → корпус → тип работ (Демонтаж раньше Монтажа)
+  const sortedJournal = journal.slice().sort(compareEntries);
+
   // Формируем записи журнала для отправки
-  const records = journal.map(entry => {
+  const records = sortedJournal.map(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
       room = MASTER_WING_PREFIX + room;
@@ -1536,8 +1555,7 @@ async function sendAll() {
 
   showProgress(totalRows);
 
-  // Визуальная анимация прогресса — заполняется по мере ожидания.
-  // Реальный запрос один, но пользователю видно, что идёт работа.
+  // Визуальная анимация прогресса
   let shown = 0;
   const tickMs = Math.max(60, Math.floor(1800 / totalRows));
   const ticker = setInterval(() => {
