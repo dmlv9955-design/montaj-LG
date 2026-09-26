@@ -98,6 +98,80 @@ body {
 .theme-toggle:hover { transform: scale(1.08); }
 .theme-toggle:active { transform: scale(.94); }
 
+/* ============================================ */
+/*  КНОПКА «ВВЕРХ»                              */
+/* ============================================ */
+.scroll-top {
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .18);
+  z-index: 150;
+  transition: transform .15s, background .2s, opacity .2s;
+}
+.scroll-top.show { display: flex; }
+.scroll-top:hover { transform: scale(1.08); background: var(--hover-bg); }
+.scroll-top:active { transform: scale(.94); }
+body.dark .scroll-top { box-shadow: 0 4px 16px rgba(0, 0, 0, .5); }
+
+/* ============================================ */
+/*  ОВЕРЛЕЙ ПРОГРЕССА                           */
+/* ============================================ */
+.progress-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: rgba(15, 23, 42, .72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 500;
+  color: #fff;
+  padding: 20px;
+}
+.progress-overlay.show { display: flex; }
+
+.progress-spinner {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, .22);
+  border-top-color: #ffffff;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.progress-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.progress-counter {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: .9;
+  font-variant-numeric: tabular-nums;
+}
+
 .header { text-align: center; padding: 12px 0 20px; }
 .header h1 { font-size: 22px; margin: 0 0 4px; color: var(--text-main); }
 .header p { font-size: 13px; color: var(--text-title); margin: 0; }
@@ -464,10 +538,9 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   background: var(--border);
 }
 
-/* badge разновидности */
 .variant-badge {
-  flex: 0 0 62px;
-  width: 62px;
+  flex: 0 0 56px;
+  width: 56px;
   padding: 8px 6px;
   border-radius: 8px;
   background: var(--input-disabled-bg);
@@ -488,7 +561,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* подпись «для» */
 .variant-for {
   flex: 0 0 auto;
   font-size: 11px;
@@ -499,11 +571,10 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   line-height: 1;
 }
 
-/* метка системы */
 .variant-system {
-  flex: 0 0 48px;
-  width: 48px;
-  padding: 8px 6px;
+  flex: 0 0 44px;
+  width: 44px;
+  padding: 8px 4px;
   border-radius: 8px;
   background: var(--input-disabled-bg);
   border: 1px solid var(--border);
@@ -518,13 +589,46 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-sizing: border-box;
 }
 
+/* ============================================ */
+/*  КНОПКИ − И + У КОЛИЧЕСТВА                   */
+/* ============================================ */
+.qty-btn {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 30px;
+  padding: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.qty-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  border-color: var(--border-focus);
+  color: var(--border-focus);
+}
+.qty-btn:active:not(:disabled) { transform: scale(.9); }
+.qty-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
 /* поле количества */
 .variant-line input.variant-input {
-  flex: 0 0 64px;
-  width: 64px;
-  min-width: 64px;
-  max-width: 64px;
-  padding: 8px 6px;
+  flex: 0 0 56px;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  padding: 8px 4px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
   background: var(--input-bg);
@@ -553,7 +657,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   text-align: center;
 }
 
-/* кнопка очистки в строке материала */
 .variant-clear-btn {
   flex: 0 0 22px;
   width: 22px;
@@ -578,8 +681,8 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 }
 
 .variant-unit {
-  flex: 0 0 20px;
-  width: 20px;
+  flex: 0 0 18px;
+  width: 18px;
   font-size: 12px;
   color: var(--text-hint);
   text-align: left;
@@ -602,14 +705,17 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   }
   .variant-line {
     padding-top: 8px;
-    gap: 5px;
+    gap: 4px;
   }
+  .variant-badge { flex-basis: 52px; width: 52px; }
+  .variant-system { flex-basis: 42px; width: 42px; }
   .variant-line input.variant-input {
-    flex: 0 0 58px;
-    width: 58px;
-    min-width: 58px;
-    max-width: 58px;
+    flex: 0 0 52px;
+    width: 52px;
+    min-width: 52px;
+    max-width: 52px;
   }
+  .qty-btn { flex-basis: 24px; width: 24px; }
 }
 
 /* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
@@ -633,8 +739,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 /* ============================================ */
 /*  ЖУРНАЛ                                      */
 /* ============================================ */
-
-/* Заголовок секции по корпусу */
 .journal-building-title {
   font-size: 11px;
   font-weight: 700;
@@ -781,7 +885,7 @@ body.dark input[type="date"].is-old-date {
 
 .toast {
   position: fixed;
-  bottom: 20px; left: 50%;
+  bottom: 80px; left: 50%;
   transform: translateX(-50%) translateY(120px);
   background: #16a34a;
   color: #fff;
