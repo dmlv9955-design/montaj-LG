@@ -68,13 +68,9 @@
   <div class="row">
     <div class="col-1" id="floor-col">
       <label class="req">Этаж <span class="req-star">*</span></label>
-      <div class="cselect" data-cselect>
-        <input type="hidden" id="floor" class="req-field" value="" disabled>
-        <button type="button" class="cselect-btn">
-          <span class="cselect-value placeholder">🔒 Имя</span>
-          <span class="cselect-arrow"></span>
-        </button>
-        <ul class="cselect-list"></ul>
+      <div class="segmented segmented-disabled" id="floor-segmented">
+        <input type="hidden" id="floor" class="req-field" value="">
+        <span class="segmented-hint">🔒 Имя</span>
       </div>
       <div class="field-error" id="err-floor">Заполните это поле</div>
     </div>
