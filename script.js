@@ -85,7 +85,6 @@ function updateDateHighlight() {
   }
 }
 
-
 // стартовая настройка
 setupDateRange();
 updateDateHighlight();
@@ -163,9 +162,6 @@ class CustomSelect {
   destroy() {
     document.removeEventListener('click', this._onDocClick);
     document.removeEventListener('keydown', this._onDocKey);
-  }
-
-    this.updateDisplay();
   }
 
   get value() { return this.input.value; }
@@ -520,7 +516,8 @@ function collectMaterials() {
     const name = r.querySelector('.m-name').value.trim();
     const unit = r.querySelector('.m-unit').value;
     const qty  = r.querySelector('.m-qty').value.trim();
-    if (name || unit || qty) list.push({ name, unit, qty });
+    // строку берём только если заполнено название
+    if (name) list.push({ name, unit, qty });
   });
   return list;
 }
@@ -579,13 +576,16 @@ async function send() {
     return;
   }
 
+  const roomNoneChecked = roomNone.checked || floorInput.value === 'Нет';
+
   const payload = {
     key:       SECRET_KEY,
     object:    val('object'),
     date:      val('date'),
     name:      val('name'),
     floor:     val('floor'),
-    room:      val('room').replace(/,\s*$/, ''),
+    room:      roomNoneChecked ? 'Нет' : val('room').replace(/,\s*$/, ''),
+    room_none: roomNoneChecked,
     work:      val('work'),
     system:    val('system'),
     materials: collectMaterials()
@@ -609,10 +609,8 @@ async function send() {
     nameInput.value = '';
     roomNone.checked = false;
 
-    // сброс всех кастомных селектов (через сеттер — сразу перерисует display)
-    Object.values(customSelects).forEach(cs => {
-      cs.value = '';
-    });
+    // сброс всех кастомных селектов (сеттер value сразу перерисует display)
+    Object.values(customSelects).forEach(cs => { cs.value = ''; });
 
     document.getElementById('materials').innerHTML = '';
     addMaterial();
