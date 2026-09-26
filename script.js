@@ -134,7 +134,6 @@ const MATERIALS = [
     rows: [
       { key: 'steel_15_aps',  variant: '15 мм', system: 'АПС',  primary: true },
       { key: 'steel_15_soue', variant: '15 мм', system: 'СОУЭ', primary: true },
-      { key: 'steel_20_aps',  variant: '20 мм', system: 'АПС' },
       { key: 'steel_20_soue', variant: '20 мм', system: 'СОУЭ' }
     ]
   }
@@ -1432,7 +1431,6 @@ function renderMaterials() {
 
 // ============================================
 //  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
-//  (корпус → этаж → помещения → количество)
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -2231,7 +2229,6 @@ function validateCurrentEntry() {
     }
   }
 
-  // Валидация location-работ
   for (const w of LOCATION_WORKS) {
     if (!additionalState[w.key] || !additionalState[w.key].active) continue;
     const items = additionalState[w.key].items;
@@ -2269,7 +2266,6 @@ function validateCurrentEntry() {
     }
   }
 
-  // Валидация наставничества
   if (additionalState.mentorship.active) {
     let bad = false;
     additionalState.mentorship.items.forEach((m, idx) => {
