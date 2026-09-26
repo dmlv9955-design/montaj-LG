@@ -28,10 +28,13 @@
     </div>
     <div class="col-2">
       <label class="req">Имя Фамилия <span class="req-star">*</span></label>
-      <input type="text" id="name" class="req-field"
-             placeholder="Василий Пупкин"
-             autocomplete="name" autocapitalize="words" spellcheck="false"
-             maxlength="40">
+      <div class="field-with-clear">
+        <input type="text" id="name" class="req-field"
+               placeholder="Василий Пупкин"
+               autocomplete="name" autocapitalize="words" spellcheck="false"
+               maxlength="40">
+        <button type="button" class="field-clear" id="clear-name" title="Очистить">×</button>
+      </div>
       <div class="field-error" id="err-name">Введите Имя и Фамилию — ровно 2 слова</div>
     </div>
   </div>
@@ -83,6 +86,7 @@
                placeholder="🔒 Имя"
                inputmode="numeric"
                maxlength="4" disabled>
+        <button type="button" class="field-clear" id="clear-room" title="Очистить">×</button>
       </div>
       <div class="hint-small">Если помещения нет — введите 0</div>
       <div class="field-error" id="err-room">Заполните это поле</div>
