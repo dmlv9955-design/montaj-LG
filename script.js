@@ -31,12 +31,11 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
+// Тип работ, при котором «Система» становится обязательной
 const SYSTEM_REQUIRED_WORKS = ['Монтаж', 'Демонтаж'];
 
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
-//  primary: true — «основной» вариант, выделяется синим
-//  systems: массив систем, для которых вариант виден
 // ============================================
 const MATERIALS = [
   {
@@ -259,6 +258,7 @@ class CustomSelect {
 
 // ============================================
 //  ИНИЦИАЛИЗАЦИЯ CUSTOM SELECT
+//  (остался только этаж — тип работ теперь segmented)
 // ============================================
 const customSelects = {};
 
@@ -305,7 +305,13 @@ function initSegmented(rootId, inputId, opts) {
   updateDisplay();
 }
 
+// Объект — обязательный
 initSegmented('object-segmented', 'object', { allowDeselect: false });
+
+// Тип работ — обязательный
+initSegmented('work-segmented', 'work', { allowDeselect: false });
+
+// Система — обязательна только при Монтаж/Демонтаж (см. updateSystemState)
 initSegmented('system-segmented', 'system', { allowDeselect: false });
 
 // ============================================
@@ -420,7 +426,6 @@ function updateSystemState() {
 
 // ============================================
 //  МАТЕРИАЛЫ — РЕНДЕР
-//  Группа = название материала + строки вариантов
 // ============================================
 const materialValues = {};
 
@@ -428,7 +433,6 @@ function renderMaterials() {
   const container = document.getElementById('materials-container');
   if (!container) return;
 
-  // сохраняем введённые значения перед перерисовкой
   document.querySelectorAll('.variant-input').forEach(inp => {
     materialValues[inp.dataset.id] = inp.value;
   });
@@ -495,7 +499,6 @@ function renderMaterials() {
 
 // ============================================
 //  МАТЕРИАЛЫ — СБОР ДАННЫХ
-//  Пустые поля не попадают в отчёт
 // ============================================
 function getMaterialValues() {
   const list = [];
@@ -537,6 +540,7 @@ floorInput.addEventListener('change', () => {
 
 workInput.addEventListener('change', () => {
   updateSystemState();
+  updateFieldState(workInput);
 });
 
 systemInput.addEventListener('change', () => {
@@ -744,14 +748,23 @@ async function send() {
 
     nameInput.value = '';
 
+    // сброс этажа (cselect)
     Object.values(customSelects).forEach(cs => { cs.value = ''; });
 
+    // сброс segmented: объект
     const objInput = document.getElementById('object');
     objInput.value = '';
     objInput.dispatchEvent(new Event('change', { bubbles: true }));
 
+    // сброс segmented: тип работ
+    const wInput = document.getElementById('work');
+    wInput.value = '';
+    wInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // сброс введённых количеств материалов
     Object.keys(materialValues).forEach(k => delete materialValues[k]);
 
+    // system заблокируется автоматически, т.к. work теперь пустой
     updateSystemState();
 
     rebuildFloors();
