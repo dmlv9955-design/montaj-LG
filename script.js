@@ -33,13 +33,11 @@ const FLOORS_BY_OBJECT = {
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
-const ALL_SYSTEMS = ['АПС', 'СОУЭ'];
-
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
 //  systems       — капсулы для выбора
-//  fixedSystem   — система зафиксирована (нельзя менять)
-//  canAddSecond  — можно добавить вторую строку для другой системы
+//  fixedSystem   — система зафиксирована (нельзя менять, без возможности добавить строку)
+//  canAddSecond  — можно добавить вторую строку для противоположной системы
 // ============================================
 const MATERIALS = [
   {
@@ -56,8 +54,8 @@ const MATERIALS = [
     label: 'Кабель-канал',
     unit: 'м',
     variants: [
-      { id: 'channel_40x25', label: '40х25', systems: ['АПС', 'СОУЭ'], primary: true },
-      { id: 'channel_25x16', label: '25х16', systems: ['АПС', 'СОУЭ'] }
+      { id: 'channel_40x25', label: '40х25', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
+      { id: 'channel_25x16', label: '25х16', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
     ]
   },
   {
@@ -65,8 +63,8 @@ const MATERIALS = [
     label: 'Труба гофрированная d=',
     unit: 'м',
     variants: [
-      { id: 'corrugated_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], primary: true },
-      { id: 'corrugated_16', label: '16 мм', systems: ['АПС', 'СОУЭ'] }
+      { id: 'corrugated_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
+      { id: 'corrugated_16', label: '16 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
     ]
   },
   {
@@ -74,8 +72,8 @@ const MATERIALS = [
     label: 'Труба стальная ВГП ДУ d=',
     unit: 'м',
     variants: [
-      { id: 'steel_15', label: '15 мм', systems: ['АПС', 'СОУЭ'], primary: true },
-      { id: 'steel_20', label: '20 мм', systems: ['АПС', 'СОУЭ'] }
+      { id: 'steel_15', label: '15 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
+      { id: 'steel_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
     ]
   }
 ];
@@ -483,16 +481,14 @@ function renderMaterials() {
             btn.className = 'sys-btn';
             btn.dataset.sys = sys;
             if (row.system === sys) btn.classList.add('active');
-            if (isSecondRow) btn.disabled = true;  // вторая строка — фиксирована
+            if (isSecondRow) btn.disabled = true;
             btn.textContent = sys;
 
             if (!isSecondRow) {
               btn.addEventListener('click', () => {
-                // toggle: клик на активную — сбросить; клик на другую — выбрать
                 const newSystem = row.system === sys ? '' : sys;
                 row.system = newSystem;
 
-                // если это первая строка cable_075 и есть вторая строка — обновить её автоматически
                 if (v.canAddSecond && rows.length > 1) {
                   const other = newSystem === 'АПС' ? 'СОУЭ'
                               : newSystem === 'СОУЭ' ? 'АПС' : '';
@@ -523,7 +519,6 @@ function renderMaterials() {
           if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
           if (input.value !== raw) input.value = raw;
           row.qty = raw;
-          // убираем подсветку ошибки при вводе
           line.classList.remove('sys-missing');
         });
         line.appendChild(input);
@@ -534,7 +529,7 @@ function renderMaterials() {
         unit.textContent = mat.unit;
         line.appendChild(unit);
 
-        // кнопка + (только для canAddSecond, только для первой строки, только когда есть system)
+        // кнопка + (для canAddSecond, только для первой строки, когда есть system)
         if (v.canAddSecond && rows.length === 1 && row.system) {
           const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
           const addBtn = document.createElement('button');
@@ -584,13 +579,12 @@ function renderMaterials() {
 
 // ============================================
 //  МАТЕРИАЛЫ → МАССИВ
-//  Собираем строки с qty > 0 и проверяем наличие system
 // ============================================
-function materialStateToArray() {
+function materialStateToArrayFromState(state) {
   const list = [];
   MATERIALS.forEach(mat => {
     mat.variants.forEach(v => {
-      const rows = materialState[v.id] || [];
+      const rows = state[v.id] || [];
       rows.forEach(row => {
         const qty = (row.qty || '').trim();
         if (qty && parseFloat(qty) > 0) {
@@ -613,7 +607,7 @@ function validateMaterialsSystems() {
 
   MATERIALS.forEach(mat => {
     mat.variants.forEach(v => {
-      if (v.fixedSystem) return;  // у фиксированных систем всегда есть
+      if (v.fixedSystem) return;
       const rows = materialState[v.id] || [];
       rows.forEach(row => {
         const qty = (row.qty || '').trim();
@@ -625,7 +619,6 @@ function validateMaterialsSystems() {
   });
 
   if (hasError) {
-    // подсветить проблемные строки
     document.querySelectorAll('.variant-line').forEach(line => {
       const vId = line.dataset.variantId;
       const idx = parseInt(line.dataset.rowIdx, 10);
@@ -747,27 +740,6 @@ function renderJournal() {
   });
 }
 
-function materialStateToArrayFromState(state) {
-  const list = [];
-  MATERIALS.forEach(mat => {
-    mat.variants.forEach(v => {
-      const rows = state[v.id] || [];
-      rows.forEach(row => {
-        const qty = (row.qty || '').trim();
-        if (qty && parseFloat(qty) > 0) {
-          list.push({
-            name: mat.label + ' ' + v.label,
-            unit: mat.unit,
-            qty: qty,
-            system: row.system || ''
-          });
-        }
-      });
-    });
-  });
-  return list;
-}
-
 function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
@@ -779,7 +751,6 @@ function editJournalEntry(idx) {
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
   updateMaterialsVisibility();
 
-  // восстановить состояние материалов
   materialState = JSON.parse(JSON.stringify(entry.materialState));
   renderMaterials();
 
@@ -880,7 +851,6 @@ function validateCurrentEntry() {
     return false;
   }
 
-  // проверка материалов: если введено qty, должна быть выбрана system
   if (isWorkWithMaterials() && !validateMaterialsSystems()) {
     show('⚠️ Укажите систему для каждого материала', 'err');
     const bad = document.querySelector('.variant-line.sys-missing');
