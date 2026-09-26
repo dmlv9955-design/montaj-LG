@@ -65,7 +65,6 @@ const MASTER_WING_PREFIX = 'к';
 const ATTIC = 'Чердак';
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
-const WORK_OTHER = 'Другие работы';
 
 const MATERIALS = [
   {
@@ -113,11 +112,6 @@ const MATERIALS = [
   }
 ];
 
-// ============================================
-//  ДРУГИЕ РАБОТЫ
-//  Заделка поверхностей — шт
-//  Наставничество — имя наставляемого + часы
-// ============================================
 let materialState = {};
 
 function initMaterialState() {
@@ -129,15 +123,18 @@ function initMaterialState() {
   });
 }
 
-let otherState = {
-  zadelka: '',
-  mentorship: [{ name: '', hours: '' }]
+// ============================================
+//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние
+// ============================================
+let additionalState = {
+  zadelka: { active: false, value: '' },
+  mentorship: { active: false, items: [{ name: '', hours: '' }] }
 };
 
-function initOtherState() {
-  otherState = {
-    zadelka: '',
-    mentorship: [{ name: '', hours: '' }]
+function initAdditionalState() {
+  additionalState = {
+    zadelka: { active: false, value: '' },
+    mentorship: { active: false, items: [{ name: '', hours: '' }] }
   };
 }
 
@@ -209,9 +206,8 @@ function sumMaterialStates(a, b) {
 //  ВЕС ТИПА РАБОТ
 // ============================================
 function workWeight(work) {
-  if (work === 'Демонтаж')      return 0;
-  if (work === 'Монтаж')        return 1;
-  if (work === 'Другие работы') return 2;
+  if (work === 'Демонтаж')  return 0;
+  if (work === 'Монтаж')    return 1;
   return 99;
 }
 
@@ -249,9 +245,7 @@ function compareEntries(a, b) {
   const kb = b.is_master_wing ? 1 : 0;
   if (ka !== kb) return ka - kb;
 
-  const wa = workWeight(a.work);
-  const wb = workWeight(b.work);
-  return wa - wb;
+  return workWeight(a.work) - workWeight(b.work);
 }
 
 // ============================================
@@ -583,6 +577,11 @@ const journalCount     = document.getElementById('journal-count');
 const materialsSection = document.getElementById('materials-section');
 const objectSeg        = document.getElementById('object-segmented');
 const workSeg          = document.getElementById('work-segmented');
+const additionalBlock  = document.getElementById('additional-block');
+const additionalToggle = document.getElementById('additional-toggle');
+const additionalBody   = document.getElementById('additional-body');
+const additionalPills  = document.getElementById('additional-pills');
+const additionalFields = document.getElementById('additional-fields');
 
 // ============================================
 //  КНОПКА ОЧИСТКИ
@@ -844,36 +843,15 @@ function updateRoomState() {
 }
 
 // ============================================
-//  ВИДИМОСТЬ БЛОКА РАБОТ
+//  ВИДИМОСТЬ МАТЕРИАЛОВ
+//  Секция показывается, когда тип работ = Монтаж/Демонтаж
+//  и блок работы не заблокирован.
 // ============================================
-function isWorkWithMaterials() {
-  return WORK_WITH_MATERIALS.indexOf(workInput.value) !== -1;
-}
-
-function isWorkOther() {
-  return workInput.value === WORK_OTHER;
-}
-
 function updateMaterialsVisibility() {
   if (!materialsSection) return;
   const workSegDisabled = workSeg.classList.contains('segmented-disabled');
-
-  if (workSegDisabled) {
-    materialsSection.style.display = 'none';
-    return;
-  }
-
-  if (isWorkWithMaterials() || isWorkOther()) {
-    materialsSection.style.display = 'block';
-  } else {
-    materialsSection.style.display = 'none';
-  }
-
-  // Обновляем подзаголовок
-  const subtitle = document.getElementById('work-section-subtitle');
-  if (subtitle) {
-    subtitle.textContent = isWorkOther() ? 'Виды работ' : 'Основные материалы';
-  }
+  const isWork = WORK_WITH_MATERIALS.indexOf(workInput.value) !== -1;
+  materialsSection.style.display = (isWork && !workSegDisabled) ? 'block' : 'none';
 }
 
 // ============================================
@@ -900,7 +878,7 @@ function bumpQty(input, setter, delta, clearBtn, minusBtn) {
 
   input.value = formatted;
   setter(formatted);
-  clearBtn.style.display = formatted ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = formatted ? 'inline-flex' : 'none';
   updateMinusState(input, minusBtn);
 }
 
@@ -964,7 +942,6 @@ function renderMaterials() {
       input.placeholder = '0';
       input.autocomplete = 'off';
       input.value = materialState[r.key] || '';
-
       line.appendChild(input);
 
       const plusBtn = document.createElement('button');
@@ -1002,11 +979,9 @@ function renderMaterials() {
       minusBtn.addEventListener('click', () => {
         bumpQty(input, v => { materialState[r.key] = v; }, -1, clearBtn, minusBtn);
       });
-
       plusBtn.addEventListener('click', () => {
         bumpQty(input, v => { materialState[r.key] = v; }, 1, clearBtn, minusBtn);
       });
-
       clearBtn.addEventListener('click', () => {
         input.value = '';
         materialState[r.key] = '';
@@ -1016,7 +991,6 @@ function renderMaterials() {
       });
 
       updateMinusState(input, minusBtn);
-
       variantsWrap.appendChild(line);
     });
 
@@ -1036,256 +1010,242 @@ function renderMaterials() {
 }
 
 // ============================================
-//  РЕНДЕР «ДРУГИЕ РАБОТЫ»
+//  РЕНДЕР ДОПОЛНИТЕЛЬНЫХ РАБОТ
 // ============================================
-function renderOtherWorks() {
-  const container = document.getElementById('materials-container');
-  if (!container) return;
+function renderAdditionalFields() {
+  if (!additionalFields) return;
 
   const active = document.activeElement;
   const focusId = active && active.dataset ? active.dataset.focusId : null;
   const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
 
-  container.innerHTML = '';
+  additionalFields.innerHTML = '';
 
-  // === Заделка поверхностей ===
-  const grpZ = document.createElement('div');
-  grpZ.className = 'material-group';
+  // --- Заделка поверхностей ---
+  if (additionalState.zadelka.active) {
+    const group = document.createElement('div');
+    group.className = 'additional-group';
 
-  const nameZ = document.createElement('div');
-  nameZ.className = 'material-group-name';
-  nameZ.textContent = 'Заделка поверхностей';
-  grpZ.appendChild(nameZ);
+    const name = document.createElement('div');
+    name.className = 'additional-group-name';
+    name.textContent = 'Заделка поверхностей';
+    group.appendChild(name);
 
-  const wrapZ = document.createElement('div');
-  wrapZ.className = 'material-variants';
-  grpZ.appendChild(wrapZ);
-
-  const lineZ = document.createElement('div');
-  lineZ.className = 'variant-line';
-
-  const badgeZ = document.createElement('span');
-  badgeZ.className = 'variant-badge';
-  badgeZ.textContent = '—';
-  lineZ.appendChild(badgeZ);
-
-  const forZ = document.createElement('span');
-  forZ.className = 'variant-for';
-  forZ.textContent = 'без сист.';
-  lineZ.appendChild(forZ);
-
-  const minusZ = document.createElement('button');
-  minusZ.type = 'button';
-  minusZ.className = 'qty-btn qty-btn-minus';
-  minusZ.textContent = '−';
-  minusZ.title = 'Уменьшить на 1';
-  lineZ.appendChild(minusZ);
-
-  const inputZ = document.createElement('input');
-  inputZ.type = 'text';
-  inputZ.inputMode = 'decimal';
-  inputZ.className = 'variant-input';
-  inputZ.dataset.focusId = 'other_zadelka';
-  inputZ.placeholder = '0';
-  inputZ.autocomplete = 'off';
-  inputZ.value = otherState.zadelka || '';
-  lineZ.appendChild(inputZ);
-
-  const plusZ = document.createElement('button');
-  plusZ.type = 'button';
-  plusZ.className = 'qty-btn qty-btn-plus';
-  plusZ.textContent = '+';
-  plusZ.title = 'Увеличить на 1';
-  lineZ.appendChild(plusZ);
-
-  const clearZ = document.createElement('button');
-  clearZ.type = 'button';
-  clearZ.className = 'variant-clear-btn';
-  clearZ.textContent = '×';
-  clearZ.title = 'Очистить';
-  clearZ.style.display = inputZ.value ? 'inline-flex' : 'none';
-  lineZ.appendChild(clearZ);
-
-  const unitZ = document.createElement('span');
-  unitZ.className = 'variant-unit';
-  unitZ.textContent = 'шт';
-  lineZ.appendChild(unitZ);
-
-  inputZ.addEventListener('input', () => {
-    const before = inputZ.value;
-    const after = formatQty(before);
-    if (before !== after) {
-      inputZ.value = after;
-      inputZ.setSelectionRange(after.length, after.length);
-    }
-    otherState.zadelka = inputZ.value;
-    clearZ.style.display = inputZ.value ? 'inline-flex' : 'none';
-    updateMinusState(inputZ, minusZ);
-  });
-
-  minusZ.addEventListener('click', () => {
-    bumpQty(inputZ, v => { otherState.zadelka = v; }, -1, clearZ, minusZ);
-  });
-  plusZ.addEventListener('click', () => {
-    bumpQty(inputZ, v => { otherState.zadelka = v; }, 1, clearZ, minusZ);
-  });
-  clearZ.addEventListener('click', () => {
-    inputZ.value = '';
-    otherState.zadelka = '';
-    clearZ.style.display = 'none';
-    updateMinusState(inputZ, minusZ);
-    inputZ.focus();
-  });
-
-  updateMinusState(inputZ, minusZ);
-
-  wrapZ.appendChild(lineZ);
-  container.appendChild(grpZ);
-
-  // === Наставничество ===
-  const grpM = document.createElement('div');
-  grpM.className = 'material-group';
-
-  const nameM = document.createElement('div');
-  nameM.className = 'material-group-name';
-  nameM.textContent = 'Наставничество';
-  grpM.appendChild(nameM);
-
-  const wrapM = document.createElement('div');
-  wrapM.className = 'material-variants';
-  grpM.appendChild(wrapM);
-
-  otherState.mentorship.forEach((m, idx) => {
     const line = document.createElement('div');
     line.className = 'variant-line';
-    line.dataset.mentorIdx = idx;
 
-    // Поле «Имя Фамилия»
-    const nameIn = document.createElement('input');
-    nameIn.type = 'text';
-    nameIn.className = 'mentor-name-input';
-    nameIn.placeholder = 'Василий Пупкин';
-    nameIn.autocomplete = 'off';
-    nameIn.autocapitalize = 'words';
-    nameIn.spellcheck = false;
-    nameIn.maxLength = 40;
-    nameIn.value = m.name || '';
-    nameIn.dataset.focusId = 'mentor_name_' + idx;
+    const badge = document.createElement('span');
+    badge.className = 'variant-badge';
+    badge.textContent = '—';
+    line.appendChild(badge);
 
-    nameIn.addEventListener('input', () => {
-      const before = nameIn.value;
-      const pos = nameIn.selectionStart;
-      const after = formatName(before);
-      if (before !== after) {
-        nameIn.value = after;
-        const delta = before.length - after.length;
-        const newPos = Math.max(0, Math.min(after.length, pos - delta));
-        nameIn.setSelectionRange(newPos, newPos);
-      }
-      m.name = nameIn.value;
-      nameIn.classList.remove('is-invalid');
-    });
+    const forEl = document.createElement('span');
+    forEl.className = 'variant-for';
+    forEl.textContent = 'без сист.';
+    line.appendChild(forEl);
 
-    nameIn.addEventListener('blur', () => {
-      const v = nameIn.value.trim();
-      if (v && !isNameValid(v)) {
-        nameIn.classList.add('is-invalid');
-      } else {
-        nameIn.classList.remove('is-invalid');
-      }
-    });
-
-    line.appendChild(nameIn);
-
-    // Минус
     const minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'qty-btn qty-btn-minus';
     minusBtn.textContent = '−';
-    minusBtn.title = 'Уменьшить на 1';
     line.appendChild(minusBtn);
 
-    // Часы
-    const inputH = document.createElement('input');
-    inputH.type = 'text';
-    inputH.inputMode = 'decimal';
-    inputH.className = 'variant-input';
-    inputH.dataset.focusId = 'mentor_hours_' + idx;
-    inputH.placeholder = '0';
-    inputH.autocomplete = 'off';
-    inputH.value = m.hours || '';
-    line.appendChild(inputH);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'decimal';
+    input.className = 'variant-input';
+    input.dataset.focusId = 'add_zadelka';
+    input.placeholder = '0';
+    input.autocomplete = 'off';
+    input.value = additionalState.zadelka.value || '';
+    line.appendChild(input);
 
-    // Плюс
     const plusBtn = document.createElement('button');
     plusBtn.type = 'button';
     plusBtn.className = 'qty-btn qty-btn-plus';
     plusBtn.textContent = '+';
-    plusBtn.title = 'Увеличить на 1';
     line.appendChild(plusBtn);
 
-    // Удалить строку (только если больше одной)
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'variant-clear-btn';
-    delBtn.textContent = '×';
-    delBtn.title = 'Удалить человека';
-    delBtn.style.display = otherState.mentorship.length > 1 ? 'inline-flex' : 'none';
-    line.appendChild(delBtn);
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'variant-clear-btn';
+    clearBtn.textContent = '×';
+    clearBtn.title = 'Очистить';
+    clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+    line.appendChild(clearBtn);
 
-    // Единица
     const unit = document.createElement('span');
     unit.className = 'variant-unit';
-    unit.textContent = 'ч';
+    unit.textContent = 'шт';
     line.appendChild(unit);
 
-    inputH.addEventListener('input', () => {
-      const before = inputH.value;
+    input.addEventListener('input', () => {
+      const before = input.value;
       const after = formatQty(before);
       if (before !== after) {
-        inputH.value = after;
-        inputH.setSelectionRange(after.length, after.length);
+        input.value = after;
+        input.setSelectionRange(after.length, after.length);
       }
-      m.hours = inputH.value;
-      updateMinusState(inputH, minusBtn);
+      additionalState.zadelka.value = input.value;
+      clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+      updateMinusState(input, minusBtn);
     });
-
     minusBtn.addEventListener('click', () => {
-      bumpQty(inputH, v => { m.hours = v; }, -1, null, minusBtn);
+      bumpQty(input, v => { additionalState.zadelka.value = v; }, -1, clearBtn, minusBtn);
     });
     plusBtn.addEventListener('click', () => {
-      bumpQty(inputH, v => { m.hours = v; }, 1, null, minusBtn);
+      bumpQty(input, v => { additionalState.zadelka.value = v; }, 1, clearBtn, minusBtn);
+    });
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      additionalState.zadelka.value = '';
+      clearBtn.style.display = 'none';
+      updateMinusState(input, minusBtn);
+      input.focus();
     });
 
-    delBtn.addEventListener('click', () => {
-      otherState.mentorship.splice(idx, 1);
-      if (otherState.mentorship.length === 0) {
-        otherState.mentorship.push({ name: '', hours: '' });
-      }
-      renderOtherWorks();
+    updateMinusState(input, minusBtn);
+    group.appendChild(line);
+    additionalFields.appendChild(group);
+  }
+
+  // --- Наставничество ---
+  if (additionalState.mentorship.active) {
+    const group = document.createElement('div');
+    group.className = 'additional-group';
+
+    const name = document.createElement('div');
+    name.className = 'additional-group-name';
+    name.textContent = 'Наставничество';
+    group.appendChild(name);
+
+    additionalState.mentorship.items.forEach((m, idx) => {
+      const line = document.createElement('div');
+      line.className = 'variant-line';
+      line.dataset.mentorIdx = idx;
+
+      // Имя Фамилия
+      const nameIn = document.createElement('input');
+      nameIn.type = 'text';
+      nameIn.className = 'mentor-name-input';
+      nameIn.placeholder = 'Василий Пупкин';
+      nameIn.autocomplete = 'off';
+      nameIn.autocapitalize = 'words';
+      nameIn.spellcheck = false;
+      nameIn.maxLength = 40;
+      nameIn.value = m.name || '';
+      nameIn.dataset.focusId = 'mentor_name_' + idx;
+
+      nameIn.addEventListener('input', () => {
+        const before = nameIn.value;
+        const pos = nameIn.selectionStart;
+        const after = formatName(before);
+        if (before !== after) {
+          nameIn.value = after;
+          const delta = before.length - after.length;
+          const newPos = Math.max(0, Math.min(after.length, pos - delta));
+          nameIn.setSelectionRange(newPos, newPos);
+        }
+        m.name = nameIn.value;
+        nameIn.classList.remove('is-invalid');
+      });
+
+      nameIn.addEventListener('blur', () => {
+        const v = nameIn.value.trim();
+        if (v && !isNameValid(v)) {
+          nameIn.classList.add('is-invalid');
+        } else {
+          nameIn.classList.remove('is-invalid');
+        }
+      });
+
+      line.appendChild(nameIn);
+
+      // Минус
+      const minusBtn = document.createElement('button');
+      minusBtn.type = 'button';
+      minusBtn.className = 'qty-btn qty-btn-minus';
+      minusBtn.textContent = '−';
+      line.appendChild(minusBtn);
+
+      // Часы
+      const inputH = document.createElement('input');
+      inputH.type = 'text';
+      inputH.inputMode = 'decimal';
+      inputH.className = 'variant-input';
+      inputH.dataset.focusId = 'mentor_hours_' + idx;
+      inputH.placeholder = '0';
+      inputH.autocomplete = 'off';
+      inputH.value = m.hours || '';
+      line.appendChild(inputH);
+
+      // Плюс
+      const plusBtn = document.createElement('button');
+      plusBtn.type = 'button';
+      plusBtn.className = 'qty-btn qty-btn-plus';
+      plusBtn.textContent = '+';
+      line.appendChild(plusBtn);
+
+      // Удалить строку
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'variant-clear-btn';
+      delBtn.textContent = '×';
+      delBtn.title = 'Удалить человека';
+      delBtn.style.display = additionalState.mentorship.items.length > 1 ? 'inline-flex' : 'none';
+      line.appendChild(delBtn);
+
+      // Единица
+      const unit = document.createElement('span');
+      unit.className = 'variant-unit';
+      unit.textContent = 'ч';
+      line.appendChild(unit);
+
+      inputH.addEventListener('input', () => {
+        const before = inputH.value;
+        const after = formatQty(before);
+        if (before !== after) {
+          inputH.value = after;
+          inputH.setSelectionRange(after.length, after.length);
+        }
+        m.hours = inputH.value;
+        updateMinusState(inputH, minusBtn);
+      });
+      minusBtn.addEventListener('click', () => {
+        bumpQty(inputH, v => { m.hours = v; }, -1, null, minusBtn);
+      });
+      plusBtn.addEventListener('click', () => {
+        bumpQty(inputH, v => { m.hours = v; }, 1, null, minusBtn);
+      });
+      delBtn.addEventListener('click', () => {
+        additionalState.mentorship.items.splice(idx, 1);
+        if (additionalState.mentorship.items.length === 0) {
+          additionalState.mentorship.items.push({ name: '', hours: '' });
+        }
+        renderAdditionalFields();
+      });
+
+      updateMinusState(inputH, minusBtn);
+      group.appendChild(line);
     });
 
-    updateMinusState(inputH, minusBtn);
+    // Кнопка «Добавить человека»
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn-add-mentor';
+    addBtn.textContent = '+ Добавить человека';
+    addBtn.addEventListener('click', () => {
+      additionalState.mentorship.items.push({ name: '', hours: '' });
+      renderAdditionalFields();
+    });
+    group.appendChild(addBtn);
 
-    wrapM.appendChild(line);
-  });
+    additionalFields.appendChild(group);
+  }
 
-  // Кнопка «Добавить человека»
-  const addMentor = document.createElement('button');
-  addMentor.type = 'button';
-  addMentor.className = 'btn-add-mentor';
-  addMentor.textContent = '+ Добавить человека';
-  addMentor.addEventListener('click', () => {
-    otherState.mentorship.push({ name: '', hours: '' });
-    renderOtherWorks();
-  });
-  grpM.appendChild(addMentor);
-
-  container.appendChild(grpM);
-
-  // Восстанавливаем фокус
+  // Восстановление фокуса
   if (focusId) {
-    const el = container.querySelector('[data-focus-id="' + focusId + '"]');
+    const el = additionalFields.querySelector('[data-focus-id="' + focusId + '"]');
     if (el) {
       el.focus();
       if (selStart !== null && el.setSelectionRange) {
@@ -1297,17 +1257,17 @@ function renderOtherWorks() {
 }
 
 // ============================================
-//  УНИВЕРСАЛЬНЫЙ РЕНДЕР
+//  ОБНОВЛЕНИЕ АКТИВНОСТИ PILL-КНОПОК
 // ============================================
-function renderWorkSection() {
-  if (isWorkWithMaterials()) {
-    renderMaterials();
-  } else if (isWorkOther()) {
-    renderOtherWorks();
-  } else {
-    const container = document.getElementById('materials-container');
-    if (container) container.innerHTML = '';
-  }
+function updateAdditionalPills() {
+  if (!additionalPills) return;
+  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
+    const key = btn.dataset.additional;
+    const active = key === 'zadelka'
+      ? additionalState.zadelka.active
+      : additionalState.mentorship.active;
+    btn.classList.toggle('active', active);
+  });
 }
 
 // ============================================
@@ -1333,37 +1293,44 @@ function materialStateToArrayFromState(state) {
 }
 
 // ============================================
-//  ДРУГИЕ РАБОТЫ → МАССИВ
+//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ → МАССИВ
 // ============================================
-function otherStateToArrayFromState(state) {
+function additionalStateToArrayFromState(state) {
   const list = [];
+  if (!state) return list;
 
-  const z = String(state.zadelka || '').trim();
-  if (z) {
-    const num = parseFloat(z.replace(',', '.'));
-    if (isFinite(num) && num > 0) {
-      list.push({
-        name: 'Заделка поверхностей',
-        unit: 'шт',
-        qty: z.replace(',', '.'),
-        system: ''
-      });
+  // Заделка
+  if (state.zadelka && state.zadelka.active) {
+    const z = String(state.zadelka.value || '').trim();
+    if (z) {
+      const num = parseFloat(z.replace(',', '.'));
+      if (isFinite(num) && num > 0) {
+        list.push({
+          name: 'Заделка поверхностей',
+          unit: 'шт',
+          qty: z.replace(',', '.'),
+          system: ''
+        });
+      }
     }
   }
 
-  (state.mentorship || []).forEach(m => {
-    const name = String(m.name || '').trim();
-    const hours = String(m.hours || '').trim();
-    if (!name || !hours) return;
-    const num = parseFloat(hours.replace(',', '.'));
-    if (!isFinite(num) || num <= 0) return;
-    list.push({
-      name: 'Наставничество — ' + name,
-      unit: 'ч',
-      qty: hours.replace(',', '.'),
-      system: ''
+  // Наставничество
+  if (state.mentorship && state.mentorship.active) {
+    (state.mentorship.items || []).forEach(m => {
+      const name = String(m.name || '').trim();
+      const hours = String(m.hours || '').trim();
+      if (!name || !hours) return;
+      const num = parseFloat(hours.replace(',', '.'));
+      if (!isFinite(num) || num <= 0) return;
+      list.push({
+        name: 'Наставничество — ' + name,
+        unit: 'ч',
+        qty: hours.replace(',', '.'),
+        system: ''
+      });
     });
-  });
+  }
 
   return list;
 }
@@ -1373,8 +1340,10 @@ function otherStateToArrayFromState(state) {
 // ============================================
 function resetCurrentEntry() {
   initMaterialState();
-  initOtherState();
-  renderWorkSection();
+  initAdditionalState();
+  renderMaterials();
+  renderAdditionalFields();
+  updateAdditionalPills();
 
   workInput.value = '';
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
@@ -1476,10 +1445,10 @@ function renderJournal() {
       meta.textContent = entry.work;
       el.appendChild(meta);
 
-      const isOther = entry.work === WORK_OTHER;
-      const matsArr = isOther
-        ? otherStateToArrayFromState(entry.otherState || { zadelka: '', mentorship: [] })
-        : materialStateToArrayFromState(entry.materialState);
+      // материалы + доп. работы
+      const matsArr = []
+        .concat(materialStateToArrayFromState(entry.materialState || {}))
+        .concat(additionalStateToArrayFromState(entry.additionalState || {}));
 
       if (matsArr.length > 0) {
         const mats = document.createElement('div');
@@ -1535,21 +1504,31 @@ function editJournalEntry(idx) {
   workInput.value = entry.work;
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
 
-  if (entry.work === WORK_OTHER) {
-    // Восстанавливаем «Другие работы»
-    otherState = {
-      zadelka: entry.otherState.zadelka || '',
-      mentorship: (entry.otherState.mentorship || []).map(m => ({ name: m.name, hours: m.hours }))
-    };
-    if (otherState.mentorship.length === 0) {
-      otherState.mentorship.push({ name: '', hours: '' });
+  materialState = Object.assign({}, entry.materialState || {});
+
+  // Восстанавливаем доп. работы
+  additionalState = {
+    zadelka: { active: false, value: '' },
+    mentorship: { active: false, items: [{ name: '', hours: '' }] }
+  };
+  if (entry.additionalState) {
+    if (entry.additionalState.zadelka) {
+      additionalState.zadelka = Object.assign({}, entry.additionalState.zadelka);
     }
-  } else {
-    materialState = Object.assign({}, entry.materialState);
+    if (entry.additionalState.mentorship) {
+      additionalState.mentorship = {
+        active: !!entry.additionalState.mentorship.active,
+        items: (entry.additionalState.mentorship.items || []).map(m => ({ name: m.name, hours: m.hours }))
+      };
+      if (additionalState.mentorship.items.length === 0) {
+        additionalState.mentorship.items.push({ name: '', hours: '' });
+      }
+    }
   }
 
-  updateMaterialsVisibility();
-  renderWorkSection();
+  renderMaterials();
+  renderAdditionalFields();
+  updateAdditionalPills();
 
   roomInput.value = entry.room;
   updateFieldState(roomInput);
@@ -1652,30 +1631,27 @@ function validateCurrentEntry() {
   }
 
   // Проверка наставничества
-  if (isWorkOther()) {
-    let mentorProblem = null;
-
-    otherState.mentorship.forEach((m, idx) => {
+  if (additionalState.mentorship.active) {
+    let bad = false;
+    additionalState.mentorship.items.forEach((m, idx) => {
       const name = String(m.name || '').trim();
       const hours = String(m.hours || '').trim();
-      if (!name && !hours) return; // пустая строка — пропускаем
-
+      if (!name && !hours) return;
       if (!name || !isNameValid(name)) {
-        if (!mentorProblem) mentorProblem = 'name';
+        bad = true;
         const inp = document.querySelector('[data-focus-id="mentor_name_' + idx + '"]');
         if (inp) inp.classList.add('is-invalid');
       }
-      const num = parseFloat(hours.replace(',', '.'));
-      if (!hours || !isFinite(num) || num <= 0) {
-        if (!mentorProblem) mentorProblem = 'hours';
+      const n = parseFloat(hours.replace(',', '.'));
+      if (!hours || !isFinite(n) || n <= 0) {
+        bad = true;
       }
     });
-
-    if (mentorProblem) {
+    if (bad) {
       show('⚠️ Укажите имя (2 слова) и часы для каждого наставника', 'err');
-      const bad = document.querySelector('.mentor-name-input.is-invalid');
-      if (bad && bad.scrollIntoView) {
-        bad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const badEl = document.querySelector('.mentor-name-input.is-invalid');
+      if (badEl && badEl.scrollIntoView) {
+        badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       return false;
     }
@@ -1705,43 +1681,34 @@ function addToJournal() {
   if (!validateHeader()) return;
   if (!validateCurrentEntry()) return;
 
-  const withMaterials = isWorkWithMaterials();
-  const withOther = isWorkOther();
-
   const entry = {
     room: roomInput.value.trim(),
     room_none: floorInput.value === 'Нет',
     is_master_wing: isMasterWing(),
     building: buildingInput.value.trim(),
     floor: floorInput.value.trim(),
-    work: workInput.value
+    work: workInput.value,
+    materialState: Object.assign({}, materialState),
+    additionalState: {
+      zadelka: { active: additionalState.zadelka.active, value: additionalState.zadelka.value },
+      mentorship: {
+        active: additionalState.mentorship.active,
+        items: additionalState.mentorship.items.map(m => ({ name: m.name, hours: m.hours }))
+      }
+    }
   };
-
-  if (withMaterials) {
-    entry.materialState = Object.assign({}, materialState);
-    entry.otherState = null;
-  } else if (withOther) {
-    entry.materialState = {};
-    entry.otherState = {
-      zadelka: otherState.zadelka,
-      mentorship: otherState.mentorship.map(m => ({ name: m.name, hours: m.hours }))
-    };
-  } else {
-    entry.materialState = {};
-    entry.otherState = null;
-  }
 
   let merged = false;
 
-  if (withMaterials) {
-    const idx = findMergeIndex(entry);
-    if (idx !== -1) {
-      journal[idx].materialState = sumMaterialStates(
-        journal[idx].materialState,
-        entry.materialState
-      );
-      merged = true;
-    }
+  const idx = findMergeIndex(entry);
+  if (idx !== -1) {
+    journal[idx].materialState = sumMaterialStates(
+      journal[idx].materialState,
+      entry.materialState
+    );
+    // Доп. работы просто перезаписываем — их суммировать сложнее
+    // и обычно дублировать не нужно
+    merged = true;
   }
 
   if (!merged) {
@@ -1791,8 +1758,30 @@ floorInput.addEventListener('change', () => {
 workInput.addEventListener('change', () => {
   updateFieldState(workInput);
   updateMaterialsVisibility();
-  renderWorkSection();
 });
+
+// ---- Аккордеон доп. работ ----
+if (additionalToggle) {
+  additionalToggle.addEventListener('click', () => {
+    additionalBlock.classList.toggle('open');
+  });
+}
+
+// ---- Pills ----
+if (additionalPills) {
+  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.additional;
+      if (key === 'zadelka') {
+        additionalState.zadelka.active = !additionalState.zadelka.active;
+      } else if (key === 'mentorship') {
+        additionalState.mentorship.active = !additionalState.mentorship.active;
+      }
+      updateAdditionalPills();
+      renderAdditionalFields();
+    });
+  });
+}
 
 // ============================================
 //  ФОРМАТ ПОМЕЩЕНИЯ
@@ -1932,10 +1921,9 @@ async function sendAll() {
       room = MASTER_WING_PREFIX + room;
     }
 
-    const isOther = entry.work === WORK_OTHER;
-    const materials = isOther
-      ? otherStateToArrayFromState(entry.otherState || { zadelka: '', mentorship: [] })
-      : materialStateToArrayFromState(entry.materialState);
+    const materials = []
+      .concat(materialStateToArrayFromState(entry.materialState || {}))
+      .concat(additionalStateToArrayFromState(entry.additionalState || {}));
 
     return {
       room: room,
@@ -2008,10 +1996,12 @@ async function sendAll() {
 //  СТАРТ
 // ============================================
 initMaterialState();
-initOtherState();
+initAdditionalState();
 updateFormAccessibility();
 updateMaterialsVisibility();
-renderWorkSection();
+renderMaterials();
+renderAdditionalFields();
+updateAdditionalPills();
 renderJournal();
 updateSendButton();
 
