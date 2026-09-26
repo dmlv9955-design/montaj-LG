@@ -82,21 +82,14 @@
   </div>
   <div class="field-error" id="err-work">Заполните это поле</div>
 
-  <label>Система</label>
-  <div class="cselect" data-cselect>
-    <input type="hidden" id="system" value="">
-    <button type="button" class="cselect-btn">
-      <span class="cselect-value placeholder">— не указано —</span>
-      <span class="cselect-arrow"></span>
-    </button>
-    <ul class="cselect-list">
-      <li class="cselect-option" data-value="Вентиляция">Вентиляция</li>
-      <li class="cselect-option" data-value="Кондиционирование">Кондиционирование</li>
-      <li class="cselect-option" data-value="Отопление">Отопление</li>
-      <li class="cselect-option" data-value="Электрика">Электрика</li>
-      <li class="cselect-option" data-value="Водоснабжение">Водоснабжение</li>
-    </ul>
+  <label class="req">Система <span class="req-star">*</span></label>
+  <div class="segmented" id="system-segmented">
+    <input type="hidden" id="system" class="req-field" value="">
+    <button type="button" class="segmented-btn" data-value="АПС/СОУЭ">АПС/СОУЭ</button>
+    <button type="button" class="segmented-btn" data-value="АПС">АПС</button>
+    <button type="button" class="segmented-btn" data-value="СОУЭ">СОУЭ</button>
   </div>
+  <div class="field-error" id="err-system">Заполните это поле</div>
 </div>
 
 <div class="card">
