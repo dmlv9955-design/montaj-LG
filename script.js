@@ -294,11 +294,13 @@ function formatQty(raw) {
 
 // ============================================
 //  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ЗАДЕЛКИ ПРИ ВВОДЕ
+//  Разрешаем ТОЛЬКО цифры и пробелы (плюс точки → пробелы).
+//  Буква «к» вводится вручную — запрещена, добавится автоматически.
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\sкК]/g, '');
+  s = s.replace(/[^0-9\s]/g, '');
   s = s.replace(/\s+/g, ' ');
   s = s.replace(/^\s+/, '');
   return s;
@@ -306,39 +308,31 @@ function sanitizeZadelkaRoomInput(value) {
 
 // ============================================
 //  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ЗАДЕЛКИ (blur / добавление в журнал)
+//  Дедупликация + сортировка по возрастанию.
+//  Возвращает список цифр через запятую, БЕЗ префиксов «к».
 // ============================================
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\sкК]/g, '');
+  s = s.replace(/[^0-9\s]/g, '');
   s = s.replace(/\s+/g, ' ').trim();
 
   const parts = s.split(' ').filter(p => p !== '');
-  const plainSet = new Set();
-  const prefixedSet = new Set();
+  const set = new Set();
 
   parts.forEach(p => {
-    const m = p.match(/^([кК]?)(\d+)$/);
-    if (!m) return;
-    const hasPrefix = !!m[1];
-    const num = parseInt(m[2], 10);
-    if (!isFinite(num) || num <= 0) return;
-    if (hasPrefix) prefixedSet.add(num);
-    else plainSet.add(num);
+    const n = parseInt(p, 10);
+    if (!isFinite(n) || n <= 0) return;
+    set.add(n);
   });
 
-  const plain    = Array.from(plainSet).sort((a, b) => a - b);
-  const prefixed = Array.from(prefixedSet).sort((a, b) => a - b);
-
-  const out = []
-    .concat(plain.map(n => String(n)))
-    .concat(prefixed.map(n => 'к' + n));
-
-  return out.join(', ');
+  const nums = Array.from(set).sort((a, b) => a - b);
+  return nums.join(', ');
 }
 
 // ============================================
 //  РАЗБОР СПИСКА ПОМЕЩЕНИЙ В ДВЕ ГРУППЫ (простые / «к»)
+//  Нужно для поддержки старых записей и слияния.
 // ============================================
 function parseRooms(roomStr) {
   const plain = new Set();
@@ -376,6 +370,40 @@ function combineRooms(a, b) {
     .concat(Array.from(prefixed).sort((x, y) => x - y).map(n => 'к' + n));
 
   return out.join(', ');
+}
+
+// ============================================
+//  ПРИМЕНЕНИЕ ПРЕФИКСА «к» К СПИСКУ ПОМЕЩЕНИЙ
+//  Если корпус = «Крыло мастерских» — все номера получают префикс.
+//  Если уже есть — не дублируем.
+// ============================================
+function applyPrefixToRoom(room, building) {
+  if (!room) return '';
+  if (building !== MASTER_WING) return room;
+
+  return room
+    .split(',')
+    .map(part => {
+      const s = part.trim();
+      if (!s) return '';
+      if (/^[кК]/.test(s)) return s;
+      return MASTER_WING_PREFIX + s;
+    })
+    .filter(Boolean)
+    .join(', ');
+}
+
+// ============================================
+//  СНЯТИЕ ПРЕФИКСА «к» СО СПИСКА ПОМЕЩЕНИЙ
+//  Используется при редактировании записи из журнала.
+// ============================================
+function stripPrefixFromRoom(room) {
+  if (!room) return '';
+  return room
+    .split(',')
+    .map(part => part.trim().replace(/^[кК]/, ''))
+    .filter(Boolean)
+    .join(', ');
 }
 
 // ============================================
@@ -1482,11 +1510,22 @@ function renderZadelkaFields(container) {
       const rWrap = document.createElement('div');
       rWrap.className = 'room-wrap';
 
+      // Визуальный префикс «к» перед полем — когда корпус «Крыло мастерских»
+      if (building === MASTER_WING) {
+        const prefix = document.createElement('span');
+        prefix.className = 'room-prefix';
+        prefix.textContent = MASTER_WING_PREFIX;
+        prefix.title = 'Все номера автоматически получат префикс «к»';
+        rWrap.appendChild(prefix);
+      }
+
       const rInp = document.createElement('input');
       rInp.type = 'text';
       rInp.className = 'req-field';
-      rInp.placeholder = '12 15 к20';
-      rInp.inputMode = 'numeric';
+      rInp.placeholder = '12 15 20';
+      // НЕ используем inputmode="numeric" — иначе на телефоне нет пробела.
+      rInp.inputMode = 'text';
+      rInp.autocomplete = 'off';
       rInp.maxLength = 60;
       rInp.value = item.room || '';
       rInp.dataset.focusId = 'zadelka_room_' + idx;
@@ -1514,7 +1553,11 @@ function renderZadelkaFields(container) {
 
       const hint = document.createElement('div');
       hint.className = 'hint-small';
-      hint.textContent = 'Помещения через пробел. С буквой «к» — как «к10». Сохранятся через запятую: сначала без «к», потом с «к», каждое по возрастанию.';
+      if (building === MASTER_WING) {
+        hint.textContent = 'Номера через пробел. Корпус «Крыло мастерских» — все сохранятся с префиксом «к»: к3, к10, к12.';
+      } else {
+        hint.textContent = 'Номера через пробел. Сохранятся через запятую по возрастанию: 3, 10, 12.';
+      }
       group.appendChild(hint);
     }
 
@@ -2038,7 +2081,7 @@ function editJournalEntry(idx) {
     additionalState.zadelka.items = [{
       building: entry.building || '',
       floor: entry.floor || '',
-      room: entry.room || '',
+      room: stripPrefixFromRoom(entry.room || ''),
       value: entry.qty || ''
     }];
     updateAdditionalPills();
@@ -2279,12 +2322,17 @@ function addToJournal() {
     }
   }
 
+  // Заделка — слияние по (building, floor).
+  // Если корпус «Крыло мастерских» — ко всем номерам добавляется префикс «к».
   if (zActive) {
     additionalState.zadelka.items.forEach(it => {
       const zVal = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(zVal) || zVal <= 0) return;
 
-      const zRoom = normalizeZadelkaRoom(it.room || '');
+      const zRoom = applyPrefixToRoom(
+        normalizeZadelkaRoom(it.room || ''),
+        it.building || ''
+      );
       const zEntry = {
         kind: 'zadelka',
         building: it.building || '',
@@ -2715,7 +2763,7 @@ setupConnectionWatcher();
 if (_restoredDraft && _restoredDraft.length > 0) {
   setTimeout(() => {
     showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
-  }, 300);
+  }, 400);
 }
 
 window.addToJournal = addToJournal;
