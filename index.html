@@ -99,13 +99,27 @@
     <span class="segmented-hint">🔒 Введите имя</span>
     <button type="button" class="segmented-btn" data-value="Монтаж">Монтаж</button>
     <button type="button" class="segmented-btn" data-value="Демонтаж">Демонтаж</button>
-    <button type="button" class="segmented-btn" data-value="Другие работы">Другие работы</button>
   </div>
   <div class="field-error" id="err-work">Заполните это поле</div>
 
   <div id="materials-section">
-    <div class="section-subtitle" id="work-section-subtitle">Основные материалы</div>
+    <div class="section-subtitle">Основные материалы</div>
     <div id="materials-container"></div>
+  </div>
+
+  <!-- Дополнительные работы -->
+  <div class="additional-block" id="additional-block">
+    <button type="button" class="additional-toggle" id="additional-toggle">
+      <span class="additional-toggle-label">Дополнительные работы</span>
+      <span class="additional-toggle-arrow">▾</span>
+    </button>
+    <div class="additional-body" id="additional-body">
+      <div class="additional-pills" id="additional-pills">
+        <button type="button" class="additional-pill" data-additional="zadelka">Заделка поверхностей</button>
+        <button type="button" class="additional-pill" data-additional="mentorship">Наставничество</button>
+      </div>
+      <div class="additional-fields" id="additional-fields"></div>
+    </div>
   </div>
 
   <button type="button" class="btn-add-journal" onclick="addToJournal()">
