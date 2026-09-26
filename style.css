@@ -630,7 +630,25 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .btn-add-journal:hover { background: var(--hover-bg); }
 .btn-add-journal:active { transform: scale(.98); }
 
-/* ЖУРНАЛ */
+/* ============================================ */
+/*  ЖУРНАЛ                                      */
+/* ============================================ */
+
+/* Заголовок секции по корпусу */
+.journal-building-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--border-focus);
+  margin: 14px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+.journal-building-title:first-child {
+  margin-top: 0;
+}
+
 .journal-count { font-weight: 700; color: var(--border-focus); margin-left: 4px; }
 .journal-empty {
   text-align: center;
