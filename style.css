@@ -233,7 +233,6 @@ input.req-field.is-invalid {
 
 /* ============================================ */
 /*  SEGMENTED — КАПСУЛЫ В ОБЩЕЙ РАМКЕ           */
-/*  Работает и с 2, и с 3+ кнопками             */
 /* ============================================ */
 .segmented {
   display: flex;
@@ -553,48 +552,83 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 /* ============================================ */
 /*  МАТЕРИАЛЫ                                   */
 /* ============================================ */
-.material-row {
-  display: grid;
-  grid-template-columns: 1fr 100px 70px 36px;
-  gap: 8px;
-  margin-bottom: 8px;
-  align-items: center;
+.material-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
 }
-.material-row input[type="text"],
-.material-row input[type="number"] {
-  padding: 10px;
-  font-size: 15px;
+.material-item:first-child { padding-top: 0; }
+.material-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.btn-remove {
-  width: 36px;
-  height: 42px;
-  border: none;
-  background: var(--red-bg);
-  color: #ef4444;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-}
-.btn-remove:hover { background: #fecaca; }
-body.dark .btn-remove:hover { background: #4c1d24; }
-
-.btn-add {
-  margin-top: 6px;
-  padding: 10px 14px;
-  background: var(--input-disabled-bg);
-  color: var(--text-label);
-  border: 1.5px dashed var(--input-disabled-border);
-  border-radius: 10px;
-  font-size: 14px;
+.material-label {
   font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: background .15s;
+  font-size: 14px;
+  color: var(--text-label);
+  margin-bottom: 8px;
 }
-.btn-add:hover { background: var(--border); }
+
+.material-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.material-row:last-child { margin-bottom: 0; }
+
+.variant-badge {
+  flex-shrink: 0;
+  min-width: 76px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  background: var(--input-disabled-bg);
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-label);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.variant-badge.primary {
+  background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 6px var(--btn-shadow);
+}
+
+.variant-input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: right;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.variant-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+.variant-input::placeholder {
+  color: var(--text-hint);
+  text-align: right;
+}
+
+.variant-unit {
+  flex-shrink: 0;
+  min-width: 26px;
+  font-size: 14px;
+  color: var(--text-hint);
+  text-align: left;
+}
 
 /* ============================================ */
 /*  КНОПКА ОТПРАВКИ                             */
