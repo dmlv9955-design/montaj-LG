@@ -149,6 +149,8 @@ function initMaterialState() {
 
 // ============================================
 //  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние формы
+//  Все работы всегда активны — пользователь
+//  просто заполняет те, что ему нужны.
 // ============================================
 function makeLocationItem() {
   return { building: '', floor: '', room: '', value: '' };
@@ -157,9 +159,9 @@ function makeLocationItem() {
 function makeAdditionalState() {
   const state = {};
   LOCATION_WORKS.forEach(w => {
-    state[w.key] = { active: false, items: [makeLocationItem()] };
+    state[w.key] = { items: [makeLocationItem()] };
   });
-  state.mentorship = { active: false, items: [{ name: '', hours: '' }] };
+  state.mentorship = { items: [{ name: '', hours: '' }] };
   return state;
 }
 
@@ -255,11 +257,13 @@ function isMainEntryComplete() {
   return floorOk && roomOk && workOk;
 }
 
+// Есть ли хоть одна заполненная строка в доп. работах?
 function hasActiveAdditional() {
-  if (additionalState.mentorship.active) return true;
-  return LOCATION_WORKS.some(w =>
-    additionalState[w.key] && additionalState[w.key].active
-  );
+  if (additionalState.mentorship.items.some(m => m.name || m.hours)) return true;
+  return LOCATION_WORKS.some(w => {
+    const items = (additionalState[w.key] && additionalState[w.key].items) || [];
+    return items.some(it => it.building || it.floor || it.room || it.value);
+  });
 }
 
 // ============================================
@@ -766,7 +770,7 @@ function getFloorsFor(object, building) {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT
+//  КАСТОМНЫЙ SELECT (для этажа в основной части)
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -951,7 +955,6 @@ const materialsSection = document.getElementById('materials-section');
 const objectSeg        = document.getElementById('object-segmented');
 const workSeg          = document.getElementById('work-segmented');
 const additionalCard   = document.getElementById('additional-card');
-const additionalPills  = document.getElementById('additional-pills');
 const additionalFields = document.getElementById('additional-fields');
 
 let _zadelkaCustomSelects = [];
@@ -1120,6 +1123,7 @@ function updateWorkAccessibility() {
 
 // ============================================
 //  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  Блокируем всю карточку, если не заполнены имя и объект.
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalCard) return;
@@ -1138,7 +1142,6 @@ function updateAdditionalAccessibility() {
   const hadActive = hasActiveAdditional();
   if (hadActive) {
     additionalState = makeAdditionalState();
-    updateAdditionalPills();
     renderAdditionalFields();
   }
 }
@@ -1814,6 +1817,7 @@ function renderMentorshipFields(container) {
 
 // ============================================
 //  ОБЩИЙ РЕНДЕР ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  Все работы всегда видны — без pills.
 // ============================================
 function renderAdditionalFields() {
   if (!additionalFields) return;
@@ -1826,14 +1830,10 @@ function renderAdditionalFields() {
   additionalFields.innerHTML = '';
 
   LOCATION_WORKS.forEach(w => {
-    if (additionalState[w.key] && additionalState[w.key].active) {
-      renderLocationFields(w.key, additionalFields);
-    }
+    renderLocationFields(w.key, additionalFields);
   });
 
-  if (additionalState.mentorship.active) {
-    renderMentorshipFields(additionalFields);
-  }
+  renderMentorshipFields(additionalFields);
 
   if (focusId) {
     const el = additionalFields.querySelector('[data-focus-id="' + focusId + '"]');
@@ -1845,20 +1845,6 @@ function renderAdditionalFields() {
       }
     }
   }
-}
-
-// ============================================
-//  АКТИВНОСТЬ PILL-КНОПОК
-// ============================================
-function updateAdditionalPills() {
-  if (!additionalPills) return;
-  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
-    const key = btn.dataset.additional;
-    const active = (key === 'mentorship')
-      ? additionalState.mentorship.active
-      : (additionalState[key] ? additionalState[key].active : false);
-    btn.classList.toggle('active', active);
-  });
 }
 
 // ============================================
@@ -1891,7 +1877,6 @@ function resetCurrentEntry() {
   initAdditionalState();
   renderMaterials();
   renderAdditionalFields();
-  updateAdditionalPills();
 
   workInput.value = '';
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
@@ -2111,21 +2096,17 @@ function editJournalEntry(idx) {
     updateFieldState(roomInput);
     renderMaterials();
   } else if (isLocationKind(entry.kind)) {
-    additionalState[entry.kind].active = true;
     additionalState[entry.kind].items = [{
       building: entry.building || '',
       floor: entry.floor || '',
       room: stripPrefixFromRoom(entry.room || ''),
       value: entry.qty || ''
     }];
-    updateAdditionalPills();
     renderAdditionalFields();
   } else if (entry.kind === 'mentorship') {
-    additionalState.mentorship.active = true;
     additionalState.mentorship.items = [
       { name: entry.name || '', hours: entry.hours || '' }
     ];
-    updateAdditionalPills();
     renderAdditionalFields();
   }
 
@@ -2230,8 +2211,7 @@ function validateCurrentEntry() {
   }
 
   for (const w of LOCATION_WORKS) {
-    if (!additionalState[w.key] || !additionalState[w.key].active) continue;
-    const items = additionalState[w.key].items;
+    const items = (additionalState[w.key] && additionalState[w.key].items) || [];
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -2266,30 +2246,28 @@ function validateCurrentEntry() {
     }
   }
 
-  if (additionalState.mentorship.active) {
-    let bad = false;
-    additionalState.mentorship.items.forEach((m, idx) => {
-      const name = String(m.name || '').trim();
-      const hours = String(m.hours || '').trim();
-      if (!name && !hours) return;
-      if (!name || !isNameValid(name)) {
-        bad = true;
-        const inp = document.querySelector('[data-focus-id="mentor_name_' + idx + '"]');
-        if (inp) inp.classList.add('is-invalid');
-      }
-      const n = parseFloat(hours.replace(',', '.'));
-      if (!hours || !isFinite(n) || n <= 0) {
-        bad = true;
-      }
-    });
-    if (bad) {
-      show('⚠️ Укажите имя (2 слова) и часы для каждого наставника', 'err');
-      const badEl = document.querySelector('.mentor-name-input.is-invalid');
-      if (badEl && badEl.scrollIntoView) {
-        badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return false;
+  let mentorBad = false;
+  additionalState.mentorship.items.forEach((m, idx) => {
+    const name = String(m.name || '').trim();
+    const hours = String(m.hours || '').trim();
+    if (!name && !hours) return;
+    if (!name || !isNameValid(name)) {
+      mentorBad = true;
+      const inp = document.querySelector('[data-focus-id="mentor_name_' + idx + '"]');
+      if (inp) inp.classList.add('is-invalid');
     }
+    const n = parseFloat(hours.replace(',', '.'));
+    if (!hours || !isFinite(n) || n <= 0) {
+      mentorBad = true;
+    }
+  });
+  if (mentorBad) {
+    show('⚠️ Укажите имя (2 слова) и часы для каждого наставника', 'err');
+    const badEl = document.querySelector('.mentor-name-input.is-invalid');
+    if (badEl && badEl.scrollIntoView) {
+      badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return false;
   }
 
   if (firstProblem) {
@@ -2327,7 +2305,6 @@ function addToJournal() {
   if (!validateCurrentEntry()) return;
 
   const mainComplete = isMainEntryComplete();
-  const mActive = additionalState.mentorship.active;
 
   let added = false;
   let merged = false;
@@ -2358,8 +2335,8 @@ function addToJournal() {
   }
 
   LOCATION_WORKS.forEach(w => {
-    if (!additionalState[w.key] || !additionalState[w.key].active) return;
-    additionalState[w.key].items.forEach(it => {
+    const items = (additionalState[w.key] && additionalState[w.key].items) || [];
+    items.forEach(it => {
       const zVal = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(zVal) || zVal <= 0) return;
 
@@ -2394,30 +2371,28 @@ function addToJournal() {
     });
   });
 
-  if (mActive) {
-    additionalState.mentorship.items.forEach(m => {
-      const n = String(m.name || '').trim();
-      const h = String(m.hours || '').trim();
-      if (!n || !h) return;
-      const hn = parseFloat(h.replace(',', '.'));
-      if (!isFinite(hn) || hn <= 0) return;
+  additionalState.mentorship.items.forEach(m => {
+    const n = String(m.name || '').trim();
+    const h = String(m.hours || '').trim();
+    if (!n || !h) return;
+    const hn = parseFloat(h.replace(',', '.'));
+    if (!isFinite(hn) || hn <= 0) return;
 
-      const idx = journal.findIndex(e =>
-        e.kind === 'mentorship' &&
-        String(e.name).toLowerCase() === n.toLowerCase()
-      );
+    const idx = journal.findIndex(e =>
+      e.kind === 'mentorship' &&
+      String(e.name).toLowerCase() === n.toLowerCase()
+    );
 
-      if (idx !== -1) {
-        const oldH = parseFloat(String(journal[idx].hours).replace(',', '.')) || 0;
-        const newH = oldH + hn;
-        journal[idx].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
-        merged = true;
-      } else {
-        journal.push({ kind: 'mentorship', name: n, hours: String(hn).replace('.', ',') });
-        added = true;
-      }
-    });
-  }
+    if (idx !== -1) {
+      const oldH = parseFloat(String(journal[idx].hours).replace(',', '.')) || 0;
+      const newH = oldH + hn;
+      journal[idx].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
+      merged = true;
+    } else {
+      journal.push({ kind: 'mentorship', name: n, hours: String(hn).replace('.', ',') });
+      added = true;
+    }
+  });
 
   renderJournal();
   resetCurrentEntry();
@@ -2477,32 +2452,6 @@ workInput.addEventListener('change', () => {
   updateFieldState(workInput);
   updateMaterialsVisibility();
 });
-
-// ---- Pills ----
-if (additionalPills) {
-  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (additionalCard && additionalCard.classList.contains('additional-block-disabled')) return;
-      const key = btn.dataset.additional;
-
-      if (key === 'mentorship') {
-        additionalState.mentorship.active = !additionalState.mentorship.active;
-      } else if (additionalState[key]) {
-        additionalState[key].active = !additionalState[key].active;
-        if (!additionalState[key].active) {
-          additionalState[key].items = [makeLocationItem()];
-        } else {
-          if (additionalState[key].items.length === 0) {
-            additionalState[key].items = [makeLocationItem()];
-          }
-        }
-      }
-
-      updateAdditionalPills();
-      renderAdditionalFields();
-    });
-  });
-}
 
 // ============================================
 //  ФОРМАТ ПОМЕЩЕНИЯ (основная часть)
@@ -2643,166 +2592,4 @@ async function sendAll() {
 
   if (isOffline()) {
     show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
-    showToast('📵 Нет подключения');
-    return;
-  }
-
-  _sending = true;
-  try {
-    show('🔄 Проверяем соединение...', '');
-    const reachable = await checkConnection();
-    show('');
-
-    if (!reachable) {
-      const proceed = confirm(
-        '📵 Не удалось связаться с сервером.\n\n' +
-        'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
-        'Отправить всё равно?'
-      );
-      if (!proceed) {
-        show('⚠️ Отправка отменена. Проверьте подключение и попробуйте снова.', 'err');
-        return;
-      }
-    }
-
-    const sortedJournal = journal.slice().sort(compareEntries);
-
-    const records = [];
-
-    sortedJournal.forEach(entry => {
-      if (entry.kind === 'main') {
-        let room = entry.room || '';
-        if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
-
-        records.push({
-          room: room,
-          room_none: entry.room_none,
-          floor: entry.floor || '',
-          work: entry.work,
-          materials: materialStateToArrayFromState(entry.materialState || {})
-        });
-      } else if (isLocationKind(entry.kind)) {
-        const w = locationWorkByKey(entry.kind);
-        const z = parseFloat(String(entry.qty).replace(',', '.'));
-        if (!isFinite(z) || z <= 0) return;
-
-        records.push({
-          room: entry.room || '',
-          room_none: false,
-          floor: entry.floor || '',
-          work: WORK_ADDITIONAL,
-          materials: [{
-            name: w.label,
-            unit: w.unit,
-            qty: String(z),
-            system: ''
-          }]
-        });
-      } else if (entry.kind === 'mentorship') {
-        const h = parseFloat(String(entry.hours).replace(',', '.'));
-        if (!isFinite(h) || h <= 0) return;
-
-        records.push({
-          room: '',
-          room_none: false,
-          floor: '',
-          work: WORK_ADDITIONAL,
-          materials: [{
-            name: 'Наставничество — ' + entry.name,
-            unit: 'ч',
-            qty: String(h),
-            system: ''
-          }]
-        });
-      }
-    });
-
-    const payload = {
-      object:  objectSelect.value.trim(),
-      date:    dateInput.value.trim(),
-      name:    nameInput.value.trim(),
-      records: records
-    };
-
-    const totalRows = records.reduce((sum, r) =>
-      sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
-
-    const btn = document.getElementById('btn');
-    btn.disabled = true;
-    btn.textContent = 'Отправляем...';
-
-    showProgress(totalRows);
-
-    let shown = 0;
-    const tickMs = Math.max(60, Math.floor(1800 / totalRows));
-    const ticker = setInterval(() => {
-      if (shown < totalRows - 1) {
-        shown++;
-        updateProgress(shown, totalRows);
-      }
-    }, tickMs);
-
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-
-      clearInterval(ticker);
-      updateProgress(totalRows, totalRows);
-
-      await new Promise(r => setTimeout(r, 350));
-
-      hideProgress();
-      show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
-
-      journal.length = 0;
-      clearDraft();
-      renderJournal();
-      resetCurrentEntry();
-
-      setupDateRange();
-      dateInput.value = toISODate(new Date());
-      updateDateHighlight();
-    } catch (e) {
-      clearInterval(ticker);
-      hideProgress();
-      show('❌ Ошибка: ' + e.message, 'err');
-    } finally {
-      updateSendButton();
-    }
-  } finally {
-    _sending = false;
-  }
-}
-
-// ============================================
-//  СТАРТ
-// ============================================
-initMaterialState();
-initAdditionalState();
-updateFormAccessibility();
-updateMaterialsVisibility();
-renderMaterials();
-renderAdditionalFields();
-updateAdditionalPills();
-
-const _restoredDraft = loadDraft();
-if (_restoredDraft && _restoredDraft.length > 0) {
-  journal.push(..._restoredDraft);
-}
-
-renderJournal();
-updateSendButton();
-setupConnectionWatcher();
-
-if (_restoredDraft && _restoredDraft.length > 0) {
-  setTimeout(() => {
-    showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
-  }, 700);
-}
-
-window.addToJournal = addToJournal;
-window.sendAll = sendAll;
+    show
