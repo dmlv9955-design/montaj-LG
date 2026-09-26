@@ -361,7 +361,6 @@ function parseRooms(roomStr) {
 
 // ============================================
 //  ОБЪЕДИНЕНИЕ ДВУХ СПИСКОВ ПОМЕЩЕНИЙ
-//  Сначала простые (по возрастанию), потом «к» (по возрастанию).
 // ============================================
 function combineRooms(a, b) {
   const pa = parseRooms(a);
@@ -429,7 +428,7 @@ function sectionWeight(key) {
 //  ВЕС КОРПУСА (для сортировки заделки)
 // ============================================
 function buildingWeight(b) {
-  if (!b) return -1;                       // без корпуса — самым первым
+  if (!b) return -1;
   const i = BUILDING_ORDER.indexOf(b);
   return i === -1 ? 500 : i;
 }
@@ -450,8 +449,6 @@ function floorWeight(floor) {
   return (floor in w) ? w[floor] : 500;
 }
 
-// Ключ сортировки по помещению.
-// Простые — раньше, «к» — позже. Внутри каждой группы — по числу.
 function roomSortKey(room) {
   if (!room) return 9999999;
   const first = String(room).split(',')[0].trim();
@@ -1088,6 +1085,7 @@ function updateFormAccessibility() {
   const nameOk = isNameValid(nameInput.value);
 
   dateInput.disabled = !nameOk;
+  updateFieldState(dateInput);   // <-- ФИКС №1: снимаем зелёный/красный, когда поле disabled
 
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
@@ -1956,14 +1954,12 @@ function renderJournal() {
   const keys = Object.keys(groups).sort((a, b) => sectionWeight(a) - sectionWeight(b));
 
   keys.forEach(key => {
-    // Секция «Заделка поверхностей» — внутри разделяем по корпусам
     if (key === SECTION_ZADELKA) {
       const t = document.createElement('div');
       t.className = 'journal-building-title';
       t.textContent = key;
       journalCont.appendChild(t);
 
-      // Подгруппы по корпусу
       const byBuilding = {};
       groups[key].forEach(entry => {
         const b = entry.building || '';
@@ -1989,7 +1985,6 @@ function renderJournal() {
       return;
     }
 
-    // Остальные секции — как раньше
     if (key) {
       const t = document.createElement('div');
       t.className = 'journal-building-title';
@@ -2121,6 +2116,7 @@ function validateHeader() {
 
   if (firstProblem) {
     show('⚠️ Заполните поля сверху', 'err');
+    updateFormAccessibility();   // <-- ФИКС №2: пересчитываем доступность полей
     if (firstProblem.focus) firstProblem.focus();
     if (firstProblem.scrollIntoView) {
       firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2263,7 +2259,6 @@ function addToJournal() {
   let added = false;
   let merged = false;
 
-  // 1. Основная запись
   if (mainComplete) {
     const mainEntry = {
       kind: 'main',
@@ -2289,8 +2284,6 @@ function addToJournal() {
     }
   }
 
-  // 2. Заделка — слияние по (building, floor).
-  //    Помещения объединяются: сначала без «к», потом с «к», по возрастанию.
   if (zActive) {
     additionalState.zadelka.items.forEach(it => {
       const zVal = parseFloat(String(it.value || '').replace(',', '.'));
@@ -2324,7 +2317,6 @@ function addToJournal() {
     });
   }
 
-  // 3. Наставничество — по имени
   if (mActive) {
     additionalState.mentorship.items.forEach(m => {
       const n = String(m.name || '').trim();
