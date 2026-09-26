@@ -39,7 +39,6 @@ const BUILDINGS_BY_OBJECT = {
   'Ларинская гимназия': ['Основное здание', 'Крыло мастерских', 'Чердак']
 };
 
-// Порядок секций в журнале
 const BUILDING_ORDER = ['Основное здание', 'Крыло мастерских', 'Чердак'];
 
 const MASTER_WING = 'Крыло мастерских';
@@ -161,7 +160,7 @@ function sumMaterialStates(a, b) {
 }
 
 // ============================================
-//  СОРТИРОВКА ВНУТРИ СЕКЦИИ
+//  СОРТИРОВКА
 // ============================================
 function floorWeight(floor) {
   const w = {
@@ -190,7 +189,6 @@ function compareEntries(a, b) {
   const rb = roomWeight(b.room);
   if (ra !== rb) return ra - rb;
 
-  // при равных этаже и помещении — крыло мастерских после обычного помещения
   const ka = a.is_master_wing ? 1 : 0;
   const kb = b.is_master_wing ? 1 : 0;
   if (ka !== kb) return ka - kb;
@@ -931,8 +929,6 @@ function resetCurrentEntry() {
 
 // ============================================
 //  ЖУРНАЛ — РЕНДЕР
-//  Секции по корпусам: Основное здание → Крыло мастерских → Чердак.
-//  Внутри секции — сортировка по этажу и помещению.
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
@@ -946,10 +942,8 @@ function renderJournal() {
   journalEmpty.style.display = 'none';
   journalCont.innerHTML = '';
 
-  // 1. Сортируем общий список
   const sorted = journal.slice().sort(compareEntries);
 
-  // 2. Группируем по корпусам
   const groups = {};
   sorted.forEach(entry => {
     const key = entry.building || '';
@@ -957,7 +951,6 @@ function renderJournal() {
     groups[key].push(entry);
   });
 
-  // 3. Определяем порядок секций
   const keys = Object.keys(groups).sort((a, b) => {
     const ia = BUILDING_ORDER.indexOf(a);
     const ib = BUILDING_ORDER.indexOf(b);
@@ -967,7 +960,6 @@ function renderJournal() {
     return a.localeCompare(b);
   });
 
-  // 4. Рисуем секции
   keys.forEach(key => {
     if (key) {
       const titleEl = document.createElement('div');
@@ -1180,8 +1172,6 @@ function validateCurrentEntry() {
 
 // ============================================
 //  ПОИСК ДЛЯ СЛИЯНИЯ
-//  Учитывает и корпус, и тип работ.
-//  к5 (крыло) ≠ 5 (основное).
 // ============================================
 function findMergeIndex(newEntry) {
   return journal.findIndex(e =>
@@ -1379,6 +1369,7 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА
+//  floor теперь внутри каждой записи, а не в шапке.
 // ============================================
 async function sendAll() {
   show('');
@@ -1410,6 +1401,7 @@ async function sendAll() {
     return {
       room: room,
       room_none: entry.room_none,
+      floor: entry.floor,             // ← этаж внутри каждой записи
       work: entry.work,
       materials: materialStateToArrayFromState(entry.materialState)
     };
@@ -1419,8 +1411,7 @@ async function sendAll() {
     object:  objectSelect.value.trim(),
     date:    dateInput.value.trim(),
     name:    nameInput.value.trim(),
-    floor:   floorInput.value.trim(),
-    records: records
+    records: records                 // ← floor убран из шапки
   };
 
   const btn = document.getElementById('btn');
