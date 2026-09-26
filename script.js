@@ -67,8 +67,33 @@ const ATTIC = 'Чердак';
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 const WORK_ADDITIONAL = 'Другие работы';
 
-const SECTION_ZADELKA = 'Штукатурка';
-const SECTION_MENTOR  = 'Наставничество';
+const SECTION_MENTOR = 'Наставничество';
+
+// ============================================
+//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ С ПРИВЯЗКОЙ К МЕСТУ
+//  (корпус → этаж → помещения → количество)
+// ============================================
+const LOCATION_WORKS = [
+  { key: 'zadelka',      label: 'Штукатурка',             unit: 'шт'  },
+  { key: 'tura',         label: 'Тура (монтаж/демонтаж)', unit: 'раз' },
+  { key: 'burenie',      label: 'Бурение проходок',       unit: 'шт'  },
+  { key: 'vata',         label: 'Вата',                   unit: 'шт'  },
+  { key: 'germetik',     label: 'Герметик',               unit: 'шт'  },
+  { key: 'birki',        label: 'Бирки',                  unit: 'шт'  },
+  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  }
+];
+
+function isLocationKind(kind) {
+  return LOCATION_WORKS.some(w => w.key === kind);
+}
+
+function locationWorkByKey(key) {
+  return LOCATION_WORKS.find(w => w.key === key) || null;
+}
+
+function locationWorkByLabel(label) {
+  return LOCATION_WORKS.find(w => w.label === label) || null;
+}
 
 const MATERIALS = [
   {
@@ -128,34 +153,25 @@ function initMaterialState() {
 }
 
 // ============================================
-//  ДРУГИЕ РАБОТЫ — состояние формы
+//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние формы
 // ============================================
-function makeZadelkaItem() {
+function makeLocationItem() {
   return { building: '', floor: '', room: '', value: '' };
 }
 
-let additionalState = {
-  zadelka: {
-    active: false,
-    items: [makeZadelkaItem()]
-  },
-  mentorship: {
-    active: false,
-    items: [{ name: '', hours: '' }]
-  }
-};
+function makeAdditionalState() {
+  const state = {};
+  LOCATION_WORKS.forEach(w => {
+    state[w.key] = { active: false, items: [makeLocationItem()] };
+  });
+  state.mentorship = { active: false, items: [{ name: '', hours: '' }] };
+  return state;
+}
+
+let additionalState = makeAdditionalState();
 
 function initAdditionalState() {
-  additionalState = {
-    zadelka: {
-      active: false,
-      items: [makeZadelkaItem()]
-    },
-    mentorship: {
-      active: false,
-      items: [{ name: '', hours: '' }]
-    }
-  };
+  additionalState = makeAdditionalState();
 }
 
 // ============================================
@@ -245,11 +261,14 @@ function isMainEntryComplete() {
 }
 
 function hasActiveAdditional() {
-  return additionalState.zadelka.active || additionalState.mentorship.active;
+  if (additionalState.mentorship.active) return true;
+  return LOCATION_WORKS.some(w =>
+    additionalState[w.key] && additionalState[w.key].active
+  );
 }
 
 // ============================================
-//  ЭТАЖИ ДЛЯ ШТУКАТУРКИ (по корпусу конкретной строки)
+//  ЭТАЖИ ДЛЯ ДОПОЛНИТЕЛЬНЫХ РАБОТ (по корпусу строки)
 // ============================================
 function getZadelkaFloors(building) {
   const obj = objectSelect.value;
@@ -293,7 +312,7 @@ function formatQty(raw) {
 }
 
 // ============================================
-//  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ШТУКАТУРКИ ПРИ ВВОДЕ
+//  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ПРИ ВВОДЕ
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
@@ -305,7 +324,7 @@ function sanitizeZadelkaRoomInput(value) {
 }
 
 // ============================================
-//  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ШТУКАТУРКИ
+//  НОРМАЛИЗАЦИЯ СПИСКА ПОМЕЩЕНИЙ
 // ============================================
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
@@ -432,17 +451,39 @@ function workWeight(work) {
 }
 
 // ============================================
-//  ВЕС СЕКЦИИ ЖУРНАЛА
+//  ПОРЯДОК ДОПОЛНИТЕЛЬНЫХ РАБОТ В ЖУРНАЛЕ
 // ============================================
-function sectionWeight(key) {
-  if (key === SECTION_ZADELKA) return 900;
-  if (key === SECTION_MENTOR)  return 901;
-  const i = BUILDING_ORDER.indexOf(key);
+function kindOrder(kind) {
+  if (kind === 'mentorship') return 999;
+  const i = LOCATION_WORKS.findIndex(w => w.key === kind);
   return i === -1 ? 500 : i;
 }
 
 // ============================================
-//  ВЕС КОРПУСА (для сортировки штукатурки)
+//  КЛЮЧ СЕКЦИИ ЖУРНАЛА ДЛЯ ЗАПИСИ
+// ============================================
+function sectionKeyFor(entry) {
+  if (entry.kind === 'main') return entry.building || '';
+  if (entry.kind === 'mentorship') return SECTION_MENTOR;
+  const w = locationWorkByKey(entry.kind);
+  return w ? w.label : '';
+}
+
+// ============================================
+//  ВЕС СЕКЦИИ ЖУРНАЛА
+// ============================================
+function sectionWeight(key) {
+  if (key === '') return -1;
+  const bi = BUILDING_ORDER.indexOf(key);
+  if (bi !== -1) return bi;
+  const li = LOCATION_WORKS.findIndex(w => w.label === key);
+  if (li !== -1) return 900 + li;
+  if (key === SECTION_MENTOR) return 999;
+  return 500;
+}
+
+// ============================================
+//  ВЕС КОРПУСА (для сортировки подсекций)
 // ============================================
 function buildingWeight(b) {
   if (!b) return -1;
@@ -481,16 +522,19 @@ function roomWeight(room) {
 }
 
 function compareEntries(a, b) {
-  const aAdd = (a.kind === 'zadelka' || a.kind === 'mentorship');
-  const bAdd = (b.kind === 'zadelka' || b.kind === 'mentorship');
+  const aLoc = isLocationKind(a.kind);
+  const bLoc = isLocationKind(b.kind);
+  const aAdd = aLoc || a.kind === 'mentorship';
+  const bAdd = bLoc || b.kind === 'mentorship';
+
   if (aAdd !== bAdd) return aAdd ? 1 : -1;
 
   if (aAdd && bAdd) {
-    const oa = (a.kind === 'zadelka') ? 0 : 1;
-    const ob = (b.kind === 'zadelka') ? 0 : 1;
-    if (oa !== ob) return oa - ob;
+    const ka = kindOrder(a.kind);
+    const kb = kindOrder(b.kind);
+    if (ka !== kb) return ka - kb;
 
-    if (a.kind === 'zadelka' && b.kind === 'zadelka') {
+    if (aLoc && bLoc) {
       const ba = buildingWeight(a.building);
       const bb = buildingWeight(b.building);
       if (ba !== bb) return ba - bb;
@@ -505,6 +549,7 @@ function compareEntries(a, b) {
 
       return String(a.room).localeCompare(String(b.room));
     }
+
     if (a.kind === 'mentorship' && b.kind === 'mentorship') {
       return String(a.name).localeCompare(String(b.name));
     }
@@ -538,7 +583,7 @@ function formatFloorLabel(floor) {
 }
 
 function formatJournalTitle(entry) {
-  if (entry.kind === 'zadelka') {
+  if (isLocationKind(entry.kind)) {
     const parts = [];
     const fl = formatFloorLabel(entry.floor);
     if (fl) parts.push(fl);
@@ -1097,10 +1142,7 @@ function updateAdditionalAccessibility() {
 
   const hadActive = hasActiveAdditional();
   if (hadActive) {
-    additionalState.zadelka.active = false;
-    additionalState.zadelka.items = [makeZadelkaItem()];
-    additionalState.mentorship.active = false;
-    additionalState.mentorship.items = [{ name: '', hours: '' }];
+    additionalState = makeAdditionalState();
     updateAdditionalPills();
     renderAdditionalFields();
   }
@@ -1390,37 +1432,43 @@ function renderMaterials() {
 }
 
 // ============================================
-//  РЕНДЕР ШТУКАТУРКИ — СПИСОК МЕСТ
+//  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
+//  (корпус → этаж → помещения → количество)
 // ============================================
-function renderZadelkaFields(container) {
+function renderLocationFields(workKey, container) {
+  const work = locationWorkByKey(workKey);
+  if (!work) return;
+
   const group = document.createElement('div');
   group.className = 'additional-group';
 
-  const name = document.createElement('div');
-  name.className = 'additional-group-name';
-  name.textContent = SECTION_ZADELKA;
-  group.appendChild(name);
+  const title = document.createElement('div');
+  title.className = 'additional-group-name';
+  title.textContent = work.label;
+  group.appendChild(title);
 
-  additionalState.zadelka.items.forEach((item, idx) => {
+  const items = additionalState[workKey].items;
+
+  items.forEach((item, idx) => {
     if (idx > 0) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
       sep.textContent = 'Место ' + (idx + 1);
       group.appendChild(sep);
-    } else if (additionalState.zadelka.items.length > 1) {
+    } else if (items.length > 1) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
       sep.textContent = 'Место 1';
       group.appendChild(sep);
     }
 
-    if (additionalState.zadelka.items.length > 1) {
+    if (items.length > 1) {
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'zadelka-remove-btn';
       del.textContent = '× удалить место';
       del.addEventListener('click', () => {
-        additionalState.zadelka.items.splice(idx, 1);
+        additionalState[workKey].items.splice(idx, 1);
         renderAdditionalFields();
       });
       group.appendChild(del);
@@ -1529,7 +1577,7 @@ function renderZadelkaFields(container) {
       rInp.autocomplete = 'off';
       rInp.maxLength = 60;
       rInp.value = item.room || '';
-      rInp.dataset.focusId = 'zadelka_room_' + idx;
+      rInp.dataset.focusId = workKey + '_room_' + idx;
 
       rInp.addEventListener('input', () => {
         const before = rInp.value;
@@ -1588,7 +1636,7 @@ function renderZadelkaFields(container) {
     qInp.placeholder = '0';
     qInp.autocomplete = 'off';
     qInp.value = item.value || '';
-    qInp.dataset.focusId = 'zadelka_qty_' + idx;
+    qInp.dataset.focusId = workKey + '_qty_' + idx;
     qLine.appendChild(qInp);
 
     const plusBtn = document.createElement('button');
@@ -1607,7 +1655,7 @@ function renderZadelkaFields(container) {
 
     const unit = document.createElement('span');
     unit.className = 'variant-unit';
-    unit.textContent = 'шт';
+    unit.textContent = work.unit;
     qLine.appendChild(unit);
 
     qInp.addEventListener('input', () => {
@@ -1644,7 +1692,7 @@ function renderZadelkaFields(container) {
   addBtn.className = 'btn-add-mentor';
   addBtn.textContent = '+ Добавить место';
   addBtn.addEventListener('click', () => {
-    additionalState.zadelka.items.push(makeZadelkaItem());
+    additionalState[workKey].items.push(makeLocationItem());
     renderAdditionalFields();
   });
   group.appendChild(addBtn);
@@ -1790,9 +1838,12 @@ function renderAdditionalFields() {
   _destroyZadelkaCustomSelects();
   additionalFields.innerHTML = '';
 
-  if (additionalState.zadelka.active) {
-    renderZadelkaFields(additionalFields);
-  }
+  LOCATION_WORKS.forEach(w => {
+    if (additionalState[w.key] && additionalState[w.key].active) {
+      renderLocationFields(w.key, additionalFields);
+    }
+  });
+
   if (additionalState.mentorship.active) {
     renderMentorshipFields(additionalFields);
   }
@@ -1816,9 +1867,9 @@ function updateAdditionalPills() {
   if (!additionalPills) return;
   additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
     const key = btn.dataset.additional;
-    const active = key === 'zadelka'
-      ? additionalState.zadelka.active
-      : additionalState.mentorship.active;
+    const active = (key === 'mentorship')
+      ? additionalState.mentorship.active
+      : (additionalState[key] ? additionalState[key].active : false);
     btn.classList.toggle('active', active);
   });
 }
@@ -1921,10 +1972,11 @@ function renderJournalEntryElement(entry) {
   let matsArr = [];
   if (entry.kind === 'main') {
     matsArr = materialStateToArrayFromState(entry.materialState || {});
-  } else if (entry.kind === 'zadelka') {
+  } else if (isLocationKind(entry.kind)) {
+    const w = locationWorkByKey(entry.kind);
     matsArr = [{
-      name: SECTION_ZADELKA,
-      unit: 'шт',
+      name: w ? w.label : entry.kind,
+      unit: w ? w.unit : 'шт',
       qty: entry.qty.replace(',', '.'),
       system: ''
     }];
@@ -1978,11 +2030,7 @@ function renderJournal() {
 
   const groups = {};
   sorted.forEach(entry => {
-    let key;
-    if (entry.kind === 'zadelka')          key = SECTION_ZADELKA;
-    else if (entry.kind === 'mentorship')  key = SECTION_MENTOR;
-    else key = entry.building || '';
-
+    const key = sectionKeyFor(entry);
     if (!groups[key]) groups[key] = [];
     groups[key].push(entry);
   });
@@ -1990,7 +2038,9 @@ function renderJournal() {
   const keys = Object.keys(groups).sort((a, b) => sectionWeight(a) - sectionWeight(b));
 
   keys.forEach(key => {
-    if (key === SECTION_ZADELKA) {
+    const isLocationSection = !!locationWorkByLabel(key);
+
+    if (isLocationSection) {
       const t = document.createElement('div');
       t.className = 'journal-building-title';
       t.textContent = key;
@@ -2073,9 +2123,9 @@ function editJournalEntry(idx) {
     roomInput.value = entry.room;
     updateFieldState(roomInput);
     renderMaterials();
-  } else if (entry.kind === 'zadelka') {
-    additionalState.zadelka.active = true;
-    additionalState.zadelka.items = [{
+  } else if (isLocationKind(entry.kind)) {
+    additionalState[entry.kind].active = true;
+    additionalState[entry.kind].items = [{
       building: entry.building || '',
       floor: entry.floor || '',
       room: stripPrefixFromRoom(entry.room || ''),
@@ -2192,41 +2242,45 @@ function validateCurrentEntry() {
     }
   }
 
-  if (additionalState.zadelka.active) {
-    for (let i = 0; i < additionalState.zadelka.items.length; i++) {
-      const it = additionalState.zadelka.items[i];
+  // Валидация location-работ
+  for (const w of LOCATION_WORKS) {
+    if (!additionalState[w.key] || !additionalState[w.key].active) continue;
+    const items = additionalState[w.key].items;
+
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
 
       const needB = isBuildingRequired();
-      const isEmptyRow =
-        !it.building && !it.floor && !it.room && !it.value;
+      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
       if (isEmptyRow) continue;
 
       if (needB && !it.building) {
-        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите корпус', 'err');
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err');
         return false;
       }
 
       const isAtticZ = (it.building === 'Чердак');
       if (!isAtticZ && !it.floor) {
-        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите этаж', 'err');
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err');
         return false;
       }
 
       const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
       if (!isAtticZ && !floorIsNo && !r) {
-        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите помещение', 'err');
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещение', 'err');
         return false;
       }
 
       const v = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(v) || v <= 0) {
-        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите количество', 'err');
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err');
         return false;
       }
     }
   }
 
+  // Валидация наставничества
   if (additionalState.mentorship.active) {
     let bad = false;
     additionalState.mentorship.items.forEach((m, idx) => {
@@ -2288,7 +2342,6 @@ function addToJournal() {
   if (!validateCurrentEntry()) return;
 
   const mainComplete = isMainEntryComplete();
-  const zActive = additionalState.zadelka.active;
   const mActive = additionalState.mentorship.active;
 
   let added = false;
@@ -2319,8 +2372,10 @@ function addToJournal() {
     }
   }
 
-  if (zActive) {
-    additionalState.zadelka.items.forEach(it => {
+  // Обработка всех location-работ
+  LOCATION_WORKS.forEach(w => {
+    if (!additionalState[w.key] || !additionalState[w.key].active) return;
+    additionalState[w.key].items.forEach(it => {
       const zVal = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(zVal) || zVal <= 0) return;
 
@@ -2329,7 +2384,7 @@ function addToJournal() {
         it.building || ''
       );
       const zEntry = {
-        kind: 'zadelka',
+        kind: w.key,
         building: it.building || '',
         floor: it.floor || '',
         room: zRoom,
@@ -2337,7 +2392,7 @@ function addToJournal() {
       };
 
       const idx = journal.findIndex(e =>
-        e.kind === 'zadelka' &&
+        e.kind === w.key &&
         (e.building || '') === zEntry.building &&
         (e.floor || '')    === zEntry.floor
       );
@@ -2353,7 +2408,7 @@ function addToJournal() {
         added = true;
       }
     });
-  }
+  });
 
   if (mActive) {
     additionalState.mentorship.items.forEach(m => {
@@ -2403,7 +2458,12 @@ objectSelect.addEventListener('change', () => {
   updateWorkAccessibility();
   updateAdditionalAccessibility();
 
-  additionalState.zadelka.items = [makeZadelkaItem()];
+  // Сбрасываем места во всех location-работах, оставляя активность
+  LOCATION_WORKS.forEach(w => {
+    if (additionalState[w.key]) {
+      additionalState[w.key].items = [makeLocationItem()];
+    }
+  });
   renderAdditionalFields();
 });
 
@@ -2441,18 +2501,20 @@ if (additionalPills) {
     btn.addEventListener('click', () => {
       if (additionalCard && additionalCard.classList.contains('additional-block-disabled')) return;
       const key = btn.dataset.additional;
-      if (key === 'zadelka') {
-        additionalState.zadelka.active = !additionalState.zadelka.active;
-        if (!additionalState.zadelka.active) {
-          additionalState.zadelka.items = [makeZadelkaItem()];
+
+      if (key === 'mentorship') {
+        additionalState.mentorship.active = !additionalState.mentorship.active;
+      } else if (additionalState[key]) {
+        additionalState[key].active = !additionalState[key].active;
+        if (!additionalState[key].active) {
+          additionalState[key].items = [makeLocationItem()];
         } else {
-          if (additionalState.zadelka.items.length === 0) {
-            additionalState.zadelka.items = [makeZadelkaItem()];
+          if (additionalState[key].items.length === 0) {
+            additionalState[key].items = [makeLocationItem()];
           }
         }
-      } else if (key === 'mentorship') {
-        additionalState.mentorship.active = !additionalState.mentorship.active;
       }
+
       updateAdditionalPills();
       renderAdditionalFields();
     });
@@ -2636,7 +2698,8 @@ async function sendAll() {
           work: entry.work,
           materials: materialStateToArrayFromState(entry.materialState || {})
         });
-      } else if (entry.kind === 'zadelka') {
+      } else if (isLocationKind(entry.kind)) {
+        const w = locationWorkByKey(entry.kind);
         const z = parseFloat(String(entry.qty).replace(',', '.'));
         if (!isFinite(z) || z <= 0) return;
 
@@ -2646,8 +2709,8 @@ async function sendAll() {
           floor: entry.floor || '',
           work: WORK_ADDITIONAL,
           materials: [{
-            name: SECTION_ZADELKA,
-            unit: 'шт',
+            name: w.label,
+            unit: w.unit,
             qty: String(z),
             system: ''
           }]
