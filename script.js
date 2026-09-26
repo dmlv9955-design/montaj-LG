@@ -31,17 +31,24 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Тип работ, при котором показывается блок «Основные материалы»
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
+const ALL_SYSTEMS = ['АПС', 'СОУЭ'];
+
+// ============================================
+//  КОНФИГ МАТЕРИАЛОВ
+//  systems       — капсулы для выбора
+//  fixedSystem   — система зафиксирована (нельзя менять)
+//  canAddSecond  — можно добавить вторую строку для другой системы
+// ============================================
 const MATERIALS = [
   {
     id: 'cable',
     label: 'Кабель КПСЭнг(A)FRHF 1x2x',
     unit: 'м',
     variants: [
-      { id: 'cable_075', label: 'х0,75' },
-      { id: 'cable_1',   label: 'х1' }
+      { id: 'cable_075', label: 'х0,75', systems: ['АПС', 'СОУЭ'], canAddSecond: true },
+      { id: 'cable_1',   label: 'х1',    fixedSystem: 'СОУЭ' }
     ]
   },
   {
@@ -49,8 +56,8 @@ const MATERIALS = [
     label: 'Кабель-канал',
     unit: 'м',
     variants: [
-      { id: 'channel_40x25', label: '40х25', primary: true },
-      { id: 'channel_25x16', label: '25х16' }
+      { id: 'channel_40x25', label: '40х25', systems: ['АПС', 'СОУЭ'], primary: true },
+      { id: 'channel_25x16', label: '25х16', systems: ['АПС', 'СОУЭ'] }
     ]
   },
   {
@@ -58,8 +65,8 @@ const MATERIALS = [
     label: 'Труба гофрированная d=',
     unit: 'м',
     variants: [
-      { id: 'corrugated_20', label: '20 мм', primary: true },
-      { id: 'corrugated_16', label: '16 мм' }
+      { id: 'corrugated_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], primary: true },
+      { id: 'corrugated_16', label: '16 мм', systems: ['АПС', 'СОУЭ'] }
     ]
   },
   {
@@ -67,16 +74,30 @@ const MATERIALS = [
     label: 'Труба стальная ВГП ДУ d=',
     unit: 'м',
     variants: [
-      { id: 'steel_15', label: '15 мм', primary: true },
-      { id: 'steel_20', label: '20 мм' }
+      { id: 'steel_15', label: '15 мм', systems: ['АПС', 'СОУЭ'], primary: true },
+      { id: 'steel_20', label: '20 мм', systems: ['АПС', 'СОУЭ'] }
     ]
   }
 ];
 
 // ============================================
-//  СОСТОЯНИЕ
+//  СОСТОЯНИЕ МАТЕРИАЛОВ
+//  materialState[variantId] = [ {system, qty}, ... ]
 // ============================================
-const materialValues = {};
+let materialState = {};
+
+function initMaterialState() {
+  materialState = {};
+  MATERIALS.forEach(mat => {
+    mat.variants.forEach(v => {
+      materialState[v.id] = [{
+        system: v.fixedSystem || '',
+        qty: ''
+      }];
+    });
+  });
+}
+
 const journal = [];
 
 // ============================================
@@ -393,8 +414,7 @@ function updateRoomState() {
 }
 
 // ============================================
-//  ВИДИМОСТЬ БЛОКА «ОСНОВНЫЕ МАТЕРИАЛЫ»
-//  Показывается только при Монтаж / Демонтаж
+//  ВИДИМОСТЬ БЛОКА МАТЕРИАЛОВ
 // ============================================
 function isWorkWithMaterials() {
   return WORK_WITH_MATERIALS.indexOf(workInput.value) !== -1;
@@ -406,21 +426,20 @@ function updateMaterialsVisibility() {
 }
 
 // ============================================
-//  МАТЕРИАЛЫ — РЕНДЕР
+//  РЕНДЕР МАТЕРИАЛОВ
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
   if (!container) return;
 
-  document.querySelectorAll('.variant-input').forEach(inp => {
-    materialValues[inp.dataset.id] = inp.value;
-  });
+  // сохраняем фокус, чтобы он не терялся при перерисовке
+  const active = document.activeElement;
+  const focusId = active && active.dataset ? active.dataset.focusId : null;
+  const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
 
   container.innerHTML = '';
 
   MATERIALS.forEach(mat => {
-    if (mat.variants.length === 0) return;
-
     const group = document.createElement('div');
     group.className = 'material-group';
 
@@ -430,87 +449,224 @@ function renderMaterials() {
     group.appendChild(nameEl);
 
     mat.variants.forEach(v => {
-      const line = document.createElement('div');
-      line.className = 'variant-line';
+      const rows = materialState[v.id];
+      if (!rows) return;
 
-      const badge = document.createElement('span');
-      badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
-      badge.textContent = v.label;
-      line.appendChild(badge);
+      rows.forEach((row, rowIdx) => {
+        const line = document.createElement('div');
+        line.className = 'variant-line';
+        line.dataset.variantId = v.id;
+        line.dataset.rowIdx = rowIdx;
 
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.inputMode = 'decimal';
-      input.className = 'variant-input';
-      input.dataset.id = v.id;
-      input.placeholder = '0';
-      input.autocomplete = 'off';
-      input.value = materialValues[v.id] || '';
+        // badge варианта
+        const badge = document.createElement('span');
+        badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
+        badge.textContent = v.label;
+        line.appendChild(badge);
 
-      input.addEventListener('input', () => {
-        let raw = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-        const parts = raw.split('.');
-        if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
-        if (input.value !== raw) input.value = raw;
-        materialValues[v.id] = raw;
+        // капсулы систем
+        const sysWrap = document.createElement('div');
+        sysWrap.className = 'sys-toggle';
+
+        if (v.fixedSystem) {
+          const sysBtn = document.createElement('button');
+          sysBtn.type = 'button';
+          sysBtn.className = 'sys-btn active fixed';
+          sysBtn.textContent = v.fixedSystem;
+          sysBtn.disabled = true;
+          sysWrap.appendChild(sysBtn);
+        } else {
+          const isSecondRow = rowIdx > 0;
+          v.systems.forEach(sys => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sys-btn';
+            btn.dataset.sys = sys;
+            if (row.system === sys) btn.classList.add('active');
+            if (isSecondRow) btn.disabled = true;  // вторая строка — фиксирована
+            btn.textContent = sys;
+
+            if (!isSecondRow) {
+              btn.addEventListener('click', () => {
+                // toggle: клик на активную — сбросить; клик на другую — выбрать
+                const newSystem = row.system === sys ? '' : sys;
+                row.system = newSystem;
+
+                // если это первая строка cable_075 и есть вторая строка — обновить её автоматически
+                if (v.canAddSecond && rows.length > 1) {
+                  const other = newSystem === 'АПС' ? 'СОУЭ'
+                              : newSystem === 'СОУЭ' ? 'АПС' : '';
+                  rows[1].system = other;
+                }
+
+                renderMaterials();
+              });
+            }
+
+            sysWrap.appendChild(btn);
+          });
+        }
+        line.appendChild(sysWrap);
+
+        // input количества
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.className = 'variant-input';
+        input.dataset.focusId = v.id + '_' + rowIdx;
+        input.placeholder = '0';
+        input.autocomplete = 'off';
+        input.value = row.qty || '';
+        input.addEventListener('input', () => {
+          let raw = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+          const parts = raw.split('.');
+          if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+          if (input.value !== raw) input.value = raw;
+          row.qty = raw;
+          // убираем подсветку ошибки при вводе
+          line.classList.remove('sys-missing');
+        });
+        line.appendChild(input);
+
+        // единица измерения
+        const unit = document.createElement('span');
+        unit.className = 'variant-unit';
+        unit.textContent = mat.unit;
+        line.appendChild(unit);
+
+        // кнопка + (только для canAddSecond, только для первой строки, только когда есть system)
+        if (v.canAddSecond && rows.length === 1 && row.system) {
+          const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'variant-add-btn';
+          addBtn.textContent = '+';
+          addBtn.title = 'Добавить строку для ' + other;
+          addBtn.addEventListener('click', () => {
+            rows.push({ system: other, qty: '' });
+            renderMaterials();
+          });
+          line.appendChild(addBtn);
+        }
+
+        // кнопка × (для второй строки canAddSecond — удалить)
+        if (v.canAddSecond && rowIdx > 0) {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'variant-del-btn';
+          delBtn.textContent = '×';
+          delBtn.title = 'Удалить строку';
+          delBtn.addEventListener('click', () => {
+            rows.splice(rowIdx, 1);
+            renderMaterials();
+          });
+          line.appendChild(delBtn);
+        }
+
+        group.appendChild(line);
       });
-
-      line.appendChild(input);
-
-      const unit = document.createElement('span');
-      unit.className = 'variant-unit';
-      unit.textContent = mat.unit;
-      line.appendChild(unit);
-
-      group.appendChild(line);
     });
 
     container.appendChild(group);
   });
+
+  // восстановить фокус
+  if (focusId) {
+    const el = container.querySelector('[data-focus-id="' + focusId + '"]');
+    if (el) {
+      el.focus();
+      if (selStart !== null && el.setSelectionRange) {
+        el.setSelectionRange(selStart, selStart);
+      }
+    }
+  }
 }
 
 // ============================================
-//  МАТЕРИАЛЫ — В МАССИВ
+//  МАТЕРИАЛЫ → МАССИВ
+//  Собираем строки с qty > 0 и проверяем наличие system
 // ============================================
-function materialValuesToArray(mv) {
+function materialStateToArray() {
   const list = [];
   MATERIALS.forEach(mat => {
     mat.variants.forEach(v => {
-      const qty = mv[v.id];
-      if (qty && parseFloat(qty) > 0) {
-        list.push({
-          name: mat.label + ' ' + v.label,
-          unit: mat.unit,
-          qty: qty
-        });
-      }
+      const rows = materialState[v.id] || [];
+      rows.forEach(row => {
+        const qty = (row.qty || '').trim();
+        if (qty && parseFloat(qty) > 0) {
+          list.push({
+            name: mat.label + ' ' + v.label,
+            unit: mat.unit,
+            qty: qty,
+            system: row.system || ''
+          });
+        }
+      });
     });
   });
   return list;
 }
 
+// проверка: если qty > 0, а system пусто — ошибка
+function validateMaterialsSystems() {
+  let hasError = false;
+
+  MATERIALS.forEach(mat => {
+    mat.variants.forEach(v => {
+      if (v.fixedSystem) return;  // у фиксированных систем всегда есть
+      const rows = materialState[v.id] || [];
+      rows.forEach(row => {
+        const qty = (row.qty || '').trim();
+        if (qty && parseFloat(qty) > 0 && !row.system) {
+          hasError = true;
+        }
+      });
+    });
+  });
+
+  if (hasError) {
+    // подсветить проблемные строки
+    document.querySelectorAll('.variant-line').forEach(line => {
+      const vId = line.dataset.variantId;
+      const idx = parseInt(line.dataset.rowIdx, 10);
+      const variant = findVariant(vId);
+      if (!variant || variant.fixedSystem) return;
+      const row = materialState[vId] && materialState[vId][idx];
+      if (!row) return;
+      const qty = (row.qty || '').trim();
+      if (qty && parseFloat(qty) > 0 && !row.system) {
+        line.classList.add('sys-missing');
+      }
+    });
+  }
+
+  return !hasError;
+}
+
+function findVariant(variantId) {
+  for (let i = 0; i < MATERIALS.length; i++) {
+    for (let j = 0; j < MATERIALS[i].variants.length; j++) {
+      if (MATERIALS[i].variants[j].id === variantId) return MATERIALS[i].variants[j];
+    }
+  }
+  return null;
+}
+
 // ============================================
 //  СБРОС ТЕКУЩЕЙ ЗАПИСИ
-//  Снизу вверх: материалы → тип работ → помещение
 // ============================================
 function resetCurrentEntry() {
-  // материалы
-  Object.keys(materialValues).forEach(k => delete materialValues[k]);
+  initMaterialState();
   renderMaterials();
 
-  // тип работ
   workInput.value = '';
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
-
-  // скрыть блок материалов (тип работ пустой → не показывать)
   updateMaterialsVisibility();
 
-  // помещение
   roomInput.value = '';
   updateFieldState(roomInput);
   roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
 
-  // ошибки
   ['err-room', 'err-work'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
@@ -518,7 +674,7 @@ function resetCurrentEntry() {
 }
 
 // ============================================
-//  ЖУРНАЛ — РЕНДЕР
+//  ЖУРНАЛ
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
@@ -541,9 +697,7 @@ function renderJournal() {
 
     const title = document.createElement('div');
     title.className = 'journal-entry-title';
-    title.textContent = entry.room_none
-      ? 'Без помещения'
-      : 'Пом. ' + entry.room;
+    title.textContent = entry.room_none ? 'Без помещения' : 'Пом. ' + entry.room;
     header.appendChild(title);
 
     const actions = document.createElement('div');
@@ -573,15 +727,16 @@ function renderJournal() {
     meta.textContent = entry.work;
     el.appendChild(meta);
 
-    const matsArr = materialValuesToArray(entry.materialValues);
+    const matsArr = materialStateToArrayFromState(entry.materialState);
     if (matsArr.length > 0) {
       const mats = document.createElement('div');
       mats.className = 'journal-entry-materials';
       matsArr.forEach(m => {
         const row = document.createElement('div');
         row.className = 'journal-entry-mat';
+        const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
         row.innerHTML =
-          '<span class="jm-name">' + escapeHtml(m.name) + '</span>' +
+          '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
           '<span class="jm-qty">' + escapeHtml(m.qty) + ' ' + escapeHtml(m.unit) + '</span>';
         mats.appendChild(row);
       });
@@ -592,9 +747,27 @@ function renderJournal() {
   });
 }
 
-// ============================================
-//  ЖУРНАЛ — ДЕЙСТВИЯ
-// ============================================
+function materialStateToArrayFromState(state) {
+  const list = [];
+  MATERIALS.forEach(mat => {
+    mat.variants.forEach(v => {
+      const rows = state[v.id] || [];
+      rows.forEach(row => {
+        const qty = (row.qty || '').trim();
+        if (qty && parseFloat(qty) > 0) {
+          list.push({
+            name: mat.label + ' ' + v.label,
+            unit: mat.unit,
+            qty: qty,
+            system: row.system || ''
+          });
+        }
+      });
+    });
+  });
+  return list;
+}
+
 function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
@@ -606,8 +779,8 @@ function editJournalEntry(idx) {
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
   updateMaterialsVisibility();
 
-  Object.keys(materialValues).forEach(k => delete materialValues[k]);
-  Object.assign(materialValues, entry.materialValues);
+  // восстановить состояние материалов
+  materialState = JSON.parse(JSON.stringify(entry.materialState));
   renderMaterials();
 
   roomInput.value = entry.room;
@@ -706,6 +879,17 @@ function validateCurrentEntry() {
     }
     return false;
   }
+
+  // проверка материалов: если введено qty, должна быть выбрана system
+  if (isWorkWithMaterials() && !validateMaterialsSystems()) {
+    show('⚠️ Укажите систему для каждого материала', 'err');
+    const bad = document.querySelector('.variant-line.sys-missing');
+    if (bad && bad.scrollIntoView) {
+      bad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return false;
+  }
+
   return true;
 }
 
@@ -727,7 +911,7 @@ function addToJournal() {
     room: roomInput.value.trim(),
     room_none: floorInput.value === 'Нет',
     work: workInput.value,
-    materialValues: withMaterials ? Object.assign({}, materialValues) : {}
+    materialState: withMaterials ? JSON.parse(JSON.stringify(materialState)) : {}
   };
 
   journal.push(entry);
@@ -758,12 +942,10 @@ workInput.addEventListener('change', () => {
   updateFieldState(workInput);
 
   if (isWorkWithMaterials()) {
-    // показать блок материалов
     updateMaterialsVisibility();
     renderMaterials();
   } else {
-    // «Иные работы» (или пусто) — скрыть блок и обнулить введённые количества
-    Object.keys(materialValues).forEach(k => delete materialValues[k]);
+    initMaterialState();
     renderMaterials();
     updateMaterialsVisibility();
   }
@@ -898,7 +1080,7 @@ async function sendAll() {
         room: roomInput.value.trim(),
         room_none: floorInput.value === 'Нет',
         work: workInput.value,
-        materialValues: withMaterials ? Object.assign({}, materialValues) : {}
+        materialState: withMaterials ? JSON.parse(JSON.stringify(materialState)) : {}
       };
       journal.push(entry);
       renderJournal();
@@ -915,7 +1097,7 @@ async function sendAll() {
     room: entry.room_none ? 'Нет' : entry.room,
     room_none: entry.room_none,
     work: entry.work,
-    materials: materialValuesToArray(entry.materialValues)
+    materials: materialStateToArrayFromState(entry.materialState)
   }));
 
   const payload = {
@@ -958,9 +1140,10 @@ async function sendAll() {
 // ============================================
 //  СТАРТ
 // ============================================
+initMaterialState();
 rebuildFloors();
 updateRoomState();
-updateMaterialsVisibility();   // скрыть блок материалов при загрузке
+updateMaterialsVisibility();
 renderMaterials();
 renderJournal();
 
