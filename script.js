@@ -2592,4 +2592,165 @@ async function sendAll() {
 
   if (isOffline()) {
     show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
-    show
+    showToast('📵 Нет подключения');
+    return;
+  }
+
+  _sending = true;
+  try {
+    show('🔄 Проверяем соединение...', '');
+    const reachable = await checkConnection();
+    show('');
+
+    if (!reachable) {
+      const proceed = confirm(
+        '📵 Не удалось связаться с сервером.\n\n' +
+        'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
+        'Отправить всё равно?'
+      );
+      if (!proceed) {
+        show('⚠️ Отправка отменена. Проверьте подключение и попробуйте снова.', 'err');
+        return;
+      }
+    }
+
+    const sortedJournal = journal.slice().sort(compareEntries);
+
+    const records = [];
+
+    sortedJournal.forEach(entry => {
+      if (entry.kind === 'main') {
+        let room = entry.room || '';
+        if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
+
+        records.push({
+          room: room,
+          room_none: entry.room_none,
+          floor: entry.floor || '',
+          work: entry.work,
+          materials: materialStateToArrayFromState(entry.materialState || {})
+        });
+      } else if (isLocationKind(entry.kind)) {
+        const w = locationWorkByKey(entry.kind);
+        const z = parseFloat(String(entry.qty).replace(',', '.'));
+        if (!isFinite(z) || z <= 0) return;
+
+        records.push({
+          room: entry.room || '',
+          room_none: false,
+          floor: entry.floor || '',
+          work: WORK_ADDITIONAL,
+          materials: [{
+            name: w.label,
+            unit: w.unit,
+            qty: String(z),
+            system: ''
+          }]
+        });
+      } else if (entry.kind === 'mentorship') {
+        const h = parseFloat(String(entry.hours).replace(',', '.'));
+        if (!isFinite(h) || h <= 0) return;
+
+        records.push({
+          room: '',
+          room_none: false,
+          floor: '',
+          work: WORK_ADDITIONAL,
+          materials: [{
+            name: 'Наставничество — ' + entry.name,
+            unit: 'ч',
+            qty: String(h),
+            system: ''
+          }]
+        });
+      }
+    });
+
+    const payload = {
+      object:  objectSelect.value.trim(),
+      date:    dateInput.value.trim(),
+      name:    nameInput.value.trim(),
+      records: records
+    };
+
+    const totalRows = records.reduce((sum, r) =>
+      sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
+
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+    btn.textContent = 'Отправляем...';
+
+    showProgress(totalRows);
+
+    let shown = 0;
+    const tickMs = Math.max(60, Math.floor(1800 / totalRows));
+    const ticker = setInterval(() => {
+      if (shown < totalRows - 1) {
+        shown++;
+        updateProgress(shown, totalRows);
+      }
+    }, tickMs);
+
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+
+      clearInterval(ticker);
+      updateProgress(totalRows, totalRows);
+
+      await new Promise(r => setTimeout(r, 350));
+
+      hideProgress();
+      show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+
+      journal.length = 0;
+      clearDraft();
+      renderJournal();
+      resetCurrentEntry();
+
+      setupDateRange();
+      dateInput.value = toISODate(new Date());
+      updateDateHighlight();
+    } catch (e) {
+      clearInterval(ticker);
+      hideProgress();
+      show('❌ Ошибка: ' + e.message, 'err');
+    } finally {
+      updateSendButton();
+    }
+  } finally {
+    _sending = false;
+  }
+}
+
+// ============================================
+//  СТАРТ
+// ============================================
+initMaterialState();
+initAdditionalState();
+updateFormAccessibility();
+updateMaterialsVisibility();
+renderMaterials();
+renderAdditionalFields();
+
+const _restoredDraft = loadDraft();
+if (_restoredDraft && _restoredDraft.length > 0) {
+  journal.push(..._restoredDraft);
+}
+
+renderJournal();
+updateSendButton();
+setupConnectionWatcher();
+
+if (_restoredDraft && _restoredDraft.length > 0) {
+  setTimeout(() => {
+    showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
+  }, 700);
+}
+
+window.addToJournal = addToJournal;
+window.sendAll = sendAll;
