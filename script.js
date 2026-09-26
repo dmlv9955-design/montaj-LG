@@ -306,9 +306,6 @@ function sanitizeZadelkaRoomInput(value) {
 
 // ============================================
 //  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ЗАДЕЛКИ (blur / добавление в журнал)
-//  Дедупликация + сортировка.
-//  Сначала обычные номера по возрастанию,
-//  потом номера с префиксом «к» по возрастанию.
 // ============================================
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
@@ -1085,7 +1082,6 @@ function updateFormAccessibility() {
   const nameOk = isNameValid(nameInput.value);
 
   dateInput.disabled = !nameOk;
-  updateFieldState(dateInput);   // <-- ФИКС №1: снимаем зелёный/красный, когда поле disabled
 
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
@@ -2116,7 +2112,6 @@ function validateHeader() {
 
   if (firstProblem) {
     show('⚠️ Заполните поля сверху', 'err');
-    updateFormAccessibility();   // <-- ФИКС №2: пересчитываем доступность полей
     if (firstProblem.focus) firstProblem.focus();
     if (firstProblem.scrollIntoView) {
       firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2720,7 +2715,7 @@ setupConnectionWatcher();
 if (_restoredDraft && _restoredDraft.length > 0) {
   setTimeout(() => {
     showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
-  }, 400);
+  }, 300);
 }
 
 window.addToJournal = addToJournal;
