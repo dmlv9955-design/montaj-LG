@@ -31,6 +31,9 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
+// Тип работ, при котором показывается блок «Основные материалы»
+const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
+
 const MATERIALS = [
   {
     id: 'cable',
@@ -330,16 +333,17 @@ initSegmented('work-segmented',   'work',   { allowDeselect: false });
 // ============================================
 //  ЭЛЕМЕНТЫ
 // ============================================
-const objectSelect = document.getElementById('object');
-const floorInput   = document.getElementById('floor');
-const floorCS      = customSelects.floor;
-const roomInput    = document.getElementById('room');
-const nameInput    = document.getElementById('name');
-const nameErr      = document.getElementById('err-name');
-const workInput    = document.getElementById('work');
-const journalCont  = document.getElementById('journal-container');
-const journalEmpty = document.getElementById('journal-empty');
-const journalCount = document.getElementById('journal-count');
+const objectSelect     = document.getElementById('object');
+const floorInput       = document.getElementById('floor');
+const floorCS          = customSelects.floor;
+const roomInput        = document.getElementById('room');
+const nameInput        = document.getElementById('name');
+const nameErr          = document.getElementById('err-name');
+const workInput        = document.getElementById('work');
+const journalCont      = document.getElementById('journal-container');
+const journalEmpty     = document.getElementById('journal-empty');
+const journalCount     = document.getElementById('journal-count');
+const materialsSection = document.getElementById('materials-section');
 
 // ============================================
 //  ЭТАЖИ
@@ -386,6 +390,19 @@ function updateRoomState() {
   roomInput.disabled = false;
   roomInput.placeholder = '32 105 108';
   updateFieldState(roomInput);
+}
+
+// ============================================
+//  ВИДИМОСТЬ БЛОКА «ОСНОВНЫЕ МАТЕРИАЛЫ»
+//  Показывается только при Монтаж / Демонтаж
+// ============================================
+function isWorkWithMaterials() {
+  return WORK_WITH_MATERIALS.indexOf(workInput.value) !== -1;
+}
+
+function updateMaterialsVisibility() {
+  if (!materialsSection) return;
+  materialsSection.style.display = isWorkWithMaterials() ? 'block' : 'none';
 }
 
 // ============================================
@@ -484,6 +501,9 @@ function resetCurrentEntry() {
   // тип работ
   workInput.value = '';
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
+
+  // скрыть блок материалов (тип работ пустой → не показывать)
+  updateMaterialsVisibility();
 
   // помещение
   roomInput.value = '';
@@ -584,6 +604,7 @@ function editJournalEntry(idx) {
 
   workInput.value = entry.work;
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
+  updateMaterialsVisibility();
 
   Object.keys(materialValues).forEach(k => delete materialValues[k]);
   Object.assign(materialValues, entry.materialValues);
@@ -700,11 +721,13 @@ function addToJournal() {
   if (!validateHeader()) return;
   if (!validateCurrentEntry()) return;
 
+  const withMaterials = isWorkWithMaterials();
+
   const entry = {
     room: roomInput.value.trim(),
     room_none: floorInput.value === 'Нет',
     work: workInput.value,
-    materialValues: Object.assign({}, materialValues)
+    materialValues: withMaterials ? Object.assign({}, materialValues) : {}
   };
 
   journal.push(entry);
@@ -733,6 +756,17 @@ floorInput.addEventListener('change', () => {
 
 workInput.addEventListener('change', () => {
   updateFieldState(workInput);
+
+  if (isWorkWithMaterials()) {
+    // показать блок материалов
+    updateMaterialsVisibility();
+    renderMaterials();
+  } else {
+    // «Иные работы» (или пусто) — скрыть блок и обнулить введённые количества
+    Object.keys(materialValues).forEach(k => delete materialValues[k]);
+    renderMaterials();
+    updateMaterialsVisibility();
+  }
 });
 
 // ============================================
@@ -859,11 +893,12 @@ async function sendAll() {
     const doAdd = confirm('В форме есть незанесённые в журнал данные. Добавить их в журнал перед отправкой?');
     if (doAdd) {
       if (!validateCurrentEntry()) return;
+      const withMaterials = isWorkWithMaterials();
       const entry = {
         room: roomInput.value.trim(),
         room_none: floorInput.value === 'Нет',
         work: workInput.value,
-        materialValues: Object.assign({}, materialValues)
+        materialValues: withMaterials ? Object.assign({}, materialValues) : {}
       };
       journal.push(entry);
       renderJournal();
@@ -925,6 +960,7 @@ async function sendAll() {
 // ============================================
 rebuildFloors();
 updateRoomState();
+updateMaterialsVisibility();   // скрыть блок материалов при загрузке
 renderMaterials();
 renderJournal();
 
