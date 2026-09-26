@@ -550,38 +550,41 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 .row > .col-2 { flex: 2 1 0; min-width: 0; }
 
 /* ============================================ */
-/*  МАТЕРИАЛЫ — ОДНА СТРОКА НА ВАРИАНТ          */
-/*  [название] [вариант] [ввод] [единица]       */
+/*  МАТЕРИАЛЫ — ГРУППАМИ                        */
+/*  Название материала — один раз,              */
+/*  ниже — строки вариантов                     */
 /* ============================================ */
-.material-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 0;
+.material-group {
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
 }
-.material-line:first-child { padding-top: 0; }
-.material-line:last-child {
+.material-group:first-child { padding-top: 0; }
+.material-group:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.material-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 600;
+.material-group-name {
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-label);
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  margin-bottom: 8px;
+  word-break: break-word;
 }
+
+.variant-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.variant-line:last-child { margin-bottom: 0; }
 
 .variant-badge {
   flex: 0 0 auto;
-  min-width: 48px;
-  padding: 8px 6px;
+  min-width: 58px;
+  padding: 8px 8px;
   border-radius: 8px;
   background: var(--input-disabled-bg);
   border: 1.5px solid var(--border);
@@ -602,11 +605,11 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 }
 
 /* Специфичный селектор — перебивает глобальный input[type="text"] */
-.material-line input.variant-input {
-  flex: 0 0 58px;
-  width: 58px;
-  max-width: 58px;
-  padding: 8px 8px;
+.variant-line input.variant-input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  padding: 8px 10px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
   background: var(--input-bg);
@@ -616,12 +619,12 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   text-align: right;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
-.material-line input.variant-input:focus {
+.variant-line input.variant-input:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
-.material-line input.variant-input::placeholder {
+.variant-line input.variant-input::placeholder {
   color: var(--text-hint);
   text-align: right;
 }
@@ -629,7 +632,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 .variant-unit {
   flex: 0 0 auto;
   min-width: 18px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-hint);
   text-align: left;
 }
