@@ -52,6 +52,7 @@
       <span class="segmented-hint">🔒 Сначала объект</span>
       <button type="button" class="segmented-btn" data-value="Основное здание">Основное здание</button>
       <button type="button" class="segmented-btn" data-value="Крыло мастерских">Крыло мастерских</button>
+      <button type="button" class="segmented-btn" data-value="Чердак">Чердак</button>
     </div>
     <div class="field-error" id="err-building">Заполните это поле</div>
   </div>
@@ -62,7 +63,7 @@
   <div class="section-title">Новая запись</div>
 
   <div class="row">
-    <div class="col-1">
+    <div class="col-1" id="floor-col">
       <label class="req">Этаж <span class="req-star">*</span></label>
       <div class="cselect" data-cselect>
         <input type="hidden" id="floor" class="req-field" value="" disabled>
