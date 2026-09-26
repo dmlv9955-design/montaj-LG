@@ -39,6 +39,9 @@ const BUILDINGS_BY_OBJECT = {
   'Ларинская гимназия': ['Основное здание', 'Крыло мастерских', 'Чердак']
 };
 
+// Порядок секций в журнале
+const BUILDING_ORDER = ['Основное здание', 'Крыло мастерских', 'Чердак'];
+
 const MASTER_WING = 'Крыло мастерских';
 const MASTER_WING_PREFIX = 'к';
 const ATTIC = 'Чердак';
@@ -120,7 +123,6 @@ function formatQty(raw) {
   let intPart = parts[0] || '';
   let fracPart = parts.length > 1 ? parts[1] : null;
 
-  // авто-запятая: 0 + цифра → 0,<цифра>
   if (intPart.length > 1 && intPart.charAt(0) === '0') {
     const extra = intPart.slice(1);
     intPart = '0';
@@ -135,8 +137,7 @@ function formatQty(raw) {
 }
 
 // ============================================
-//  СУММИРОВАНИЕ ДВУХ materialState
-//  a — текущая запись в журнале, b — новая порция
+//  СУММИРОВАНИЕ
 // ============================================
 function sumMaterialStates(a, b) {
   const result = Object.assign({}, a);
@@ -160,7 +161,7 @@ function sumMaterialStates(a, b) {
 }
 
 // ============================================
-//  СОРТИРОВКА ЖУРНАЛА
+//  СОРТИРОВКА ВНУТРИ СЕКЦИИ
 // ============================================
 function floorWeight(floor) {
   const w = {
@@ -189,11 +190,16 @@ function compareEntries(a, b) {
   const rb = roomWeight(b.room);
   if (ra !== rb) return ra - rb;
 
+  // при равных этаже и помещении — крыло мастерских после обычного помещения
+  const ka = a.is_master_wing ? 1 : 0;
+  const kb = b.is_master_wing ? 1 : 0;
+  if (ka !== kb) return ka - kb;
+
   return String(a.work || '').localeCompare(String(b.work || ''));
 }
 
 // ============================================
-//  ФОРМАТ ЗАГОЛОВКА В ЖУРНАЛЕ
+//  ФОРМАТ ЗАГОЛОВКА ЗАПИСИ
 // ============================================
 function formatFloorLabel(floor) {
   if (!floor) return '';
@@ -316,7 +322,7 @@ function getFloorsFor(object, building) {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT (этаж)
+//  КАСТОМНЫЙ SELECT
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -925,7 +931,8 @@ function resetCurrentEntry() {
 
 // ============================================
 //  ЖУРНАЛ — РЕНДЕР
-//  Отсортировано по этажу и помещению.
+//  Секции по корпусам: Основное здание → Крыло мастерских → Чердак.
+//  Внутри секции — сортировка по этажу и помещению.
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
@@ -939,68 +946,95 @@ function renderJournal() {
   journalEmpty.style.display = 'none';
   journalCont.innerHTML = '';
 
-  // копия для сортировки, чтобы не двигать сам массив журнала
+  // 1. Сортируем общий список
   const sorted = journal.slice().sort(compareEntries);
 
-  sorted.forEach((entry) => {
-    // находим реальный индекс в исходном массиве
-    const realIdx = journal.indexOf(entry);
+  // 2. Группируем по корпусам
+  const groups = {};
+  sorted.forEach(entry => {
+    const key = entry.building || '';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(entry);
+  });
 
-    const el = document.createElement('div');
-    el.className = 'journal-entry';
+  // 3. Определяем порядок секций
+  const keys = Object.keys(groups).sort((a, b) => {
+    const ia = BUILDING_ORDER.indexOf(a);
+    const ib = BUILDING_ORDER.indexOf(b);
+    const wa = ia === -1 ? 999 : ia;
+    const wb = ib === -1 ? 999 : ib;
+    if (wa !== wb) return wa - wb;
+    return a.localeCompare(b);
+  });
 
-    const header = document.createElement('div');
-    header.className = 'journal-entry-header';
-
-    const title = document.createElement('div');
-    title.className = 'journal-entry-title';
-    title.textContent = formatJournalTitle(entry);
-    header.appendChild(title);
-
-    const actions = document.createElement('div');
-    actions.className = 'journal-entry-actions';
-
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.className = 'journal-btn journal-btn-edit';
-    editBtn.title = 'Изменить';
-    editBtn.textContent = '✏️';
-    editBtn.addEventListener('click', () => editJournalEntry(realIdx));
-    actions.appendChild(editBtn);
-
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'journal-btn journal-btn-del';
-    delBtn.title = 'Удалить';
-    delBtn.textContent = '🗑';
-    delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
-    actions.appendChild(delBtn);
-
-    header.appendChild(actions);
-    el.appendChild(header);
-
-    const meta = document.createElement('div');
-    meta.className = 'journal-entry-meta';
-    meta.textContent = entry.work;
-    el.appendChild(meta);
-
-    const matsArr = materialStateToArrayFromState(entry.materialState);
-    if (matsArr.length > 0) {
-      const mats = document.createElement('div');
-      mats.className = 'journal-entry-materials';
-      matsArr.forEach(m => {
-        const row = document.createElement('div');
-        row.className = 'journal-entry-mat';
-        const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
-        row.innerHTML =
-          '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
-          '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
-        mats.appendChild(row);
-      });
-      el.appendChild(mats);
+  // 4. Рисуем секции
+  keys.forEach(key => {
+    if (key) {
+      const titleEl = document.createElement('div');
+      titleEl.className = 'journal-building-title';
+      titleEl.textContent = key;
+      journalCont.appendChild(titleEl);
     }
 
-    journalCont.appendChild(el);
+    groups[key].forEach(entry => {
+      const realIdx = journal.indexOf(entry);
+
+      const el = document.createElement('div');
+      el.className = 'journal-entry';
+
+      const header = document.createElement('div');
+      header.className = 'journal-entry-header';
+
+      const title = document.createElement('div');
+      title.className = 'journal-entry-title';
+      title.textContent = formatJournalTitle(entry);
+      header.appendChild(title);
+
+      const actions = document.createElement('div');
+      actions.className = 'journal-entry-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'journal-btn journal-btn-edit';
+      editBtn.title = 'Изменить';
+      editBtn.textContent = '✏️';
+      editBtn.addEventListener('click', () => editJournalEntry(realIdx));
+      actions.appendChild(editBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'journal-btn journal-btn-del';
+      delBtn.title = 'Удалить';
+      delBtn.textContent = '🗑';
+      delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
+      actions.appendChild(delBtn);
+
+      header.appendChild(actions);
+      el.appendChild(header);
+
+      const meta = document.createElement('div');
+      meta.className = 'journal-entry-meta';
+      meta.textContent = entry.work;
+      el.appendChild(meta);
+
+      const matsArr = materialStateToArrayFromState(entry.materialState);
+      if (matsArr.length > 0) {
+        const mats = document.createElement('div');
+        mats.className = 'journal-entry-materials';
+        matsArr.forEach(m => {
+          const row = document.createElement('div');
+          row.className = 'journal-entry-mat';
+          const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
+          row.innerHTML =
+            '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
+            '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
+          mats.appendChild(row);
+        });
+        el.appendChild(mats);
+      }
+
+      journalCont.appendChild(el);
+    });
   });
 }
 
@@ -1014,7 +1048,6 @@ function editJournalEntry(idx) {
   journal.splice(idx, 1);
   renderJournal();
 
-  // восстановить корпус
   if (isBuildingRequired() && entry.building) {
     buildingInput.value = entry.building;
     if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
@@ -1022,11 +1055,9 @@ function editJournalEntry(idx) {
     updateRoomPrefix();
   }
 
-  // восстановить этаж
   if (entry.floor) {
     floorInput.value = entry.floor;
     if (floorCS) {
-      // перестроить опции и выбрать нужную
       const obj = objectSelect.value;
       const build = buildingInput.value;
       const floors = getFloorsFor(obj, build);
@@ -1148,8 +1179,9 @@ function validateCurrentEntry() {
 }
 
 // ============================================
-//  ПОИСК ЗАПИСИ ДЛЯ СЛИЯНИЯ
-//  Ключ: этаж + помещение + признак «крыло» + тип работ
+//  ПОИСК ДЛЯ СЛИЯНИЯ
+//  Учитывает и корпус, и тип работ.
+//  к5 (крыло) ≠ 5 (основное).
 // ============================================
 function findMergeIndex(newEntry) {
   return journal.findIndex(e =>
@@ -1157,6 +1189,7 @@ function findMergeIndex(newEntry) {
     e.room === newEntry.room &&
     !!e.room_none === !!newEntry.room_none &&
     !!e.is_master_wing === !!newEntry.is_master_wing &&
+    (e.building || '') === (newEntry.building || '') &&
     e.work === newEntry.work
   );
 }
@@ -1185,7 +1218,6 @@ function addToJournal() {
   if (withMaterials) {
     const idx = findMergeIndex(entry);
     if (idx !== -1) {
-      // сливаем материалы
       journal[idx].materialState = sumMaterialStates(
         journal[idx].materialState,
         entry.materialState
