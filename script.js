@@ -65,9 +65,9 @@ const MASTER_WING_PREFIX = 'к';
 const ATTIC = 'Чердак';
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
-const WORK_ADDITIONAL = 'Дополнительные работы';
+const WORK_ADDITIONAL = 'Другие работы';
 
-// Ключ секции доп. работ в журнале
+// Ключ секции «Другие работы» в журнале
 const ADDITIONAL_SECTION_KEY = '__ADDITIONAL__';
 
 const MATERIALS = [
@@ -128,7 +128,7 @@ function initMaterialState() {
 }
 
 // ============================================
-//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние
+//  ДРУГИЕ РАБОТЫ — состояние
 // ============================================
 let additionalState = {
   zadelka: { active: false, value: '' },
@@ -155,7 +155,6 @@ function updateSendButton() {
 
 // ============================================
 //  ОСНОВНАЯ ЧАСТЬ ЗАПИСИ ЗАПОЛНЕНА ПОЛНОСТЬЮ?
-//  (этаж + помещение + тип работ)
 // ============================================
 function isMainEntryComplete() {
   const floorOk = isAttic() || !!floorInput.value.trim();
@@ -165,14 +164,10 @@ function isMainEntryComplete() {
 }
 
 // ============================================
-//  ЗАПИСЬ ИДЁТ ТОЛЬКО КАК «ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ»?
-//  Да, если активирована хотя бы одна доп. работа
-//  и основная часть (этаж/помещение/тип) не заполнена целиком.
+//  ЕСТЬ ЛИ АКТИВНЫЕ ДРУГИЕ РАБОТЫ?
 // ============================================
-function isOnlyAdditional() {
-  const hasAdd = additionalState.zadelka.active || additionalState.mentorship.active;
-  if (!hasAdd) return false;
-  return !isMainEntryComplete();
+function hasActiveAdditional() {
+  return additionalState.zadelka.active || additionalState.mentorship.active;
 }
 
 // ============================================
@@ -205,7 +200,7 @@ function formatQty(raw) {
 }
 
 // ============================================
-//  СУММИРОВАНИЕ
+//  СУММИРОВАНИЕ МАТЕРИАЛОВ
 // ============================================
 function sumMaterialStates(a, b) {
   const result = Object.assign({}, a);
@@ -229,12 +224,74 @@ function sumMaterialStates(a, b) {
 }
 
 // ============================================
+//  СУММИРОВАНИЕ ДРУГИХ РАБОТ
+//  Заделка — по количеству.
+//  Наставничество — по имени (часы суммируются).
+// ============================================
+function sumAdditionalStates(a, b) {
+  const result = {
+    zadelka: { active: false, value: '' },
+    mentorship: { active: false, items: [] }
+  };
+
+  // Заделка поверхностей — суммируем количество
+  const aZ = a && a.zadelka && a.zadelka.active ? String(a.zadelka.value || '').trim() : '';
+  const bZ = b && b.zadelka && b.zadelka.active ? String(b.zadelka.value || '').trim() : '';
+  if (aZ || bZ) {
+    const an = aZ ? parseFloat(aZ.replace(',', '.')) : 0;
+    const bn = bZ ? parseFloat(bZ.replace(',', '.')) : 0;
+    const sum = (isFinite(an) ? an : 0) + (isFinite(bn) ? bn : 0);
+    if (sum > 0) {
+      const rounded = Math.round(sum * 100) / 100;
+      result.zadelka = { active: true, value: String(rounded).replace('.', ',') };
+    }
+  }
+
+  // Наставничество — объединяем по имени, суммируем часы
+  const byName = {};
+  const order = [];
+
+  const addItems = (items) => {
+    (items || []).forEach(item => {
+      const name = String(item.name || '').trim();
+      const hours = String(item.hours || '').trim();
+      if (!name || !hours) return;
+      const n = parseFloat(hours.replace(',', '.'));
+      if (!isFinite(n) || n <= 0) return;
+      const key = name.toLowerCase();
+      if (!byName[key]) {
+        byName[key] = { name: name, sum: 0 };
+        order.push(key);
+      }
+      byName[key].sum += n;
+    });
+  };
+
+  if (a && a.mentorship && a.mentorship.active) addItems(a.mentorship.items);
+  if (b && b.mentorship && b.mentorship.active) addItems(b.mentorship.items);
+
+  const items = order.map(key => {
+    const obj = byName[key];
+    const rounded = Math.round(obj.sum * 100) / 100;
+    return { name: obj.name, hours: String(rounded).replace('.', ',') };
+  });
+
+  if (items.length > 0) {
+    result.mentorship = { active: true, items: items };
+  } else {
+    result.mentorship = { active: false, items: [{ name: '', hours: '' }] };
+  }
+
+  return result;
+}
+
+// ============================================
 //  ВЕС ТИПА РАБОТ
 // ============================================
 function workWeight(work) {
-  if (work === 'Демонтаж')                 return 0;
-  if (work === 'Монтаж')                   return 1;
-  if (work === 'Дополнительные работы')    return 900;
+  if (work === 'Демонтаж')       return 0;
+  if (work === 'Монтаж')         return 1;
+  if (work === WORK_ADDITIONAL)  return 900;
   return 99;
 }
 
@@ -294,7 +351,7 @@ function formatFloorLabel(floor) {
 
 function formatJournalTitle(entry) {
   if (entry.work === WORK_ADDITIONAL) {
-    return 'Дополнительные работы';
+    return WORK_ADDITIONAL;
   }
 
   const floorLabel = formatFloorLabel(entry.floor);
@@ -763,7 +820,7 @@ function updateWorkAccessibility() {
 }
 
 // ============================================
-//  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  ДОСТУПНОСТЬ ДРУГИХ РАБОТ
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalBlock || !additionalToggle) return;
@@ -776,14 +833,14 @@ function updateAdditionalAccessibility() {
 
   if (unlocked) {
     additionalBlock.classList.remove('additional-block-disabled');
-    if (label) label.textContent = 'Дополнительные работы';
+    if (label) label.textContent = WORK_ADDITIONAL;
     return;
   }
 
   additionalBlock.classList.add('additional-block-disabled');
   additionalBlock.classList.remove('open');
 
-  const hadActive = additionalState.zadelka.active || additionalState.mentorship.active;
+  const hadActive = hasActiveAdditional();
   if (hadActive) {
     additionalState.zadelka.active = false;
     additionalState.zadelka.value = '';
@@ -793,7 +850,7 @@ function updateAdditionalAccessibility() {
     renderAdditionalFields();
   }
 
-  if (label) label.textContent = '🔒 Дополнительные работы';
+  if (label) label.textContent = '🔒 ' + WORK_ADDITIONAL;
 }
 
 // ============================================
@@ -1080,7 +1137,7 @@ function renderMaterials() {
 }
 
 // ============================================
-//  РЕНДЕР ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  РЕНДЕР ДРУГИХ РАБОТ
 // ============================================
 function renderAdditionalFields() {
   if (!additionalFields) return;
@@ -1355,7 +1412,7 @@ function materialStateToArrayFromState(state) {
 }
 
 // ============================================
-//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ → МАССИВ
+//  ДРУГИЕ РАБОТЫ → МАССИВ
 // ============================================
 function additionalStateToArrayFromState(state) {
   const list = [];
@@ -1467,7 +1524,7 @@ function renderJournal() {
     if (key === ADDITIONAL_SECTION_KEY) {
       const titleEl = document.createElement('div');
       titleEl.className = 'journal-building-title';
-      titleEl.textContent = 'Дополнительные работы';
+      titleEl.textContent = WORK_ADDITIONAL;
       journalCont.appendChild(titleEl);
     } else if (key) {
       const titleEl = document.createElement('div');
@@ -1651,17 +1708,11 @@ function validateHeader() {
     if (!firstProblem) firstProblem = objectSelect;
   }
 
-  // Корпус не требуется, если это только доп. работы
-  if (isBuildingRequired() && !buildingInput.value.trim() && !isOnlyAdditional()) {
+  // Корпус не требуется, если основная часть не заполнена и активны другие работы
+  if (isBuildingRequired() && !buildingInput.value.trim() && !hasActiveAdditional()) {
     const err = document.getElementById('err-building');
     if (err) err.classList.add('show');
     if (!firstProblem) firstProblem = buildingInput;
-  }
-
-  if (!isOnlyAdditional() && !isAttic() && !floorInput.value.trim()) {
-    const err = document.getElementById('err-floor');
-    if (err) err.classList.add('show');
-    if (!firstProblem) firstProblem = floorInput;
   }
 
   if (firstProblem) {
@@ -1676,27 +1727,46 @@ function validateHeader() {
 }
 
 function validateCurrentEntry() {
-  const onlyAdditional = isOnlyAdditional();
-  let firstProblem = null;
+  const hasAdd = hasActiveAdditional();
+  const mainComplete = isMainEntryComplete();
+  const mainStarted = !!(
+    floorInput.value.trim() ||
+    roomInput.value.trim() ||
+    workInput.value.trim()
+  );
 
   ['err-room', 'err-work'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
 
-  if (!onlyAdditional) {
-    if (!roomInput.value.trim()) {
-      roomInput.classList.add('shake');
-      setTimeout(() => roomInput.classList.remove('shake'), 500);
-      const err = document.getElementById('err-room');
-      if (err) err.classList.add('show');
-      if (!firstProblem) firstProblem = roomInput;
-    }
+  let firstProblem = null;
 
-    if (!workInput.value.trim()) {
+  // Проверяем основную часть только если НЕТ активных других работ
+  if (!hasAdd) {
+    if (!mainStarted) {
+      // ничего нет — ругаемся на тип работ
       const err = document.getElementById('err-work');
       if (err) err.classList.add('show');
-      if (!firstProblem) firstProblem = workInput;
+      firstProblem = workInput;
+    } else if (!mainComplete) {
+      if (!floorInput.value.trim() && !isAttic()) {
+        const err = document.getElementById('err-floor');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = floorInput;
+      }
+      if (!roomInput.value.trim() && floorInput.value !== 'Нет') {
+        roomInput.classList.add('shake');
+        setTimeout(() => roomInput.classList.remove('shake'), 500);
+        const err = document.getElementById('err-room');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = roomInput;
+      }
+      if (!workInput.value.trim()) {
+        const err = document.getElementById('err-work');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = workInput;
+      }
     }
   }
 
@@ -1709,6 +1779,7 @@ function validateCurrentEntry() {
     return false;
   }
 
+  // Проверка наставничества
   if (additionalState.mentorship.active) {
     let bad = false;
     additionalState.mentorship.items.forEach((m, idx) => {
@@ -1739,10 +1810,11 @@ function validateCurrentEntry() {
 }
 
 // ============================================
-//  ПОИСК ДЛЯ СЛИЯНИЯ
+//  ПОИСК ДЛЯ СЛИЯНИЯ (обычные записи)
 // ============================================
 function findMergeIndex(newEntry) {
   return journal.findIndex(e =>
+    e.work !== WORK_ADDITIONAL &&
     e.floor === newEntry.floor &&
     e.room === newEntry.room &&
     !!e.room_none === !!newEntry.room_none &&
@@ -1754,26 +1826,36 @@ function findMergeIndex(newEntry) {
 
 // ============================================
 //  ДОБАВИТЬ В ЖУРНАЛ
+//  1. Всегда создаёт отдельную запись «Другие работы»,
+//     если активна хотя бы одна — независимо от основной части.
+//  2. Создаёт обычную запись, если основная часть заполнена.
+//  3. Сливает по существующим правилам.
 // ============================================
 function addToJournal() {
   if (!validateHeader()) return;
   if (!validateCurrentEntry()) return;
 
-  const onlyAdditional = isOnlyAdditional();
+  const hasAdd = hasActiveAdditional();
+  const mainComplete = isMainEntryComplete();
 
-  let entry;
+  let added = false;
+  let merged = false;
 
-  if (onlyAdditional) {
-    entry = {
+  // 1. Запись «Другие работы» — всегда отдельная
+  if (hasAdd) {
+    const addEntry = {
       room: '',
       room_none: true,
       is_master_wing: false,
-      building: buildingInput.value.trim(),
+      building: '',
       floor: '',
       work: WORK_ADDITIONAL,
       materialState: {},
       additionalState: {
-        zadelka: { active: additionalState.zadelka.active, value: additionalState.zadelka.value },
+        zadelka: {
+          active: additionalState.zadelka.active,
+          value: additionalState.zadelka.value
+        },
         mentorship: {
           active: additionalState.mentorship.active,
           items: additionalState.mentorship.items.map(m => ({ name: m.name, hours: m.hours }))
@@ -1781,9 +1863,22 @@ function addToJournal() {
       }
     };
 
-    journal.push(entry);
-  } else {
-    entry = {
+    const idx = journal.findIndex(e => e.work === WORK_ADDITIONAL);
+    if (idx !== -1) {
+      journal[idx].additionalState = sumAdditionalStates(
+        journal[idx].additionalState,
+        addEntry.additionalState
+      );
+      merged = true;
+    } else {
+      journal.push(addEntry);
+      added = true;
+    }
+  }
+
+  // 2. Обычная запись — только если основная часть заполнена целиком
+  if (mainComplete) {
+    const mainEntry = {
       room: roomInput.value.trim(),
       room_none: floorInput.value === 'Нет',
       is_master_wing: isMasterWing(),
@@ -1791,33 +1886,32 @@ function addToJournal() {
       floor: floorInput.value.trim(),
       work: workInput.value,
       materialState: Object.assign({}, materialState),
-      additionalState: {
-        zadelka: { active: additionalState.zadelka.active, value: additionalState.zadelka.value },
-        mentorship: {
-          active: additionalState.mentorship.active,
-          items: additionalState.mentorship.items.map(m => ({ name: m.name, hours: m.hours }))
-        }
-      }
+      additionalState: null
     };
 
-    let merged = false;
-    const idx = findMergeIndex(entry);
+    const idx = findMergeIndex(mainEntry);
     if (idx !== -1) {
       journal[idx].materialState = sumMaterialStates(
         journal[idx].materialState,
-        entry.materialState
+        mainEntry.materialState
       );
       merged = true;
-    }
-
-    if (!merged) {
-      journal.push(entry);
+    } else {
+      journal.push(mainEntry);
+      added = true;
     }
   }
 
   renderJournal();
   resetCurrentEntry();
-  showToast('Запись добавлена в журнал');
+
+  if (added) {
+    showToast('Запись добавлена в журнал');
+  } else if (merged) {
+    showToast('Позиции объединены с существующей записью');
+  } else {
+    showToast('Запись добавлена в журнал');
+  }
 }
 
 // ============================================
@@ -1862,7 +1956,7 @@ workInput.addEventListener('change', () => {
   updateMaterialsVisibility();
 });
 
-// ---- Аккордеон доп. работ ----
+// ---- Аккордеон других работ ----
 if (additionalToggle) {
   additionalToggle.addEventListener('click', () => {
     if (additionalBlock.classList.contains('additional-block-disabled')) return;
@@ -1994,6 +2088,7 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА
+//  Другие работы уходят последними (за счёт sortedJournal).
 // ============================================
 async function sendAll() {
   show('');
