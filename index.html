@@ -44,6 +44,17 @@
     <button type="button" class="segmented-btn" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</button>
   </div>
   <div class="field-error" id="err-object">Заполните это поле</div>
+
+  <div id="building-section" style="display: none;">
+    <label class="req">Корпус <span class="req-star">*</span></label>
+    <div class="segmented" id="building-segmented">
+      <input type="hidden" id="building" class="req-field" value="">
+      <span class="segmented-hint">🔒 Сначала объект</span>
+      <button type="button" class="segmented-btn" data-value="Основное здание">Основное здание</button>
+      <button type="button" class="segmented-btn" data-value="Крыло мастерских">Крыло мастерских</button>
+    </div>
+    <div class="field-error" id="err-building">Заполните это поле</div>
+  </div>
 </div>
 
 <!-- ============ КАРТОЧКА 2: НОВАЯ ЗАПИСЬ ============ -->
@@ -65,10 +76,13 @@
     </div>
     <div class="col-2">
       <label class="req">Помещение <span class="req-star">*</span></label>
-      <input type="text" id="room" class="req-field"
-             placeholder="🔒 Имя"
-             inputmode="numeric"
-             maxlength="4" disabled>
+      <div class="room-wrap">
+        <span class="room-prefix" id="room-prefix" style="display: none;">к</span>
+        <input type="text" id="room" class="req-field"
+               placeholder="🔒 Имя"
+               inputmode="numeric"
+               maxlength="4" disabled>
+      </div>
       <div class="hint-small">Если помещения нет — введите 0</div>
       <div class="field-error" id="err-room">Заполните это поле</div>
     </div>
