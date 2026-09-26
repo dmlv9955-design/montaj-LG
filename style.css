@@ -322,6 +322,23 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .segmented.segmented-disabled .segmented-hint { display: block; }
 .segmented.segmented-disabled .segmented-btn  { display: none; }
 
+/* ============================================ */
+/*  ЭТАЖИ — КАПСУЛЫ СНИЗУ ВВЕРХ                  */
+/* ============================================ */
+.segmented.segmented-floors {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 4px;
+}
+.segmented.segmented-floors .segmented-btn {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 10px 8px;
+}
+.segmented.segmented-floors .segmented-hint {
+  flex: 0 0 auto;
+}
+
 .cselect { position: relative; width: 100%; }
 .cselect input[type="hidden"] { position: absolute; opacity: 0; pointer-events: none; }
 .cselect-btn {
@@ -470,9 +487,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   color: var(--text-main);
 }
 
-/* ============================================ */
-/*  ИМЯ — ТРИ СОСТОЯНИЯ (пусто/частично/ок)     */
-/* ============================================ */
 input.req-field.is-partial,
 .mentor-name-input.is-partial {
   background: var(--yellow-bg);
@@ -497,9 +511,6 @@ input.req-field.is-partial,
   box-shadow: 0 0 0 3px var(--green-shadow);
 }
 
-/* ============================================ */
-/*  МАТЕРИАЛЫ                                   */
-/* ============================================ */
 .material-group {
   display: grid;
   grid-template-columns: minmax(0, 130px) minmax(0, 1fr);
@@ -591,9 +602,6 @@ input.req-field.is-partial,
   line-height: 1;
 }
 
-/* ============================================ */
-/*  КАПСУЛА СИСТЕМЫ — АПС (пастельный красный)  */
-/* ============================================ */
 .variant-system {
   flex: 0 0 44px;
   width: 44px;
@@ -612,7 +620,6 @@ input.req-field.is-partial,
   box-sizing: border-box;
 }
 
-/* АПС — пастельный красный */
 .variant-system.variant-system-aps {
   background: #fdeaea;
   border-color: #f3c0c0;
@@ -624,7 +631,6 @@ body.dark .variant-system.variant-system-aps {
   color: #f0a5a5;
 }
 
-/* СОУЭ — пастельный голубой */
 .variant-system.variant-system-soue {
   background: #e6f1fb;
   border-color: #bcd8f0;
@@ -636,9 +642,6 @@ body.dark .variant-system.variant-system-soue {
   color: #92c0e6;
 }
 
-/* ============================================ */
-/*  КНОПКИ − И + У КОЛИЧЕСТВА                   */
-/* ============================================ */
 .qty-btn {
   flex: 0 0 26px;
   width: 26px;
@@ -755,9 +758,6 @@ body.dark .variant-system.variant-system-soue {
   .qty-btn { flex-basis: 24px; width: 24px; }
 }
 
-/* ============================================ */
-/*  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — ОТДЕЛЬНАЯ КАРТОЧКА   */
-/* ============================================ */
 #additional-card.additional-block-disabled {
   opacity: .55;
   pointer-events: none;
@@ -877,9 +877,6 @@ body.dark .variant-system.variant-system-soue {
 .btn-add-journal:hover { background: var(--hover-bg); }
 .btn-add-journal:active { transform: scale(.98); }
 
-/* ============================================ */
-/*  ЖУРНАЛ                                      */
-/* ============================================ */
 .journal-building-title {
   font-size: 11px;
   font-weight: 700;
