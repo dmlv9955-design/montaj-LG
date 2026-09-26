@@ -491,9 +491,27 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 .sys-btn:disabled { cursor: not-allowed; }
 
 /* ============================================ */
+/*  КОНТЕЙНЕР ДЛЯ КНОПОК + И ×                  */
+/*  Фиксированной ширины — не смещает input     */
+/* ============================================ */
+.variant-actions {
+  flex: 0 0 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 32px;
+}
+
+.variant-actions .variant-add-btn,
+.variant-actions .variant-del-btn {
+  width: 28px;
+  height: 32px;
+}
+
+/* ============================================ */
 /*  ПОЛЕ КОЛИЧЕСТВА МАТЕРИАЛА                   */
 /*  Фиксированная маленькая ширина, справа      */
-/*  Только цифры, максимум 4                    */
 /* ============================================ */
 .variant-line input.variant-input {
   flex: 0 0 auto;
