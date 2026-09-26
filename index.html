@@ -17,8 +17,9 @@
   <p>Заполните данные о выполненной работе</p>
 </div>
 
+<!-- ============ КАРТОЧКА 1: СМЕНА ============ -->
 <div class="card">
-  <div class="section-title">Объект и работы</div>
+  <div class="section-title">Смена</div>
 
   <div class="row">
     <div class="col-1">
@@ -43,29 +44,29 @@
   </div>
   <div class="field-error" id="err-object">Заполните это поле</div>
 
-  <div class="row">
-    <div class="col-1">
-      <label class="req">Этаж <span class="req-star">*</span></label>
-      <div class="cselect" data-cselect>
-        <input type="hidden" id="floor" class="req-field" value="" disabled>
-        <button type="button" class="cselect-btn">
-          <span class="cselect-value placeholder">🔒 Объект</span>
-          <span class="cselect-arrow"></span>
-        </button>
-        <ul class="cselect-list"></ul>
-      </div>
-      <div class="field-error" id="err-floor">Заполните это поле</div>
-    </div>
-    <div class="col-2">
-      <label class="req">Помещение <span class="req-star">*</span></label>
-      <input type="text" id="room" class="req-field"
-             placeholder="🔒 Этаж"
-             inputmode="numeric"
-             maxlength="60" disabled>
-      <div class="hint-small">Цифры через пробел — сохранятся через запятую. Если помещения нет — введите 0</div>
-      <div class="field-error" id="err-room">Заполните это поле</div>
-    </div>
+  <label class="req">Этаж <span class="req-star">*</span></label>
+  <div class="cselect" data-cselect>
+    <input type="hidden" id="floor" class="req-field" value="" disabled>
+    <button type="button" class="cselect-btn">
+      <span class="cselect-value placeholder">🔒 Объект</span>
+      <span class="cselect-arrow"></span>
+    </button>
+    <ul class="cselect-list"></ul>
   </div>
+  <div class="field-error" id="err-floor">Заполните это поле</div>
+</div>
+
+<!-- ============ КАРТОЧКА 2: НОВАЯ ЗАПИСЬ ============ -->
+<div class="card" id="entry-card">
+  <div class="section-title">Новая запись</div>
+
+  <label class="req">Помещение <span class="req-star">*</span></label>
+  <input type="text" id="room" class="req-field"
+         placeholder="🔒 Этаж"
+         inputmode="numeric"
+         maxlength="60" disabled>
+  <div class="hint-small">Цифры через пробел — сохранятся через запятую. Если помещения нет — введите 0</div>
+  <div class="field-error" id="err-room">Заполните это поле</div>
 
   <label class="req">Тип работ <span class="req-star">*</span></label>
   <div class="segmented" id="work-segmented">
@@ -85,20 +86,37 @@
     <button type="button" class="segmented-btn" data-value="СОУЭ">СОУЭ</button>
   </div>
   <div class="field-error" id="err-system">Заполните это поле</div>
-</div>
 
-<div class="card">
-  <div class="section-title">Основные материалы</div>
+  <div class="section-subtitle">Основные материалы</div>
   <div id="materials-container"></div>
+
+  <button type="button" class="btn-add-journal" onclick="addToJournal()">
+    + Добавить в журнал
+  </button>
 </div>
 
+<!-- ============ КАРТОЧКА 3: ЖУРНАЛ ============ -->
 <div class="card">
-  <button class="submit" id="btn" onclick="send()">Отправить отчет</button>
+  <div class="section-title">
+    Журнал записей <span class="journal-count" id="journal-count"></span>
+  </div>
+
+  <div id="journal-container"></div>
+  <div class="journal-empty" id="journal-empty">
+    Журнал пуст. Заполните запись выше и нажмите «Добавить в журнал».
+  </div>
+</div>
+
+<!-- ============ КАРТОЧКА 4: ОТПРАВКА ============ -->
+<div class="card">
+  <button class="submit" id="btn" onclick="sendAll()">Отправить отчет</button>
   <div id="msg"></div>
   <p class="hint">Поля со <span style="color:#ef4444">*</span> обязательны для заполнения</p>
 </div>
 
 <div class="footer">Отчет отправляется в общую базу компании</div>
+
+<div class="toast" id="toast"></div>
 
 <script src="script.js"></script>
 </body>
