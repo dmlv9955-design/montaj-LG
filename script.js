@@ -35,9 +35,8 @@ const SYSTEM_REQUIRED_WORKS = ['Монтаж', 'Демонтаж'];
 
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
-//  primary: true — «основной» вариант, выделяется цветом
-//  systems: массив систем, для которых этот вариант виден
-//           (если не указан — виден всегда)
+//  primary: true — «основной» вариант, выделяется синим
+//  systems: массив систем, для которых вариант виден
 // ============================================
 const MATERIALS = [
   {
@@ -421,14 +420,16 @@ function updateSystemState() {
 
 // ============================================
 //  МАТЕРИАЛЫ — РЕНДЕР
+//  Каждый вариант — одна строка:
+//  [название] [вариант] [ввод] [единица]
 // ============================================
-const materialValues = {};  // сохранение между перерисовками
+const materialValues = {};
 
 function renderMaterials() {
   const container = document.getElementById('materials-container');
   if (!container) return;
 
-  // сохранить введённые значения перед перерисовкой
+  // сохраняем введённые значения перед перерисовкой
   document.querySelectorAll('.variant-input').forEach(inp => {
     materialValues[inp.dataset.id] = inp.value;
   });
@@ -437,26 +438,21 @@ function renderMaterials() {
   container.innerHTML = '';
 
   MATERIALS.forEach(mat => {
-    // фильтруем варианты по системе
     const visible = mat.variants.filter(v => {
       if (!v.systems) return true;
-      if (!system) return true;   // система не выбрана — показываем все
+      if (!system) return true;
       return v.systems.indexOf(system) !== -1;
     });
 
-    if (visible.length === 0) return;
-
-    const item = document.createElement('div');
-    item.className = 'material-item';
-
-    const label = document.createElement('div');
-    label.className = 'material-label';
-    label.textContent = mat.label;
-    item.appendChild(label);
-
     visible.forEach(v => {
       const row = document.createElement('div');
-      row.className = 'material-row';
+      row.className = 'material-line';
+
+      const name = document.createElement('span');
+      name.className = 'material-name';
+      name.textContent = mat.label;
+      name.title = mat.label;   // подсказка при обрезке
+      row.appendChild(name);
 
       const badge = document.createElement('span');
       badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
@@ -487,10 +483,8 @@ function renderMaterials() {
       unit.textContent = mat.unit;
       row.appendChild(unit);
 
-      item.appendChild(row);
+      container.appendChild(row);
     });
-
-    container.appendChild(item);
   });
 }
 
@@ -500,21 +494,19 @@ function renderMaterials() {
 // ============================================
 function getMaterialValues() {
   const list = [];
-  document.querySelectorAll('.material-item').forEach(item => {
-    const label = item.querySelector('.material-label').textContent;
-    item.querySelectorAll('.material-row').forEach(row => {
-      const variant = row.querySelector('.variant-badge').textContent;
-      const input = row.querySelector('.variant-input');
-      const unit = row.querySelector('.variant-unit').textContent;
-      const qty = input.value.trim();
-      if (qty && parseFloat(qty) > 0) {
-        list.push({
-          name: label + ' ' + variant,
-          unit: unit,
-          qty: qty
-        });
-      }
-    });
+  document.querySelectorAll('.material-line').forEach(row => {
+    const name = row.querySelector('.material-name').textContent;
+    const variant = row.querySelector('.variant-badge').textContent;
+    const input = row.querySelector('.variant-input');
+    const unit = row.querySelector('.variant-unit').textContent;
+    const qty = input.value.trim();
+    if (qty && parseFloat(qty) > 0) {
+      list.push({
+        name: name + ' ' + variant,
+        unit: unit,
+        qty: qty
+      });
+    }
   });
   return list;
 }
@@ -540,7 +532,6 @@ workInput.addEventListener('change', () => {
   updateSystemState();
 });
 
-// при смене системы — перерисовать материалы
 systemInput.addEventListener('change', () => {
   renderMaterials();
 });
@@ -752,9 +743,7 @@ async function send() {
     objInput.value = '';
     objInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // очистить материалы
     Object.keys(materialValues).forEach(k => delete materialValues[k]);
-    document.querySelectorAll('.variant-input').forEach(inp => { inp.value = ''; });
 
     updateSystemState();
 
