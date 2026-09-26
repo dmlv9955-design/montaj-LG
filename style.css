@@ -567,19 +567,19 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 }
 
 .material-name {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-label);
-  line-height: 1.2;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .variant-badge {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   min-width: 48px;
   padding: 8px 6px;
   border-radius: 8px;
@@ -601,9 +601,11 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-.variant-input {
-  flex-shrink: 0;
+/* Специфичный селектор — перебивает глобальный input[type="text"] */
+.material-line input.variant-input {
+  flex: 0 0 58px;
   width: 58px;
+  max-width: 58px;
   padding: 8px 8px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
@@ -614,18 +616,18 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   text-align: right;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
-.variant-input:focus {
+.material-line input.variant-input:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 }
-.variant-input::placeholder {
+.material-line input.variant-input::placeholder {
   color: var(--text-hint);
   text-align: right;
 }
 
 .variant-unit {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   min-width: 18px;
   font-size: 12px;
   color: var(--text-hint);
