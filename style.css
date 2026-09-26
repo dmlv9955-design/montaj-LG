@@ -106,9 +106,6 @@ body {
 .theme-toggle:hover { transform: scale(1.08); }
 .theme-toggle:active { transform: scale(.94); }
 
-/* ============================================ */
-/*  КНОПКА «ВВЕРХ»                              */
-/* ============================================ */
 .scroll-top {
   position: fixed;
   bottom: 20px;
@@ -135,9 +132,6 @@ body {
 .scroll-top:active { transform: scale(.94); }
 body.dark .scroll-top { box-shadow: 0 4px 16px rgba(0, 0, 0, .5); }
 
-/* ============================================ */
-/*  ОВЕРЛЕЙ ПРОГРЕССА                           */
-/* ============================================ */
 .progress-overlay {
   position: fixed;
   inset: 0;
@@ -264,7 +258,6 @@ input.req-field.is-invalid {
   border-width: 2px;
 }
 
-/* SEGMENTED */
 .segmented {
   display: flex; gap: 6px; width: 100%;
   padding: 6px;
@@ -310,7 +303,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 0 0 3px var(--green-shadow);
 }
 
-/* SEGMENTED — ЗАБЛОКИРОВАННОЕ */
 .segmented-hint {
   display: none;
   width: 100%;
@@ -330,7 +322,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .segmented.segmented-disabled .segmented-hint { display: block; }
 .segmented.segmented-disabled .segmented-btn  { display: none; }
 
-/* CUSTOM SELECT */
 .cselect { position: relative; width: 100%; }
 .cselect input[type="hidden"] { position: absolute; opacity: 0; pointer-events: none; }
 .cselect-btn {
@@ -444,9 +435,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .row > .col-1 { flex: 1 1 0; min-width: 0; }
 .row > .col-2 { flex: 2 1 0; min-width: 0; }
 
-/* ============================================ */
-/*  ПОЛЕ С КНОПКОЙ ОЧИСТКИ                      */
-/* ============================================ */
 .field-with-clear {
   position: relative;
   display: block;
@@ -603,6 +591,9 @@ input.req-field.is-partial,
   line-height: 1;
 }
 
+/* ============================================ */
+/*  КАПСУЛА СИСТЕМЫ — АПС (пастельный красный)  */
+/* ============================================ */
 .variant-system {
   flex: 0 0 44px;
   width: 44px;
@@ -619,6 +610,30 @@ input.req-field.is-partial,
   user-select: none;
   line-height: 1;
   box-sizing: border-box;
+}
+
+/* АПС — пастельный красный */
+.variant-system.variant-system-aps {
+  background: #fdeaea;
+  border-color: #f3c0c0;
+  color: #b3393b;
+}
+body.dark .variant-system.variant-system-aps {
+  background: #3a1d1f;
+  border-color: #7a3a3c;
+  color: #f0a5a5;
+}
+
+/* СОУЭ — пастельный голубой */
+.variant-system.variant-system-soue {
+  background: #e6f1fb;
+  border-color: #bcd8f0;
+  color: #2a6ba0;
+}
+body.dark .variant-system.variant-system-soue {
+  background: #18293a;
+  border-color: #3a5f80;
+  color: #92c0e6;
 }
 
 /* ============================================ */
@@ -756,7 +771,6 @@ input.req-field.is-partial,
   color: var(--text-hint);
 }
 
-/* Pills */
 .additional-pills {
   display: flex;
   flex-wrap: wrap;
@@ -789,7 +803,6 @@ input.req-field.is-partial,
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* Поля доп. работ */
 .additional-fields { display: flex; flex-direction: column; gap: 12px; }
 
 .additional-group {
@@ -806,7 +819,6 @@ input.req-field.is-partial,
   letter-spacing: .3px;
 }
 
-/* Имя наставника */
 .mentor-name-input {
   flex: 1 1 0;
   min-width: 0;
@@ -848,7 +860,6 @@ input.req-field.is-partial,
 .btn-add-mentor:hover { background: var(--hover-bg); }
 .btn-add-mentor:active { transform: scale(.98); }
 
-/* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
 .btn-add-journal {
   margin-top: 18px;
   width: 100%;
@@ -958,7 +969,6 @@ input.req-field.is-partial,
   white-space: nowrap;
 }
 
-/* КНОПКА ОТПРАВКИ */
 button.submit {
   margin-top: 8px;
   width: 100%;
@@ -1052,9 +1062,6 @@ body.dark .toast {
   color: #052e16;
 }
 
-/* ============================================ */
-/*  ПОМЕЩЕНИЕ — ПРЕФИКС «к»                     */
-/* ============================================ */
 .room-wrap {
   display: flex;
   align-items: stretch;
@@ -1086,9 +1093,6 @@ body.dark .toast {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ============================================ */
-/*  ЗАДЕЛКА — РАЗДЕЛИТЕЛЬ МЕЖДУ МЕСТАМИ         */
-/* ============================================ */
 .zadelka-separator {
   margin: 16px 0 4px;
   padding: 6px 0;
