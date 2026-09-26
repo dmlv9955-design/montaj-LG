@@ -1054,12 +1054,19 @@ function isNameValid(value) {
 
 // ============================================
 //  ИМЯ — ВИЗУАЛЬНОЕ СОСТОЯНИЕ (три цвета)
+//  gateInput — опциональное поле-«ворота»:
+//  пока оно пустое, имя не подсвечивается.
 // ============================================
-function updateNameVisual(el) {
+function updateNameVisual(el, gateInput) {
   if (!el) return;
   el.classList.remove('is-empty', 'is-partial', 'is-filled', 'is-invalid');
 
   if (el.disabled) return;
+
+  if (gateInput) {
+    const gateVal = String(gateInput.value || '').trim();
+    if (!gateVal) return;
+  }
 
   const v = String(el.value || '').trim();
   if (!v) {
@@ -1489,7 +1496,6 @@ function renderMaterials() {
 
 // ============================================
 //  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
-//  Этаж — капсулы (SegmentedControl) + класс segmented-floors
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -1752,6 +1758,7 @@ function renderLocationFields(workKey, container) {
 
 // ============================================
 //  РЕНДЕР НАСТАВНИЧЕСТВА
+//  Имя не подсвечивается, пока не введены часы.
 // ============================================
 function renderMentorshipFields(container) {
   const group = document.createElement('div');
@@ -1789,15 +1796,14 @@ function renderMentorshipFields(container) {
         nameIn.setSelectionRange(newPos, newPos);
       }
       m.name = nameIn.value;
-      updateNameVisual(nameIn);
+      updateNameVisual(nameIn, inputH);
     });
 
     nameIn.addEventListener('blur', () => {
-      updateNameVisual(nameIn);
+      updateNameVisual(nameIn, inputH);
     });
 
     line.appendChild(nameIn);
-    updateNameVisual(nameIn);
 
     const minusBtn = document.createElement('button');
     minusBtn.type = 'button';
@@ -1843,12 +1849,15 @@ function renderMentorshipFields(container) {
       }
       m.hours = inputH.value;
       updateMinusState(inputH, minusBtn);
+      updateNameVisual(nameIn, inputH);
     });
     minusBtn.addEventListener('click', () => {
       bumpQty(inputH, v => { m.hours = v; }, -1, null, minusBtn);
+      updateNameVisual(nameIn, inputH);
     });
     plusBtn.addEventListener('click', () => {
       bumpQty(inputH, v => { m.hours = v; }, 1, null, minusBtn);
+      updateNameVisual(nameIn, inputH);
     });
     delBtn.addEventListener('click', () => {
       additionalState.mentorship.items.splice(idx, 1);
@@ -1860,6 +1869,10 @@ function renderMentorshipFields(container) {
 
     updateMinusState(inputH, minusBtn);
     group.appendChild(line);
+
+    // Итоговое состояние: если часы пустые — имя нейтральное;
+    // если заполнены — пересчитываем цвет.
+    updateNameVisual(nameIn, inputH);
   });
 
   const addBtn = document.createElement('button');
@@ -2573,10 +2586,19 @@ nameInput.addEventListener('blur', () => {
 
 // ============================================
 //  ПОДСВЕТКА ПОЛЕЙ
+//  Для #name — простая логика (без гейта).
+//  Для .mentor-name-input — гейт по полю часов.
 // ============================================
 function updateFieldState(el) {
-  if (el.id === 'name' || el.classList.contains('mentor-name-input')) {
+  if (el.id === 'name') {
     updateNameVisual(el);
+    return;
+  }
+
+  if (el.classList.contains('mentor-name-input')) {
+    const idx = String(el.dataset.focusId || '').replace('mentor_name_', '');
+    const hoursEl = document.querySelector('[data-focus-id="mentor_hours_' + idx + '"]');
+    updateNameVisual(el, hoursEl);
     return;
   }
 
