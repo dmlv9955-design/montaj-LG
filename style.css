@@ -342,7 +342,9 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .row > .col-1 { flex: 1 1 0; min-width: 0; }
 .row > .col-2 { flex: 2 1 0; min-width: 0; }
 
-/* МАТЕРИАЛЫ */
+/* ============================================ */
+/*  МАТЕРИАЛЫ                                   */
+/* ============================================ */
 .material-group {
   padding: 14px 0;
   border-bottom: 1px solid var(--border);
@@ -384,16 +386,43 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* капсулы выбора системы */
+/* колонка системы: подпись + капсулы */
+.sys-col {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.sys-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--text-hint);
+  line-height: 1;
+  text-align: center;
+}
+
 .sys-toggle {
   display: inline-flex;
   gap: 3px;
   padding: 2px;
   border-radius: 8px;
   background: var(--input-disabled-bg);
-  border: 1px solid var(--border);
-  flex-shrink: 0;
+  border: 1.5px solid var(--border);
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
+
+/* подсветка, когда количество введено, а система не выбрана */
+.sys-toggle.sys-required {
+  border-color: var(--red-border);
+  background: var(--red-bg);
+  box-shadow: 0 0 0 2px var(--red-shadow);
+}
+.sys-toggle.sys-required .sys-label { color: #b91c1c; }
+body.dark .sys-toggle.sys-required .sys-label { color: #fca5a5; }
 
 .sys-btn {
   padding: 6px 8px;
@@ -429,7 +458,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   cursor: not-allowed;
 }
 
-/* input количества */
 .variant-line input.variant-input {
   flex: 1 1 0;
   width: auto;
@@ -462,7 +490,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   text-align: left;
 }
 
-/* кнопка + добавления строки */
 .variant-add-btn {
   flex: 0 0 auto;
   width: 28px;
@@ -480,7 +507,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .variant-add-btn:hover { background: var(--hover-bg); }
 .variant-add-btn:active { transform: scale(.94); }
 
-/* кнопка × удаления строки */
 .variant-del-btn {
   flex: 0 0 auto;
   width: 28px;
@@ -660,7 +686,6 @@ body.dark input[type="date"].is-old-date {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
 }
 
-/* TOAST */
 .toast {
   position: fixed;
   bottom: 20px; left: 50%;
