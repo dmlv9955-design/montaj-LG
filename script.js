@@ -71,7 +71,6 @@ const SECTION_MENTOR = 'Наставничество';
 
 // ============================================
 //  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ С ПРИВЯЗКОЙ К МЕСТУ
-//  (корпус → этаж → помещения → количество)
 // ============================================
 const LOCATION_WORKS = [
   { key: 'zadelka',      label: 'Штукатурка',             unit: 'шт'  },
@@ -1613,16 +1612,6 @@ function renderLocationFields(workKey, container) {
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
 
-    const badge = document.createElement('span');
-    badge.className = 'variant-badge';
-    badge.textContent = '—';
-    qLine.appendChild(badge);
-
-    const forEl = document.createElement('span');
-    forEl.className = 'variant-for';
-    forEl.textContent = 'без сист.';
-    qLine.appendChild(forEl);
-
     const minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'qty-btn qty-btn-minus';
@@ -2372,7 +2361,6 @@ function addToJournal() {
     }
   }
 
-  // Обработка всех location-работ
   LOCATION_WORKS.forEach(w => {
     if (!additionalState[w.key] || !additionalState[w.key].active) return;
     additionalState[w.key].items.forEach(it => {
@@ -2458,7 +2446,6 @@ objectSelect.addEventListener('change', () => {
   updateWorkAccessibility();
   updateAdditionalAccessibility();
 
-  // Сбрасываем места во всех location-работах, оставляя активность
   LOCATION_WORKS.forEach(w => {
     if (additionalState[w.key]) {
       additionalState[w.key].items = [makeLocationItem()];
@@ -2818,7 +2805,7 @@ setupConnectionWatcher();
 if (_restoredDraft && _restoredDraft.length > 0) {
   setTimeout(() => {
     showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
-  }, 400);
+  }, 700);
 }
 
 window.addToJournal = addToJournal;
