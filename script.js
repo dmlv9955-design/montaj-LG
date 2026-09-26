@@ -33,9 +33,6 @@ const FLOORS_BY_OBJECT = {
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
-// ============================================
-//  КОНФИГ МАТЕРИАЛОВ
-// ============================================
 const MATERIALS = [
   {
     id: 'cable',
@@ -420,8 +417,7 @@ function updateMaterialsVisibility() {
 }
 
 // ============================================
-//  ПРОВЕРКА: НУЖНА ЛИ ПОДСВЕТКА КАПСУЛ
-//  qty > 0 и нет системы → красный
+//  КРИТЕРИЙ: система обязательна
 // ============================================
 function isSystemMissing(variant, row) {
   if (variant.fixedSystem) return false;
@@ -429,6 +425,15 @@ function isSystemMissing(variant, row) {
   if (!qty) return false;
   if (parseFloat(qty) <= 0) return false;
   return !row.system;
+}
+
+function applySysHighlight(sysCol, variant, row) {
+  const sysWrap = sysCol.querySelector('.sys-toggle');
+  const sysLabel = sysCol.querySelector('.sys-label');
+  const missing = isSystemMissing(variant, row);
+
+  if (sysWrap) sysWrap.classList.toggle('sys-required', missing);
+  if (sysLabel) sysLabel.classList.toggle('sys-required', missing);
 }
 
 // ============================================
@@ -469,22 +474,20 @@ function renderMaterials() {
         badge.textContent = v.label;
         line.appendChild(badge);
 
-        // колонка с капсулами: подпись «Система» + сами капсулы
+        // колонка с системой: подпись (только если есть выбор) + капсулы
         const sysCol = document.createElement('div');
         sysCol.className = 'sys-col';
 
-        const sysLabel = document.createElement('div');
-        sysLabel.className = 'sys-label';
-        sysLabel.textContent = 'Система';
-        sysCol.appendChild(sysLabel);
+        const hasChoice = !v.fixedSystem && Array.isArray(v.systems) && v.systems.length > 0;
+        if (hasChoice) {
+          const sysLabel = document.createElement('div');
+          sysLabel.className = 'sys-label';
+          sysLabel.textContent = 'Система';
+          sysCol.appendChild(sysLabel);
+        }
 
         const sysWrap = document.createElement('div');
         sysWrap.className = 'sys-toggle';
-
-        // живая подсветка при отсутствии системы
-        if (isSystemMissing(v, row)) {
-          sysWrap.classList.add('sys-required');
-        }
 
         if (v.fixedSystem) {
           const sysBtn = document.createElement('button');
@@ -543,16 +546,10 @@ function renderMaterials() {
           if (input.value !== raw) input.value = raw;
           row.qty = raw;
 
-          // живая подсветка капсул
-          if (!v.fixedSystem) {
-            if (isSystemMissing(v, row)) {
-              sysWrap.classList.add('sys-required');
-            } else {
-              sysWrap.classList.remove('sys-required');
-            }
-          }
+          // живая подсветка системы
+          applySysHighlight(sysCol, v, row);
 
-          // скрываем старую ошибку валидации
+          // убираем ошибку валидации
           line.classList.remove('sys-missing');
         });
 
@@ -592,6 +589,9 @@ function renderMaterials() {
           });
           line.appendChild(delBtn);
         }
+
+        // начальная подсветка (если уже что-то введено)
+        applySysHighlight(sysCol, v, row);
 
         group.appendChild(line);
       });
@@ -635,7 +635,6 @@ function materialStateToArrayFromState(state) {
   return list;
 }
 
-// проверка при добавлении в журнал
 function validateMaterialsSystems() {
   let hasError = false;
 
