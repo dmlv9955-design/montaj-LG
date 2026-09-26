@@ -837,7 +837,12 @@ button.submit {
   transition: transform .1s;
 }
 button.submit:active { transform: scale(.98); }
-button.submit:disabled { background: #94a3b8; box-shadow: none; cursor: wait; }
+button.submit:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: .75;
+}
 
 #msg {
   margin-top: 14px;
@@ -943,3 +948,49 @@ body.dark .toast {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================ */
+/*  ДРУГИЕ РАБОТЫ — НАСТАВНИЧЕСТВО              */
+/* ============================================ */
+.mentor-name-input {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.mentor-name-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+.mentor-name-input.is-invalid {
+  border-color: var(--red-border);
+  border-width: 2px;
+  background: var(--red-bg);
+}
+.mentor-name-input::placeholder {
+  color: var(--text-hint);
+}
+
+.btn-add-mentor {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1.5px dashed var(--border-focus);
+  color: var(--border-focus);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-add-mentor:hover { background: var(--hover-bg); }
+.btn-add-mentor:active { transform: scale(.98); }
