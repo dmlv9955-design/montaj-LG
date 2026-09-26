@@ -299,13 +299,14 @@ function formatQty(raw) {
 
 // ============================================
 //  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ЗАДЕЛКИ ПРИ ВВОДЕ
-//  Только цифры, точки → пробелы, одиночные пробелы.
+//  Только цифры, буквы «к/К», точки → пробелы, одиночные пробелы.
 //  НИКАКОЙ сортировки и дедупликации — чтобы не мешать набору.
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\s]/g, '');
+  // цифры, пробелы, буквы «к/К»
+  s = s.replace(/[^0-9\sкК]/g, '');
   s = s.replace(/\s+/g, ' ');
   // если строка начинается с пробела — убираем
   s = s.replace(/^\s+/, '');
@@ -314,23 +315,38 @@ function sanitizeZadelkaRoomInput(value) {
 
 // ============================================
 //  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ЗАДЕЛКИ (blur / добавление в журнал)
-//  Дедупликация + сортировка + запятые.
+//  Дедупликация + сортировка.
+//  Сначала обычные номера по возрастанию,
+//  потом номера с префиксом «к» по возрастанию.
 // ============================================
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\s]/g, '');
+  s = s.replace(/[^0-9\sкК]/g, '');
   s = s.replace(/\s+/g, ' ').trim();
 
   const parts = s.split(' ').filter(p => p !== '');
-  const uniq = new Set();
+  const plainSet = new Set();
+  const prefixedSet = new Set();
+
   parts.forEach(p => {
-    const n = parseInt(p, 10);
-    if (isFinite(n) && n > 0) uniq.add(n);
+    const m = p.match(/^([кК]?)(\d+)$/);
+    if (!m) return;
+    const hasPrefix = !!m[1];
+    const num = parseInt(m[2], 10);
+    if (!isFinite(num) || num <= 0) return;
+    if (hasPrefix) prefixedSet.add(num);
+    else plainSet.add(num);
   });
 
-  const nums = Array.from(uniq).sort((a, b) => a - b);
-  return nums.join(', ');
+  const plain    = Array.from(plainSet).sort((a, b) => a - b);
+  const prefixed = Array.from(prefixedSet).sort((a, b) => a - b);
+
+  const out = []
+    .concat(plain.map(n => String(n)))
+    .concat(prefixed.map(n => 'к' + n));
+
+  return out.join(', ');
 }
 
 // ============================================
@@ -394,9 +410,9 @@ function floorWeight(floor) {
 
 function roomWeight(room) {
   if (!room || room === 'Нет') return 1000000;
-  // берём первое число из списка «3, 5, 10»
+  // берём первое число из списка «3, 5, 10» или «к3, к5»
   const first = String(room).split(',')[0].trim();
-  const num = parseInt(first.replace(/^к/, ''), 10);
+  const num = parseInt(first.replace(/^[кК]/, ''), 10);
   return isFinite(num) ? num : 999999;
 }
 
@@ -1425,17 +1441,10 @@ function renderZadelkaFields(container) {
       const rWrap = document.createElement('div');
       rWrap.className = 'room-wrap';
 
-      if (building === MASTER_WING) {
-        const prefix = document.createElement('span');
-        prefix.className = 'room-prefix';
-        prefix.textContent = 'к';
-        rWrap.appendChild(prefix);
-      }
-
       const rInp = document.createElement('input');
       rInp.type = 'text';
       rInp.className = 'req-field';
-      rInp.placeholder = '12 15 20';
+      rInp.placeholder = '12 15 к20';
       rInp.inputMode = 'numeric';
       rInp.maxLength = 60;
       rInp.value = item.room || '';
@@ -1465,7 +1474,7 @@ function renderZadelkaFields(container) {
 
       const hint = document.createElement('div');
       hint.className = 'hint-small';
-      hint.textContent = 'Несколько помещений — через пробел или точку, сохранятся через запятую';
+      hint.textContent = 'Помещения через пробел. С буквой «к» — как «к10». Сохранятся через запятую: сначала без «к», потом с «к», каждое по возрастанию.';
       group.appendChild(hint);
     }
 
@@ -2526,11 +2535,8 @@ async function sendAll() {
         const z = parseFloat(String(entry.qty).replace(',', '.'));
         if (!isFinite(z) || z <= 0) return;
 
-        let room = entry.room || '';
-        if (entry.building === MASTER_WING && room) room = MASTER_WING_PREFIX + room;
-
         records.push({
-          room: room,
+          room: entry.room || '',
           room_none: false,
           floor: entry.floor || '',
           work: WORK_ADDITIONAL,
