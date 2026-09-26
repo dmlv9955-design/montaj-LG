@@ -255,7 +255,6 @@ function isMainEntryComplete() {
   return floorOk && roomOk && workOk;
 }
 
-// Есть ли хоть одна заполненная строка в доп. работах?
 function hasActiveAdditional() {
   if (additionalState.mentorship.items.some(m => m.name || m.hours)) return true;
   return LOCATION_WORKS.some(w => {
@@ -768,7 +767,71 @@ function getFloorsFor(object, building) {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT
+//  SEGMENTED-КОНТРОЛ (капсулы)
+//  Работает и для статичных, и для динамически
+//  генерируемых кнопок (этажи).
+// ============================================
+class SegmentedControl {
+  constructor(rootEl) {
+    this.root = rootEl;
+    this.input = rootEl.querySelector('input[type="hidden"]');
+    this.hint = rootEl.querySelector('.segmented-hint');
+  }
+
+  get value() { return this.input.value; }
+  set value(v) {
+    this.input.value = v || '';
+    this.updateDisplay();
+  }
+
+  get disabled() { return this.root.classList.contains('segmented-disabled'); }
+  set disabled(v) {
+    this.root.classList.toggle('segmented-disabled', !!v);
+    this.input.disabled = !!v;
+  }
+
+  setHint(text) {
+    if (this.hint) this.hint.textContent = text;
+  }
+
+  setOptions(arr) {
+    // Удаляем старые кнопки
+    this.root.querySelectorAll('.segmented-btn').forEach(b => b.remove());
+
+    // Добавляем новые
+    arr.forEach(val => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'segmented-btn';
+      btn.dataset.value = val;
+      btn.textContent = val;
+      btn.addEventListener('click', () => {
+        if (this.root.classList.contains('segmented-disabled')) return;
+        this.input.value = val;
+        this.input.dispatchEvent(new Event('change', { bubbles: true }));
+        this.updateDisplay();
+      });
+      this.root.appendChild(btn);
+    });
+
+    // Если текущее значение не в списке — сбрасываем
+    const vals = arr.map(o => typeof o === 'string' ? o : o.value);
+    if (!vals.includes(this.input.value)) {
+      this.input.value = '';
+    }
+    this.updateDisplay();
+  }
+
+  updateDisplay() {
+    const v = this.input.value;
+    this.root.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === v);
+    });
+  }
+}
+
+// ============================================
+//  КАСТОМНЫЙ SELECT (для старых мест, оставлен на всякий случай)
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -888,7 +951,7 @@ document.querySelectorAll('[data-cselect]').forEach(rootEl => {
 });
 
 // ============================================
-//  SEGMENTED CONTROL
+//  SEGMENTED CONTROL (для статичных: объект/корпус/тип работ)
 // ============================================
 function initSegmented(rootId, inputId, opts) {
   opts = opts || {};
@@ -939,7 +1002,7 @@ const buildingInput    = document.getElementById('building');
 const buildingSeg      = document.getElementById('building-segmented');
 const buildingSection  = document.getElementById('building-section');
 const floorInput       = document.getElementById('floor');
-const floorCS          = customSelects.floor;
+const floorSeg         = new SegmentedControl(document.getElementById('floor-segmented'));
 const floorCol         = document.getElementById('floor-col');
 const roomInput        = document.getElementById('room');
 const roomPrefix       = document.getElementById('room-prefix');
@@ -954,15 +1017,6 @@ const objectSeg        = document.getElementById('object-segmented');
 const workSeg          = document.getElementById('work-segmented');
 const additionalCard   = document.getElementById('additional-card');
 const additionalFields = document.getElementById('additional-fields');
-
-let _zadelkaCustomSelects = [];
-
-function _destroyZadelkaCustomSelects() {
-  _zadelkaCustomSelects.forEach(cs => {
-    try { cs.destroy(); } catch (_) {}
-  });
-  _zadelkaCustomSelects = [];
-}
 
 // ============================================
 //  КНОПКА ОЧИСТКИ
@@ -1037,22 +1091,18 @@ function isAttic() {
   return buildingInput.value === ATTIC;
 }
 
-// Блок «Корпус» в шапке всегда виден — display управляется в CSS/HTML,
-// а тут ничего не скрываем.
 function updateBuildingVisibility() {
   buildingSection.style.display = 'block';
   updateFloorVisibility();
   updateRoomPrefix();
 }
 
-// Управляем состоянием кнопок корпуса — активны они или показывают заглушку
 function updateBuildingAccessibility() {
   const obj    = objectSelect.value;
   const nameOk = isNameValid(nameInput.value);
   const seg    = buildingSeg;
   const hint   = seg.querySelector('.segmented-hint');
 
-  // 1. Объект не выбран — блокируем
   if (!obj) {
     seg.classList.add('segmented-disabled');
     if (hint) hint.textContent = '🔒 Сначала объект';
@@ -1060,7 +1110,6 @@ function updateBuildingAccessibility() {
     return;
   }
 
-  // 2. Имя не введено — блокируем
   if (!nameOk) {
     seg.classList.add('segmented-disabled');
     if (hint) hint.textContent = '🔒 Введите имя';
@@ -1068,7 +1117,6 @@ function updateBuildingAccessibility() {
     return;
   }
 
-  // 3. Объект не требует корпуса (ЖЕДЕПОМ) — заглушка
   if (!isBuildingRequired()) {
     seg.classList.add('segmented-disabled');
     if (hint) hint.textContent = 'Для «' + obj + '» корпус не используется';
@@ -1076,7 +1124,6 @@ function updateBuildingAccessibility() {
     return;
   }
 
-  // 4. Всё ок — активируем
   seg.classList.remove('segmented-disabled');
 }
 
@@ -1097,7 +1144,7 @@ function updateFloorVisibility() {
     floorCol.style.display = '';
     if (floorInput.value === ATTIC) {
       floorInput.value = '';
-      if (floorCS) floorCS.value = '';
+      floorSeg.value = '';
     }
   }
 }
@@ -1186,7 +1233,7 @@ function updateFormAccessibility() {
 }
 
 // ============================================
-//  ЭТАЖИ (основная часть)
+//  ЭТАЖИ (основная часть) — через капсулы
 // ============================================
 function rebuildFloors() {
   const nameOk = isNameValid(nameInput.value);
@@ -1195,35 +1242,35 @@ function rebuildFloors() {
   const floors = getFloorsFor(obj, build);
 
   if (isAttic()) {
-    floorCS.setOptions([]);
-    floorCS.disabled = true;
+    floorSeg.setOptions([]);
+    floorSeg.disabled = true;
     floorInput.value = ATTIC;
     return;
   }
 
   if (!nameOk) {
-    floorCS.placeholder = '🔒 Имя';
-    floorCS.disabled = true;
+    floorSeg.setOptions([]);
+    floorSeg.setHint('🔒 Имя');
+    floorSeg.disabled = true;
     return;
   }
 
   if (!obj || !floors) {
-    floorCS.setOptions([]);
-    floorCS.placeholder = '🔒 Объект';
-    floorCS.disabled = true;
+    floorSeg.setOptions([]);
+    floorSeg.setHint('🔒 Объект');
+    floorSeg.disabled = true;
     return;
   }
 
   if (isBuildingRequired() && !build) {
-    floorCS.setOptions([]);
-    floorCS.placeholder = '🔒 Корпус';
-    floorCS.disabled = true;
+    floorSeg.setOptions([]);
+    floorSeg.setHint('🔒 Корпус');
+    floorSeg.disabled = true;
     return;
   }
 
-  floorCS.setOptions(floors);
-  floorCS.placeholder = '— выберите —';
-  floorCS.disabled = false;
+  floorSeg.setOptions(floors);
+  floorSeg.disabled = false;
   updateFieldState(floorInput);
 }
 
@@ -1447,7 +1494,7 @@ function renderMaterials() {
 
 // ============================================
 //  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
-//  Корпус — всегда виден (заглушка для ЖЕДЕПОМ).
+//  Этаж — капсулы (SegmentedControl).
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -1488,7 +1535,7 @@ function renderLocationFields(workKey, container) {
       group.appendChild(del);
     }
 
-    // === Корпус — всегда виден ===
+    // === Корпус ===
     const bLabel = document.createElement('label');
     bLabel.className = 'req';
     bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
@@ -1525,7 +1572,7 @@ function renderLocationFields(workKey, container) {
 
     group.appendChild(bSeg);
 
-    // === Этаж ===
+    // === Этаж (капсулы) ===
     const building = item.building;
     let showFloor = true;
 
@@ -1544,29 +1591,21 @@ function renderLocationFields(workKey, container) {
         group.appendChild(fLabel);
 
         const fWrap = document.createElement('div');
-        fWrap.className = 'cselect';
-        fWrap.innerHTML = `
-          <input type="hidden" value="">
-          <button type="button" class="cselect-btn">
-            <span class="cselect-value placeholder">— выберите —</span>
-            <span class="cselect-arrow"></span>
-          </button>
-          <ul class="cselect-list"></ul>
-        `;
+        fWrap.className = 'segmented';
+        fWrap.innerHTML =
+          '<input type="hidden" class="req-field" value="">' +
+          '<span class="segmented-hint">— выберите —</span>';
         group.appendChild(fWrap);
 
-        const cs = new CustomSelect(fWrap);
-        cs.setOptions(floorList);
-        cs.placeholder = '— выберите —';
-        if (item.floor) cs.value = item.floor;
+        const fSeg = new SegmentedControl(fWrap);
+        fSeg.setOptions(floorList);
+        if (item.floor) fSeg.value = item.floor;
 
-        cs.input.addEventListener('change', () => {
-          item.floor = cs.value;
+        fSeg.input.addEventListener('change', () => {
+          item.floor = fSeg.value;
           item.room = '';
           renderAdditionalFields();
         });
-
-        _zadelkaCustomSelects.push(cs);
       }
     }
 
@@ -1851,7 +1890,6 @@ function renderAdditionalFields() {
   const focusId = active && active.dataset ? active.dataset.focusId : null;
   const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
 
-  _destroyZadelkaCustomSelects();
   additionalFields.innerHTML = '';
 
   LOCATION_WORKS.forEach(w => {
@@ -2101,15 +2139,13 @@ function editJournalEntry(idx) {
 
     if (entry.floor) {
       floorInput.value = entry.floor;
-      if (floorCS) {
-        const obj = objectSelect.value;
-        const build = buildingInput.value;
-        const floors = getFloorsFor(obj, build);
-        if (floors) {
-          floorCS.setOptions(floors);
-          floorCS.disabled = false;
-          floorCS.value = entry.floor;
-        }
+      const obj = objectSelect.value;
+      const build = buildingInput.value;
+      const floors = getFloorsFor(obj, build);
+      if (floors) {
+        floorSeg.setOptions(floors);
+        floorSeg.disabled = false;
+        floorSeg.value = entry.floor;
       }
     }
 
@@ -2452,7 +2488,7 @@ objectSelect.addEventListener('change', () => {
 
 buildingInput.addEventListener('change', () => {
   floorInput.value = '';
-  if (floorCS) floorCS.value = '';
+  floorSeg.value = '';
   roomInput.value = '';
 
   updateFieldState(buildingInput);
