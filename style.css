@@ -1109,3 +1109,39 @@ body.dark .toast {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================ */
+/*  ЗАДЕЛКА — РАЗДЕЛИТЕЛЬ МЕЖДУ МЕСТАМИ         */
+/* ============================================ */
+.zadelka-separator {
+  margin: 16px 0 4px;
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--border-focus);
+  border-top: 1px dashed var(--border);
+}
+.additional-group .zadelka-separator:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+
+.zadelka-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--red-border);
+  border-radius: 8px;
+  background: var(--red-bg);
+  color: var(--red-border);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.zadelka-remove-btn:hover { background: rgba(239, 68, 68, .18); }
+.zadelka-remove-btn:active { transform: scale(.97); }
