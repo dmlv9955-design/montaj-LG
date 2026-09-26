@@ -768,8 +768,6 @@ function getFloorsFor(object, building) {
 
 // ============================================
 //  SEGMENTED-КОНТРОЛ (капсулы)
-//  Работает и для статичных, и для динамически
-//  генерируемых кнопок (этажи).
 // ============================================
 class SegmentedControl {
   constructor(rootEl) {
@@ -795,10 +793,8 @@ class SegmentedControl {
   }
 
   setOptions(arr) {
-    // Удаляем старые кнопки
     this.root.querySelectorAll('.segmented-btn').forEach(b => b.remove());
 
-    // Добавляем новые
     arr.forEach(val => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -814,7 +810,6 @@ class SegmentedControl {
       this.root.appendChild(btn);
     });
 
-    // Если текущее значение не в списке — сбрасываем
     const vals = arr.map(o => typeof o === 'string' ? o : o.value);
     if (!vals.includes(this.input.value)) {
       this.input.value = '';
@@ -831,7 +826,7 @@ class SegmentedControl {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT (для старых мест, оставлен на всякий случай)
+//  КАСТОМНЫЙ SELECT (наследие, нигде не используется)
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -1494,7 +1489,7 @@ function renderMaterials() {
 
 // ============================================
 //  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
-//  Этаж — капсулы (SegmentedControl).
+//  Этаж — капсулы (SegmentedControl) + класс segmented-floors
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -1572,7 +1567,7 @@ function renderLocationFields(workKey, container) {
 
     group.appendChild(bSeg);
 
-    // === Этаж (капсулы) ===
+    // === Этаж (капсулы, снизу вверх) ===
     const building = item.building;
     let showFloor = true;
 
@@ -1591,7 +1586,7 @@ function renderLocationFields(workKey, container) {
         group.appendChild(fLabel);
 
         const fWrap = document.createElement('div');
-        fWrap.className = 'segmented';
+        fWrap.className = 'segmented segmented-floors';
         fWrap.innerHTML =
           '<input type="hidden" class="req-field" value="">' +
           '<span class="segmented-hint">— выберите —</span>';
