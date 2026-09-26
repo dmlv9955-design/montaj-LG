@@ -37,9 +37,6 @@ const SYSTEM_REQUIRED_WORKS = ['Монтаж', 'Демонтаж'];
 //  КОНФИГ МАТЕРИАЛОВ
 //  primary: true — «основной» вариант, выделяется синим
 //  systems: массив систем, для которых вариант виден
-//    - АПС/СОУЭ → оба кабеля (х0,75 и х1)
-//    - АПС      → только х0,75
-//    - СОУЭ     → оба кабеля (х0,75 и х1)
 // ============================================
 const MATERIALS = [
   {
@@ -65,8 +62,8 @@ const MATERIALS = [
     label: 'Труба гофрированная d=',
     unit: 'м',
     variants: [
-      { id: 'corrugated_16', label: '16 мм' },
-      { id: 'corrugated_20', label: '20 мм', primary: true }
+      { id: 'corrugated_20', label: '20 мм', primary: true },
+      { id: 'corrugated_16', label: '16 мм' }
     ]
   },
   {
