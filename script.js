@@ -45,55 +45,65 @@ const ATTIC = 'Чердак';
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
+// ============================================
+//  КОНФИГ МАТЕРИАЛОВ
+//  Каждая строка = фиксированное сочетание «вариант + система».
+//  primary: true — вариант выделяется синим (основной размер).
+// ============================================
 const MATERIALS = [
   {
     id: 'cable',
     label: 'Кабель КПСЭнг(A)FRHF 1x2x',
     unit: 'м',
-    variants: [
-      { id: 'cable_075', label: 'х0,75', systems: ['АПС', 'СОУЭ'], canAddSecond: true },
-      { id: 'cable_1',   label: 'х1',    fixedSystem: 'СОУЭ' }
+    rows: [
+      { key: 'cable_075_aps',  variant: 'х0,75', system: 'АПС' },
+      { key: 'cable_075_soue', variant: 'х0,75', system: 'СОУЭ' },
+      { key: 'cable_1_soue',   variant: 'х1',    system: 'СОУЭ' }
     ]
   },
   {
     id: 'channel',
     label: 'Кабель-канал',
     unit: 'м',
-    variants: [
-      { id: 'channel_40x25', label: '40х25', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
-      { id: 'channel_25x16', label: '25х16', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
+    rows: [
+      { key: 'channel_40x25_aps',  variant: '40х25', system: 'АПС',  primary: true },
+      { key: 'channel_40x25_soue', variant: '40х25', system: 'СОУЭ', primary: true },
+      { key: 'channel_25x16_aps',  variant: '25х16', system: 'АПС' },
+      { key: 'channel_25x16_soue', variant: '25х16', system: 'СОУЭ' }
     ]
   },
   {
     id: 'corrugated',
     label: 'Труба гофрированная d=',
     unit: 'м',
-    variants: [
-      { id: 'corrugated_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
-      { id: 'corrugated_16', label: '16 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
+    rows: [
+      { key: 'corrugated_20_aps',  variant: '20 мм', system: 'АПС',  primary: true },
+      { key: 'corrugated_20_soue', variant: '20 мм', system: 'СОУЭ', primary: true },
+      { key: 'corrugated_16_aps',  variant: '16 мм', system: 'АПС' },
+      { key: 'corrugated_16_soue', variant: '16 мм', system: 'СОУЭ' }
     ]
   },
   {
     id: 'steel',
     label: 'Труба стальная ВГП ДУ d=',
     unit: 'м',
-    variants: [
-      { id: 'steel_15', label: '15 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true, primary: true },
-      { id: 'steel_20', label: '20 мм', systems: ['АПС', 'СОУЭ'], canAddSecond: true }
+    rows: [
+      { key: 'steel_15_aps',  variant: '15 мм', system: 'АПС',  primary: true },
+      { key: 'steel_15_soue', variant: '15 мм', system: 'СОУЭ', primary: true },
+      { key: 'steel_20_aps',  variant: '20 мм', system: 'АПС' },
+      { key: 'steel_20_soue', variant: '20 мм', system: 'СОУЭ' }
     ]
   }
 ];
 
+// materialState = { key: qty-string }
 let materialState = {};
 
 function initMaterialState() {
   materialState = {};
   MATERIALS.forEach(mat => {
-    mat.variants.forEach(v => {
-      materialState[v.id] = [{
-        system: v.fixedSystem || '',
-        qty: ''
-      }];
+    mat.rows.forEach(r => {
+      materialState[r.key] = '';
     });
   });
 }
@@ -622,31 +632,9 @@ function updateMaterialsVisibility() {
 }
 
 // ============================================
-//  СИСТЕМА У МАТЕРИАЛОВ
-// ============================================
-function isSystemMissing(variant, row) {
-  if (variant.fixedSystem) return false;
-  const qty = (row.qty || '').trim();
-  if (!qty) return false;
-  if (parseInt(qty, 10) <= 0) return false;
-  return !row.system;
-}
-
-function applySysHighlight(sysCol, variant, row) {
-  const sysWrap  = sysCol.querySelector('.sys-toggle');
-  const sysLabel = sysCol.querySelector('.sys-label');
-  const missing  = isSystemMissing(variant, row);
-
-  if (sysWrap)  sysWrap.classList.toggle('sys-required', missing);
-  if (sysLabel) sysLabel.classList.toggle('sys-required', missing);
-}
-
-// ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
-//  Слева — название материала в отдельной колонке,
-//  справа — список разновидностей, к каждой строка ведёт линия.
-//  Порядок в строке:
-//  [badge] [система] [поле ввода] [единица] [кнопки + и ×]
+//  Слева — название материала,
+//  справа — список строк: [вариант] [система] [ввод] [единица]
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
@@ -671,140 +659,51 @@ function renderMaterials() {
     variantsWrap.className = 'material-variants';
     group.appendChild(variantsWrap);
 
-    mat.variants.forEach(v => {
-      const rows = materialState[v.id];
-      if (!rows) return;
+    mat.rows.forEach(r => {
+      const line = document.createElement('div');
+      line.className = 'variant-line';
 
-      rows.forEach((row, rowIdx) => {
-        const line = document.createElement('div');
-        line.className = 'variant-line';
-        line.dataset.variantId = v.id;
-        line.dataset.rowIdx = rowIdx;
+      // badge варианта
+      const badge = document.createElement('span');
+      badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
+      badge.textContent = r.variant;
+      line.appendChild(badge);
 
-        const badge = document.createElement('span');
-        badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
-        badge.textContent = v.label;
-        line.appendChild(badge);
+      // метка системы (не кликабельная)
+      const sysEl = document.createElement('span');
+      sysEl.className = 'variant-system';
+      sysEl.textContent = r.system;
+      line.appendChild(sysEl);
 
-        const sysCol = document.createElement('div');
-        sysCol.className = 'sys-col';
+      // поле ввода
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'numeric';
+      input.maxLength = 4;
+      input.className = 'variant-input';
+      input.dataset.focusId = r.key;
+      input.placeholder = '0';
+      input.autocomplete = 'off';
+      input.value = materialState[r.key] || '';
 
-        const hasChoice = !v.fixedSystem && Array.isArray(v.systems) && v.systems.length > 0;
-        if (hasChoice) {
-          const sysLabel = document.createElement('div');
-          sysLabel.className = 'sys-label';
-          sysLabel.textContent = 'Система';
-          sysCol.appendChild(sysLabel);
+      input.addEventListener('input', () => {
+        let raw = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+        if (input.value !== raw) {
+          input.value = raw;
+          input.setSelectionRange(raw.length, raw.length);
         }
-
-        const sysWrap = document.createElement('div');
-        sysWrap.className = 'sys-toggle';
-
-        if (v.fixedSystem) {
-          const sysBtn = document.createElement('button');
-          sysBtn.type = 'button';
-          sysBtn.className = 'sys-btn active fixed';
-          sysBtn.textContent = v.fixedSystem;
-          sysBtn.disabled = true;
-          sysWrap.appendChild(sysBtn);
-        } else {
-          const isSecondRow = rowIdx > 0;
-          v.systems.forEach(sys => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'sys-btn';
-            btn.dataset.sys = sys;
-            if (row.system === sys) btn.classList.add('active');
-            if (isSecondRow) btn.disabled = true;
-            btn.textContent = sys;
-
-            if (!isSecondRow) {
-              btn.addEventListener('click', () => {
-                const newSystem = row.system === sys ? '' : sys;
-                row.system = newSystem;
-
-                if (v.canAddSecond && rows.length > 1) {
-                  const other = newSystem === 'АПС' ? 'СОУЭ'
-                              : newSystem === 'СОУЭ' ? 'АПС' : '';
-                  rows[1].system = other;
-                }
-
-                renderMaterials();
-              });
-            }
-
-            sysWrap.appendChild(btn);
-          });
-        }
-
-        sysCol.appendChild(sysWrap);
-        line.appendChild(sysCol);
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.inputMode = 'numeric';
-        input.maxLength = 4;
-        input.className = 'variant-input';
-        input.dataset.focusId = v.id + '_' + rowIdx;
-        input.placeholder = '0';
-        input.autocomplete = 'off';
-        input.value = row.qty || '';
-
-        input.addEventListener('input', () => {
-          let raw = input.value.replace(/[^0-9]/g, '').slice(0, 4);
-          if (input.value !== raw) {
-            input.value = raw;
-            input.setSelectionRange(raw.length, raw.length);
-          }
-          row.qty = raw;
-
-          applySysHighlight(sysCol, v, row);
-          line.classList.remove('sys-missing');
-        });
-
-        line.appendChild(input);
-
-        const unit = document.createElement('span');
-        unit.className = 'variant-unit';
-        unit.textContent = mat.unit;
-        line.appendChild(unit);
-
-        const actions = document.createElement('div');
-        actions.className = 'variant-actions';
-
-        if (v.canAddSecond && rows.length === 1 && row.system) {
-          const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
-          const addBtn = document.createElement('button');
-          addBtn.type = 'button';
-          addBtn.className = 'variant-add-btn';
-          addBtn.textContent = '+';
-          addBtn.title = 'Добавить строку для ' + other;
-          addBtn.addEventListener('click', () => {
-            rows.push({ system: other, qty: '' });
-            renderMaterials();
-          });
-          actions.appendChild(addBtn);
-        }
-
-        if (v.canAddSecond && rowIdx > 0) {
-          const delBtn = document.createElement('button');
-          delBtn.type = 'button';
-          delBtn.className = 'variant-del-btn';
-          delBtn.textContent = '×';
-          delBtn.title = 'Удалить строку';
-          delBtn.addEventListener('click', () => {
-            rows.splice(rowIdx, 1);
-            renderMaterials();
-          });
-          actions.appendChild(delBtn);
-        }
-
-        line.appendChild(actions);
-
-        applySysHighlight(sysCol, v, row);
-
-        variantsWrap.appendChild(line);
+        materialState[r.key] = raw;
       });
+
+      line.appendChild(input);
+
+      // единица
+      const unit = document.createElement('span');
+      unit.className = 'variant-unit';
+      unit.textContent = mat.unit;
+      line.appendChild(unit);
+
+      variantsWrap.appendChild(line);
     });
 
     container.appendChild(group);
@@ -828,61 +727,19 @@ function renderMaterials() {
 function materialStateToArrayFromState(state) {
   const list = [];
   MATERIALS.forEach(mat => {
-    mat.variants.forEach(v => {
-      const rows = state[v.id] || [];
-      rows.forEach(row => {
-        const qty = (row.qty || '').trim();
-        if (qty && parseInt(qty, 10) > 0) {
-          list.push({
-            name: mat.label + ' ' + v.label,
-            unit: mat.unit,
-            qty: qty,
-            system: row.system || ''
-          });
-        }
-      });
+    mat.rows.forEach(r => {
+      const qty = (state[r.key] || '').trim();
+      if (qty && parseInt(qty, 10) > 0) {
+        list.push({
+          name: mat.label + ' ' + r.variant,
+          unit: mat.unit,
+          qty: qty,
+          system: r.system
+        });
+      }
     });
   });
   return list;
-}
-
-function validateMaterialsSystems() {
-  let hasError = false;
-
-  MATERIALS.forEach(mat => {
-    mat.variants.forEach(v => {
-      if (v.fixedSystem) return;
-      const rows = materialState[v.id] || [];
-      rows.forEach(row => {
-        if (isSystemMissing(v, row)) hasError = true;
-      });
-    });
-  });
-
-  if (hasError) {
-    document.querySelectorAll('.variant-line').forEach(line => {
-      const vId = line.dataset.variantId;
-      const idx = parseInt(line.dataset.rowIdx, 10);
-      const variant = findVariant(vId);
-      if (!variant || variant.fixedSystem) return;
-      const row = materialState[vId] && materialState[vId][idx];
-      if (!row) return;
-      if (isSystemMissing(variant, row)) {
-        line.classList.add('sys-missing');
-      }
-    });
-  }
-
-  return !hasError;
-}
-
-function findVariant(variantId) {
-  for (let i = 0; i < MATERIALS.length; i++) {
-    for (let j = 0; j < MATERIALS[i].variants.length; j++) {
-      if (MATERIALS[i].variants[j].id === variantId) return MATERIALS[i].variants[j];
-    }
-  }
-  return null;
 }
 
 // ============================================
@@ -1000,7 +857,7 @@ function editJournalEntry(idx) {
   workInput.value = entry.work;
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
 
-  materialState = JSON.parse(JSON.stringify(entry.materialState));
+  materialState = Object.assign({}, entry.materialState);
   renderMaterials();
 
   roomInput.value = entry.room;
@@ -1102,15 +959,6 @@ function validateCurrentEntry() {
     return false;
   }
 
-  if (isWorkWithMaterials() && !validateMaterialsSystems()) {
-    show('⚠️ Укажите систему для каждого материала', 'err');
-    const bad = document.querySelector('.variant-line.sys-missing');
-    if (bad && bad.scrollIntoView) {
-      bad.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    return false;
-  }
-
   return true;
 }
 
@@ -1129,7 +977,7 @@ function addToJournal() {
     is_master_wing: isMasterWing(),
     building: buildingInput.value.trim(),
     work: workInput.value,
-    materialState: withMaterials ? JSON.parse(JSON.stringify(materialState)) : {}
+    materialState: withMaterials ? Object.assign({}, materialState) : {}
   };
 
   journal.push(entry);
@@ -1304,7 +1152,7 @@ async function sendAll() {
         is_master_wing: isMasterWing(),
         building: buildingInput.value.trim(),
         work: workInput.value,
-        materialState: withMaterials ? JSON.parse(JSON.stringify(materialState)) : {}
+        materialState: withMaterials ? Object.assign({}, materialState) : {}
       };
       journal.push(entry);
       renderJournal();
