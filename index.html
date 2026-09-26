@@ -36,16 +36,10 @@
   </div>
 
   <label class="req">Объект <span class="req-star">*</span></label>
-  <div class="cselect" data-cselect>
+  <div class="segmented" id="object-segmented">
     <input type="hidden" id="object" class="req-field" value="">
-    <button type="button" class="cselect-btn">
-      <span class="cselect-value placeholder">— выберите объект —</span>
-      <span class="cselect-arrow"></span>
-    </button>
-    <ul class="cselect-list">
-      <li class="cselect-option" data-value="Ларинская гимназия">Ларинская гимназия</li>
-      <li class="cselect-option" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</li>
-    </ul>
+    <button type="button" class="segmented-btn" data-value="Ларинская гимназия">Ларинская гимназия</button>
+    <button type="button" class="segmented-btn" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</button>
   </div>
   <div class="field-error" id="err-object">Заполните это поле</div>
 
