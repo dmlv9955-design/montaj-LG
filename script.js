@@ -149,8 +149,6 @@ function initMaterialState() {
 
 // ============================================
 //  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние формы
-//  Все работы всегда активны — пользователь
-//  просто заполняет те, что ему нужны.
 // ============================================
 function makeLocationItem() {
   return { building: '', floor: '', room: '', value: '' };
@@ -267,7 +265,7 @@ function hasActiveAdditional() {
 }
 
 // ============================================
-//  ЭТАЖИ ДЛЯ ДОПОЛНИТЕЛЬНЫХ РАБОТ (по корпусу строки)
+//  ЭТАЖИ ДЛЯ ДОПОЛНИТЕЛЬНЫХ РАБОТ
 // ============================================
 function getZadelkaFloors(building) {
   const obj = objectSelect.value;
@@ -770,7 +768,7 @@ function getFloorsFor(object, building) {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT (для этажа в основной части)
+//  КАСТОМНЫЙ SELECT
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -1025,7 +1023,7 @@ function updateNameVisual(el) {
 }
 
 // ============================================
-//  КОРПУС (основная часть)
+//  КОРПУС
 // ============================================
 function isBuildingRequired() {
   return !!BUILDINGS_BY_OBJECT[objectSelect.value];
@@ -1039,37 +1037,53 @@ function isAttic() {
   return buildingInput.value === ATTIC;
 }
 
+// Блок «Корпус» в шапке всегда виден — display управляется в CSS/HTML,
+// а тут ничего не скрываем.
 function updateBuildingVisibility() {
-  const required = isBuildingRequired();
-
-  if (required) {
-    buildingSection.style.display = 'block';
-  } else {
-    buildingSection.style.display = 'none';
-    if (buildingInput.value) {
-      buildingInput.value = '';
-      if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
-    }
-  }
-
+  buildingSection.style.display = 'block';
   updateFloorVisibility();
   updateRoomPrefix();
 }
 
+// Управляем состоянием кнопок корпуса — активны они или показывают заглушку
 function updateBuildingAccessibility() {
-  if (!isBuildingRequired()) return;
+  const obj    = objectSelect.value;
+  const nameOk = isNameValid(nameInput.value);
+  const seg    = buildingSeg;
+  const hint   = seg.querySelector('.segmented-hint');
 
-  const nameOk   = isNameValid(nameInput.value);
-  const objectOk = !!objectSelect.value;
-  const hint     = buildingSeg.querySelector('.segmented-hint');
+  // 1. Объект не выбран — блокируем
+  if (!obj) {
+    seg.classList.add('segmented-disabled');
+    if (hint) hint.textContent = '🔒 Сначала объект';
+    resetBuildingValue();
+    return;
+  }
 
-  if (!nameOk || !objectOk) {
-    buildingSeg.classList.add('segmented-disabled');
-    if (hint) {
-      hint.textContent = nameOk ? '🔒 Сначала объект' : '🔒 Введите имя';
-    }
-  } else {
-    buildingSeg.classList.remove('segmented-disabled');
+  // 2. Имя не введено — блокируем
+  if (!nameOk) {
+    seg.classList.add('segmented-disabled');
+    if (hint) hint.textContent = '🔒 Введите имя';
+    resetBuildingValue();
+    return;
+  }
+
+  // 3. Объект не требует корпуса (ЖЕДЕПОМ) — заглушка
+  if (!isBuildingRequired()) {
+    seg.classList.add('segmented-disabled');
+    if (hint) hint.textContent = 'Для «' + obj + '» корпус не используется';
+    resetBuildingValue();
+    return;
+  }
+
+  // 4. Всё ок — активируем
+  seg.classList.remove('segmented-disabled');
+}
+
+function resetBuildingValue() {
+  if (buildingInput.value) {
+    buildingInput.value = '';
+    if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
   }
 }
 
@@ -1123,7 +1137,6 @@ function updateWorkAccessibility() {
 
 // ============================================
 //  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
-//  Блокируем всю карточку, если не заполнены имя и объект.
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalCard) return;
@@ -1434,6 +1447,7 @@ function renderMaterials() {
 
 // ============================================
 //  УНИВЕРСАЛЬНЫЙ РЕНДЕР РАБОТЫ С МЕСТАМИ
+//  Корпус — всегда виден (заглушка для ЖЕДЕПОМ).
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -1474,15 +1488,16 @@ function renderLocationFields(workKey, container) {
       group.appendChild(del);
     }
 
+    // === Корпус — всегда виден ===
+    const bLabel = document.createElement('label');
+    bLabel.className = 'req';
+    bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
+    group.appendChild(bLabel);
+
+    const bSeg = document.createElement('div');
+    bSeg.className = 'segmented';
+
     if (isBuildingRequired()) {
-      const bLabel = document.createElement('label');
-      bLabel.className = 'req';
-      bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
-      group.appendChild(bLabel);
-
-      const bSeg = document.createElement('div');
-      bSeg.className = 'segmented';
-
       BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1498,10 +1513,19 @@ function renderLocationFields(workKey, container) {
         });
         bSeg.appendChild(btn);
       });
-
-      group.appendChild(bSeg);
+    } else {
+      bSeg.classList.add('segmented-disabled');
+      const hint = document.createElement('span');
+      hint.className = 'segmented-hint';
+      hint.textContent = objectSelect.value
+        ? 'Для «' + objectSelect.value + '» корпус не используется'
+        : '🔒 Сначала объект';
+      bSeg.appendChild(hint);
     }
 
+    group.appendChild(bSeg);
+
+    // === Этаж ===
     const building = item.building;
     let showFloor = true;
 
@@ -1546,6 +1570,7 @@ function renderLocationFields(workKey, container) {
       }
     }
 
+    // === Помещение ===
     const floor = item.floor;
     const isAtticZ = (building === 'Чердак');
     const floorIsNo = (floor === 'Нет');
@@ -1610,6 +1635,7 @@ function renderLocationFields(workKey, container) {
       group.appendChild(hint);
     }
 
+    // === Количество ===
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
 
@@ -1817,7 +1843,6 @@ function renderMentorshipFields(container) {
 
 // ============================================
 //  ОБЩИЙ РЕНДЕР ДОПОЛНИТЕЛЬНЫХ РАБОТ
-//  Все работы всегда видны — без pills.
 // ============================================
 function renderAdditionalFields() {
   if (!additionalFields) return;
