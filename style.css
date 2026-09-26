@@ -364,43 +364,86 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 
 /* ============================================ */
 /*  МАТЕРИАЛЫ                                   */
+/*  Слева — название, справа — разновидности    */
 /* ============================================ */
 .material-group {
-  padding: 16px 0 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 130px) minmax(0, 1fr);
+  column-gap: 18px;
+  padding: 18px 0 16px;
   border-bottom: 1px solid var(--border);
+  align-items: start;
 }
-.material-group:first-child { padding-top: 4px; }
+.material-group:first-child { padding-top: 6px; }
 .material-group:last-child { border-bottom: none; padding-bottom: 0; }
 
 .material-group-name {
-  font-size: 13px; font-weight: 700;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-label);
   line-height: 1.3;
-  margin-bottom: 14px;
   word-break: break-word;
+  padding-top: 24px;
 }
 
+/* контейнер строк-разновидностей */
+.material-variants {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* вертикальная линия — от названия к разновидностям */
+.material-variants::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 28px;
+  bottom: 16px;
+  width: 1px;
+  background: var(--border);
+}
+
+/* одна строка */
 .variant-line {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
   padding-top: 12px;
+  min-height: 44px;
+  min-width: 0;
 }
-.variant-line:first-child { padding-top: 12px; }
-.variant-line:last-child { margin-bottom: 0; }
 
+/* горизонтальный хвостик от вертикальной линии к badge */
+.variant-line::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 28px;
+  width: 9px;
+  height: 1px;
+  background: var(--border);
+}
+
+/* badge разновидности */
 .variant-badge {
-  flex: 0 0 auto;
-  min-width: 52px;
+  flex: 0 0 62px;
+  width: 62px;
   padding: 8px 6px;
   border-radius: 8px;
   background: var(--input-disabled-bg);
   border: 1.5px solid var(--border);
-  font-size: 12px; font-weight: 600;
+  font-size: 12px;
+  font-weight: 600;
   text-align: center;
   color: var(--text-label);
-  white-space: nowrap; user-select: none; line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1;
+  box-sizing: border-box;
 }
 .variant-badge.primary {
   background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
@@ -409,11 +452,14 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
+/* система */
 .sys-col {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 0 82px;
+  width: 82px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 32px;
 }
 .sys-label {
@@ -490,35 +536,12 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 .sys-btn.fixed { cursor: default; opacity: 1; }
 .sys-btn:disabled { cursor: not-allowed; }
 
-/* ============================================ */
-/*  КОНТЕЙНЕР ДЛЯ КНОПОК + И ×                  */
-/*  Фиксированной ширины — не смещает input     */
-/* ============================================ */
-.variant-actions {
-  flex: 0 0 60px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  min-height: 32px;
-}
-
-.variant-actions .variant-add-btn,
-.variant-actions .variant-del-btn {
-  width: 28px;
-  height: 32px;
-}
-
-/* ============================================ */
-/*  ПОЛЕ КОЛИЧЕСТВА МАТЕРИАЛА                   */
-/*  Фиксированная маленькая ширина, справа      */
-/* ============================================ */
+/* поле количества — фиксированная ширина */
 .variant-line input.variant-input {
-  flex: 0 0 auto;
+  flex: 0 0 56px;
   width: 56px;
   min-width: 56px;
   max-width: 56px;
-  margin-left: auto;
   padding: 8px 8px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
@@ -549,17 +572,31 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 }
 
 .variant-unit {
-  flex: 0 0 auto;
-  min-width: 16px;
+  flex: 0 0 20px;
+  width: 20px;
   font-size: 12px;
   color: var(--text-hint);
   text-align: left;
 }
 
-.variant-add-btn {
-  flex: 0 0 auto;
+/* кнопки + и × — фиксированное место справа */
+.variant-actions {
+  flex: 0 0 60px;
+  width: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 32px;
+}
+.variant-actions .variant-add-btn,
+.variant-actions .variant-del-btn {
   width: 28px;
   height: 32px;
+}
+
+.variant-add-btn {
+  flex: 0 0 auto;
   border: 1.5px dashed var(--border-focus);
   border-radius: 8px;
   background: var(--input-bg);
@@ -575,8 +612,6 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 
 .variant-del-btn {
   flex: 0 0 auto;
-  width: 28px;
-  height: 32px;
   border: 1.5px solid var(--red-border);
   border-radius: 8px;
   background: var(--red-bg);
@@ -599,6 +634,26 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 0 0 2px var(--red-border);
 }
 .variant-line.sys-missing .variant-input { border-color: var(--red-border); }
+
+/* Адаптив для мобильных: название — сверху */
+@media (max-width: 520px) {
+  .material-group {
+    display: block;
+    padding: 14px 0;
+  }
+  .material-group-name {
+    padding-top: 0;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .material-variants::before,
+  .variant-line::before {
+    display: none;
+  }
+  .variant-line {
+    padding-top: 8px;
+  }
+}
 
 /* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
 .btn-add-journal {
