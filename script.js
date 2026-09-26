@@ -26,15 +26,21 @@
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
 
-// У Ларинской гимназии Чердак убран из этажей — он на уровне корпуса
-// У ЖЕДЕПОМ всё как было — Чердак остаётся в этажах
+// Базовые этажи для каждого объекта.
+// Используются, если для корпуса нет переопределения ниже.
 const FLOORS_BY_OBJECT = {
   'Ларинская гимназия': ['1', '2', '3', 'Нет'],
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Корпуса, доступные для объекта.
-// ЖЕДЕПОМ отсутствует — поле «Корпус» для него не показывается.
+// Переопределение этажей под конкретный корпус.
+// «Крыло мастерских» — третий этаж отсутствует.
+const FLOORS_OVERRIDE_BY_BUILDING = {
+  'Крыло мастерских': ['1', '2', 'Нет']
+};
+
+// Корпуса, доступные для конкретных объектов.
+// Если объекта нет в списке — поле «Корпус» скрыто.
 const BUILDINGS_BY_OBJECT = {
   'Ларинская гимназия': ['Основное здание', 'Крыло мастерских', 'Чердак']
 };
@@ -186,6 +192,18 @@ function showToast(text) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ============================================
+//  ЭТАЖИ ПО КОРПУСУ
+// ============================================
+function getFloorsFor(object, building) {
+  // если есть переопределение для корпуса — берём его
+  if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) {
+    return FLOORS_OVERRIDE_BY_BUILDING[building];
+  }
+  // иначе — базовые этажи объекта
+  return FLOORS_BY_OBJECT[object] || null;
 }
 
 // ============================================
@@ -433,7 +451,6 @@ function updateBuildingAccessibility() {
 
 // ============================================
 //  ВИДИМОСТЬ ЭТАЖА
-//  При корпусе «Чердак» этаж скрыт, floor = «Чердак»
 // ============================================
 function updateFloorVisibility() {
   if (!floorCol) return;
@@ -451,7 +468,7 @@ function updateFloorVisibility() {
 }
 
 // ============================================
-//  ПРЕФИКС «к» У ПОМЕЩЕНИЯ
+//  ПРЕФИКС «к»
 // ============================================
 function updateRoomPrefix() {
   if (!roomPrefix) return;
@@ -517,9 +534,10 @@ function updateFormAccessibility() {
 function rebuildFloors() {
   const nameOk = isNameValid(nameInput.value);
   const obj    = objectSelect.value;
-  const floors = FLOORS_BY_OBJECT[obj];
+  const build  = buildingInput.value;
+  const floors = getFloorsFor(obj, build);
 
-  // Чердак (как корпус) — этаж не нужен
+  // Чердак как корпус — этаж не нужен
   if (isAttic()) {
     floorCS.setOptions([]);
     floorCS.disabled = true;
@@ -533,14 +551,14 @@ function rebuildFloors() {
     return;
   }
 
-  if (!floors) {
+  if (!obj || !floors) {
     floorCS.setOptions([]);
     floorCS.placeholder = '🔒 Объект';
     floorCS.disabled = true;
     return;
   }
 
-  if (isBuildingRequired() && !buildingInput.value) {
+  if (isBuildingRequired() && !build) {
     floorCS.setOptions([]);
     floorCS.placeholder = '🔒 Корпус';
     floorCS.disabled = true;
@@ -569,7 +587,6 @@ function updateRoomState() {
     return;
   }
 
-  // Чердак — этажа нет, помещение можно вводить сразу
   if (isAttic()) {
     roomInput.disabled = false;
     roomInput.placeholder = '1234';
@@ -966,7 +983,6 @@ function editJournalEntry(idx) {
   journal.splice(idx, 1);
   renderJournal();
 
-  // восстановить корпус (для случая записи из крыла мастерских или с чердака)
   if (isBuildingRequired() && entry.building) {
     buildingInput.value = entry.building;
     if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
@@ -1294,7 +1310,6 @@ async function sendAll() {
     return;
   }
 
-  // Формируем записи. Для крыла мастерских добавляем префикс «к» к номеру.
   const records = journal.map(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
