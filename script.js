@@ -129,8 +129,6 @@ function initMaterialState() {
 
 // ============================================
 //  ДРУГИЕ РАБОТЫ — состояние формы
-//  Заделка: массив мест (корпус / этаж / помещение / количество)
-//  Наставничество: массив людей (имя / часы)
 // ============================================
 function makeZadelkaItem() {
   return { building: '', floor: '', room: '', value: '' };
@@ -169,7 +167,7 @@ const journal = [];
 //  ЧЕРНОВИК ЖУРНАЛА (localStorage)
 // ============================================
 const DRAFT_KEY = 'montaj_journal_draft_v1';
-const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 дней
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function saveDraft() {
   try {
@@ -182,7 +180,6 @@ function saveDraft() {
       entries: journal
     }));
   } catch (e) {
-    // приватный режим / переполнение — тихо игнорируем
     console.warn('Не удалось сохранить черновик:', e);
   }
 }
@@ -196,14 +193,12 @@ function loadDraft() {
     if (!parsed || typeof parsed !== 'object') return null;
     if (!Array.isArray(parsed.entries)) return null;
 
-    // TTL
     if (typeof parsed.savedAt === 'number' &&
         Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
       localStorage.removeItem(DRAFT_KEY);
       return null;
     }
 
-    // минимальная валидация: каждый элемент — объект с kind
     const ok = parsed.entries.every(e =>
       e && typeof e === 'object' && typeof e.kind === 'string'
     );
@@ -299,16 +294,12 @@ function formatQty(raw) {
 
 // ============================================
 //  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ЗАДЕЛКИ ПРИ ВВОДЕ
-//  Только цифры, буквы «к/К», точки → пробелы, одиночные пробелы.
-//  НИКАКОЙ сортировки и дедупликации — чтобы не мешать набору.
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ');
-  // цифры, пробелы, буквы «к/К»
   s = s.replace(/[^0-9\sкК]/g, '');
   s = s.replace(/\s+/g, ' ');
-  // если строка начинается с пробела — убираем
   s = s.replace(/^\s+/, '');
   return s;
 }
@@ -345,6 +336,48 @@ function normalizeZadelkaRoom(value) {
   const out = []
     .concat(plain.map(n => String(n)))
     .concat(prefixed.map(n => 'к' + n));
+
+  return out.join(', ');
+}
+
+// ============================================
+//  РАЗБОР СПИСКА ПОМЕЩЕНИЙ В ДВЕ ГРУППЫ (простые / «к»)
+// ============================================
+function parseRooms(roomStr) {
+  const plain = new Set();
+  const prefixed = new Set();
+  String(roomStr || '').split(',').forEach(part => {
+    const s = part.trim();
+    if (!s) return;
+    const m = s.match(/^([кК]?)(\d+)$/);
+    if (!m) return;
+    const n = parseInt(m[2], 10);
+    if (!isFinite(n) || n <= 0) return;
+    if (m[1]) prefixed.add(n);
+    else plain.add(n);
+  });
+  return { plain, prefixed };
+}
+
+// ============================================
+//  ОБЪЕДИНЕНИЕ ДВУХ СПИСКОВ ПОМЕЩЕНИЙ
+//  Сначала простые (по возрастанию), потом «к» (по возрастанию).
+// ============================================
+function combineRooms(a, b) {
+  const pa = parseRooms(a);
+  const pb = parseRooms(b);
+
+  const plain = new Set();
+  pa.plain.forEach(n => plain.add(n));
+  pb.plain.forEach(n => plain.add(n));
+
+  const prefixed = new Set();
+  pa.prefixed.forEach(n => prefixed.add(n));
+  pb.prefixed.forEach(n => prefixed.add(n));
+
+  const out = []
+    .concat(Array.from(plain).sort((x, y) => x - y).map(n => String(n)))
+    .concat(Array.from(prefixed).sort((x, y) => x - y).map(n => 'к' + n));
 
   return out.join(', ');
 }
@@ -393,6 +426,15 @@ function sectionWeight(key) {
 }
 
 // ============================================
+//  ВЕС КОРПУСА (для сортировки заделки)
+// ============================================
+function buildingWeight(b) {
+  if (!b) return -1;                       // без корпуса — самым первым
+  const i = BUILDING_ORDER.indexOf(b);
+  return i === -1 ? 500 : i;
+}
+
+// ============================================
 //  СОРТИРОВКА
 // ============================================
 function floorWeight(floor) {
@@ -408,12 +450,20 @@ function floorWeight(floor) {
   return (floor in w) ? w[floor] : 500;
 }
 
-function roomWeight(room) {
-  if (!room || room === 'Нет') return 1000000;
-  // берём первое число из списка «3, 5, 10» или «к3, к5»
+// Ключ сортировки по помещению.
+// Простые — раньше, «к» — позже. Внутри каждой группы — по числу.
+function roomSortKey(room) {
+  if (!room) return 9999999;
   const first = String(room).split(',')[0].trim();
-  const num = parseInt(first.replace(/^[кК]/, ''), 10);
-  return isFinite(num) ? num : 999999;
+  const m = first.match(/^([кК]?)(\d+)$/);
+  if (!m) return 9999999;
+  const n = parseInt(m[2], 10);
+  if (!isFinite(n)) return 9999999;
+  return m[1] ? 1000000 + n : n;
+}
+
+function roomWeight(room) {
+  return roomSortKey(room);
 }
 
 function compareEntries(a, b) {
@@ -427,12 +477,18 @@ function compareEntries(a, b) {
     if (oa !== ob) return oa - ob;
 
     if (a.kind === 'zadelka' && b.kind === 'zadelka') {
+      const ba = buildingWeight(a.building);
+      const bb = buildingWeight(b.building);
+      if (ba !== bb) return ba - bb;
+
       const fa = floorWeight(a.floor);
       const fb = floorWeight(b.floor);
       if (fa !== fb) return fa - fb;
-      const ra = roomWeight(a.room);
-      const rb = roomWeight(b.room);
+
+      const ra = roomSortKey(a.room);
+      const rb = roomSortKey(b.room);
       if (ra !== rb) return ra - rb;
+
       return String(a.room).localeCompare(String(b.room));
     }
     if (a.kind === 'mentorship' && b.kind === 'mentorship') {
@@ -588,9 +644,6 @@ function isOffline() {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
-// Реальная проверка: пингуем API_URL через no-cors.
-// Ответ прочитать нельзя, но сетевые ошибки (нет сети,
-// DNS, таймаут) reject-ят fetch → возвращаем false.
 async function checkConnection() {
   if (isOffline()) return false;
 
@@ -849,7 +902,6 @@ const additionalBody   = document.getElementById('additional-body');
 const additionalPills  = document.getElementById('additional-pills');
 const additionalFields = document.getElementById('additional-fields');
 
-// Стек активных CustomSelect у заделки — для destroy при перерисовке
 let _zadelkaCustomSelects = [];
 
 function _destroyZadelkaCustomSelects() {
@@ -1325,7 +1377,6 @@ function renderZadelkaFields(container) {
   group.appendChild(name);
 
   additionalState.zadelka.items.forEach((item, idx) => {
-    // Разделитель между строками
     if (idx > 0) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
@@ -1338,7 +1389,6 @@ function renderZadelkaFields(container) {
       group.appendChild(sep);
     }
 
-    // Крестик удаления — только если строк больше 1
     if (additionalState.zadelka.items.length > 1) {
       const del = document.createElement('button');
       del.type = 'button';
@@ -1351,7 +1401,6 @@ function renderZadelkaFields(container) {
       group.appendChild(del);
     }
 
-    // Корпус
     if (isBuildingRequired()) {
       const bLabel = document.createElement('label');
       bLabel.className = 'req';
@@ -1380,7 +1429,6 @@ function renderZadelkaFields(container) {
       group.appendChild(bSeg);
     }
 
-    // Этаж
     const building = item.building;
     let showFloor = true;
 
@@ -1425,7 +1473,6 @@ function renderZadelkaFields(container) {
       }
     }
 
-    // Помещение
     const floor = item.floor;
     const isAtticZ = (building === 'Чердак');
     const floorIsNo = (floor === 'Нет');
@@ -1451,7 +1498,6 @@ function renderZadelkaFields(container) {
       rInp.dataset.focusId = 'zadelka_room_' + idx;
 
       rInp.addEventListener('input', () => {
-        // Мягкая очистка без сортировки — не мешает набору
         const before = rInp.value;
         const after = sanitizeZadelkaRoomInput(before);
         if (before !== after) {
@@ -1478,7 +1524,6 @@ function renderZadelkaFields(container) {
       group.appendChild(hint);
     }
 
-    // Количество
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
 
@@ -1556,7 +1601,6 @@ function renderZadelkaFields(container) {
     group.appendChild(qLine);
   });
 
-  // Кнопка «Добавить место заделки»
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn-add-mentor';
@@ -1795,6 +1839,89 @@ function resetCurrentEntry() {
 }
 
 // ============================================
+//  ЖУРНАЛ — РЕНДЕР ОДНОЙ ЗАПИСИ
+// ============================================
+function renderJournalEntryElement(entry) {
+  const realIdx = journal.indexOf(entry);
+
+  const el = document.createElement('div');
+  el.className = 'journal-entry';
+
+  const header = document.createElement('div');
+  header.className = 'journal-entry-header';
+
+  const title = document.createElement('div');
+  title.className = 'journal-entry-title';
+  title.textContent = formatJournalTitle(entry);
+  header.appendChild(title);
+
+  const actions = document.createElement('div');
+  actions.className = 'journal-entry-actions';
+
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'journal-btn journal-btn-edit';
+  editBtn.title = 'Изменить';
+  editBtn.textContent = '✏️';
+  editBtn.addEventListener('click', () => editJournalEntry(realIdx));
+  actions.appendChild(editBtn);
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'journal-btn journal-btn-del';
+  delBtn.title = 'Удалить';
+  delBtn.textContent = '🗑';
+  delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
+  actions.appendChild(delBtn);
+
+  header.appendChild(actions);
+  el.appendChild(header);
+
+  if (entry.kind === 'main') {
+    const meta = document.createElement('div');
+    meta.className = 'journal-entry-meta';
+    meta.textContent = entry.work;
+    el.appendChild(meta);
+  }
+
+  let matsArr = [];
+  if (entry.kind === 'main') {
+    matsArr = materialStateToArrayFromState(entry.materialState || {});
+  } else if (entry.kind === 'zadelka') {
+    matsArr = [{
+      name: SECTION_ZADELKA,
+      unit: 'шт',
+      qty: entry.qty.replace(',', '.'),
+      system: ''
+    }];
+  } else if (entry.kind === 'mentorship') {
+    matsArr = [{
+      name: entry.name,
+      unit: 'ч',
+      qty: entry.hours.replace(',', '.'),
+      system: ''
+    }];
+  }
+
+  if (matsArr.length > 0) {
+    const mats = document.createElement('div');
+    mats.className = 'journal-entry-materials';
+    matsArr.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'journal-entry-mat';
+      const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
+      row.innerHTML =
+        '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
+        '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
+      mats.appendChild(row);
+    });
+    el.appendChild(mats);
+  }
+
+  return el;
+}
+
+// ============================================
 //  ЖУРНАЛ — РЕНДЕР
 // ============================================
 function renderJournal() {
@@ -1829,6 +1956,40 @@ function renderJournal() {
   const keys = Object.keys(groups).sort((a, b) => sectionWeight(a) - sectionWeight(b));
 
   keys.forEach(key => {
+    // Секция «Заделка поверхностей» — внутри разделяем по корпусам
+    if (key === SECTION_ZADELKA) {
+      const t = document.createElement('div');
+      t.className = 'journal-building-title';
+      t.textContent = key;
+      journalCont.appendChild(t);
+
+      // Подгруппы по корпусу
+      const byBuilding = {};
+      groups[key].forEach(entry => {
+        const b = entry.building || '';
+        if (!byBuilding[b]) byBuilding[b] = [];
+        byBuilding[b].push(entry);
+      });
+
+      const bKeys = Object.keys(byBuilding).sort(
+        (a, b) => buildingWeight(a) - buildingWeight(b)
+      );
+
+      bKeys.forEach(bKey => {
+        if (bKey) {
+          const st = document.createElement('div');
+          st.className = 'journal-subsection-title';
+          st.textContent = bKey;
+          journalCont.appendChild(st);
+        }
+        byBuilding[bKey].forEach(entry => {
+          journalCont.appendChild(renderJournalEntryElement(entry));
+        });
+      });
+      return;
+    }
+
+    // Остальные секции — как раньше
     if (key) {
       const t = document.createElement('div');
       t.className = 'journal-building-title';
@@ -1837,83 +1998,7 @@ function renderJournal() {
     }
 
     groups[key].forEach(entry => {
-      const realIdx = journal.indexOf(entry);
-
-      const el = document.createElement('div');
-      el.className = 'journal-entry';
-
-      const header = document.createElement('div');
-      header.className = 'journal-entry-header';
-
-      const title = document.createElement('div');
-      title.className = 'journal-entry-title';
-      title.textContent = formatJournalTitle(entry);
-      header.appendChild(title);
-
-      const actions = document.createElement('div');
-      actions.className = 'journal-entry-actions';
-
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.className = 'journal-btn journal-btn-edit';
-      editBtn.title = 'Изменить';
-      editBtn.textContent = '✏️';
-      editBtn.addEventListener('click', () => editJournalEntry(realIdx));
-      actions.appendChild(editBtn);
-
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'journal-btn journal-btn-del';
-      delBtn.title = 'Удалить';
-      delBtn.textContent = '🗑';
-      delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
-      actions.appendChild(delBtn);
-
-      header.appendChild(actions);
-      el.appendChild(header);
-
-      if (entry.kind === 'main') {
-        const meta = document.createElement('div');
-        meta.className = 'journal-entry-meta';
-        meta.textContent = entry.work;
-        el.appendChild(meta);
-      }
-
-      let matsArr = [];
-      if (entry.kind === 'main') {
-        matsArr = materialStateToArrayFromState(entry.materialState || {});
-      } else if (entry.kind === 'zadelka') {
-        matsArr = [{
-          name: SECTION_ZADELKA,
-          unit: 'шт',
-          qty: entry.qty.replace(',', '.'),
-          system: ''
-        }];
-      } else if (entry.kind === 'mentorship') {
-        matsArr = [{
-          name: entry.name,
-          unit: 'ч',
-          qty: entry.hours.replace(',', '.'),
-          system: ''
-        }];
-      }
-
-      if (matsArr.length > 0) {
-        const mats = document.createElement('div');
-        mats.className = 'journal-entry-materials';
-        matsArr.forEach(m => {
-          const row = document.createElement('div');
-          row.className = 'journal-entry-mat';
-          const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
-          row.innerHTML =
-            '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
-            '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
-          mats.appendChild(row);
-        });
-        el.appendChild(mats);
-      }
-
-      journalCont.appendChild(el);
+      journalCont.appendChild(renderJournalEntryElement(entry));
     });
   });
 }
@@ -2056,7 +2141,6 @@ function validateCurrentEntry() {
 
   let firstProblem = null;
 
-  // Если нет других работ — требуем полностью заполненную основную часть
   if (!hasAdd && !mainComplete) {
     if (!floorInput.value.trim() && !isAttic()) {
       const err = document.getElementById('err-floor');
@@ -2077,7 +2161,6 @@ function validateCurrentEntry() {
     }
   }
 
-  // Заделка — каждая непустая строка должна быть заполнена
   if (additionalState.zadelka.active) {
     for (let i = 0; i < additionalState.zadelka.items.length; i++) {
       const it = additionalState.zadelka.items[i];
@@ -2085,7 +2168,7 @@ function validateCurrentEntry() {
       const needB = isBuildingRequired();
       const isEmptyRow =
         !it.building && !it.floor && !it.room && !it.value;
-      if (isEmptyRow) continue;    // пустая строка — пропускаем
+      if (isEmptyRow) continue;
 
       if (needB && !it.building) {
         show('⚠️ Укажите корпус в заделке (место ' + (i + 1) + ')', 'err');
@@ -2113,7 +2196,6 @@ function validateCurrentEntry() {
     }
   }
 
-  // Наставничество
   if (additionalState.mentorship.active) {
     let bad = false;
     additionalState.mentorship.items.forEach((m, idx) => {
@@ -2207,7 +2289,8 @@ function addToJournal() {
     }
   }
 
-  // 2. Заделка — по каждой строке слияние по (building, floor, room)
+  // 2. Заделка — слияние по (building, floor).
+  //    Помещения объединяются: сначала без «к», потом с «к», по возрастанию.
   if (zActive) {
     additionalState.zadelka.items.forEach(it => {
       const zVal = parseFloat(String(it.value || '').replace(',', '.'));
@@ -2224,15 +2307,15 @@ function addToJournal() {
 
       const idx = journal.findIndex(e =>
         e.kind === 'zadelka' &&
-        e.building === zEntry.building &&
-        e.floor === zEntry.floor &&
-        e.room === zEntry.room
+        (e.building || '') === zEntry.building &&
+        (e.floor || '')    === zEntry.floor
       );
 
       if (idx !== -1) {
         const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
         const newQ = oldQ + zVal;
         journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
+        journal[idx].room = combineRooms(journal[idx].room, zEntry.room);
         merged = true;
       } else {
         journal.push(zEntry);
@@ -2290,7 +2373,6 @@ objectSelect.addEventListener('change', () => {
   updateWorkAccessibility();
   updateAdditionalAccessibility();
 
-  // Сбрасываем все места заделки (объект изменился)
   additionalState.zadelka.items = [makeZadelkaItem()];
   renderAdditionalFields();
 });
@@ -2323,7 +2405,6 @@ workInput.addEventListener('change', () => {
   updateMaterialsVisibility();
 });
 
-// ---- Аккордеон других работ ----
 if (additionalToggle) {
   additionalToggle.addEventListener('click', () => {
     if (additionalBlock.classList.contains('additional-block-disabled')) return;
@@ -2331,7 +2412,6 @@ if (additionalToggle) {
   });
 }
 
-// ---- Pills ----
 if (additionalPills) {
   additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2489,7 +2569,6 @@ async function sendAll() {
     return;
   }
 
-  // === ПРОВЕРКА СОЕДИНЕНИЯ ===
   if (isOffline()) {
     show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
     showToast('📵 Нет подключения');
@@ -2514,7 +2593,6 @@ async function sendAll() {
       }
     }
 
-    // === ОТПРАВКА ===
     const sortedJournal = journal.slice().sort(compareEntries);
 
     const records = [];
@@ -2638,8 +2716,6 @@ renderMaterials();
 renderAdditionalFields();
 updateAdditionalPills();
 
-// Черновик журнала — грузим ДО первого renderJournal,
-// чтобы saveDraft() внутри него не стёр восстановленное.
 const _restoredDraft = loadDraft();
 if (_restoredDraft && _restoredDraft.length > 0) {
   journal.push(..._restoredDraft);
