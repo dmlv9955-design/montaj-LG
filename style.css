@@ -346,25 +346,29 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 /*  МАТЕРИАЛЫ                                   */
 /* ============================================ */
 .material-group {
-  padding: 14px 0;
+  padding: 16px 0 14px;
   border-bottom: 1px solid var(--border);
 }
-.material-group:first-child { padding-top: 0; }
+.material-group:first-child { padding-top: 4px; }
 .material-group:last-child { border-bottom: none; padding-bottom: 0; }
 
 .material-group-name {
   font-size: 13px; font-weight: 700;
   color: var(--text-label);
-  line-height: 1.3; margin-bottom: 8px;
+  line-height: 1.3;
+  margin-bottom: 14px;   /* отступ от названия до строк */
   word-break: break-word;
 }
 
+/* одна строка: badge + система + input + unit (+ доп кнопки) */
 .variant-line {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
+  padding-top: 12px;    /* место для подписи «Система» над капсулами */
 }
+.variant-line:first-child { padding-top: 12px; }
 .variant-line:last-child { margin-bottom: 0; }
 
 .variant-badge {
@@ -386,24 +390,32 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* колонка системы: подпись + капсулы */
+/* колонка системы: только капсулы; подпись absolute сверху */
 .sys-col {
+  position: relative;
   flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
+  min-height: 32px;   /* чтобы фиксированная одна капсула была той же высоты, что и две */
 }
 
 .sys-label {
-  font-size: 9px;
+  position: absolute;
+  bottom: calc(100% + 2px);   /* над капсулами */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .3px;
   color: var(--text-hint);
   line-height: 1;
-  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color .15s;
 }
+.sys-label.sys-required { color: #dc2626; }
+body.dark .sys-label.sys-required { color: #fca5a5; }
 
 .sys-toggle {
   display: inline-flex;
@@ -415,14 +427,24 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   transition: border-color .15s, background .15s, box-shadow .15s;
 }
 
-/* подсветка, когда количество введено, а система не выбрана */
+/* ЖИВАЯ ПОДСВЕТКА: количество введено, а система не выбрана */
 .sys-toggle.sys-required {
   border-color: var(--red-border);
+  border-width: 2px;
   background: var(--red-bg);
-  box-shadow: 0 0 0 2px var(--red-shadow);
+  box-shadow: 0 0 0 3px var(--red-shadow);
+  animation: pulse-red 1.6s ease-in-out infinite;
 }
-.sys-toggle.sys-required .sys-label { color: #b91c1c; }
-body.dark .sys-toggle.sys-required .sys-label { color: #fca5a5; }
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 3px var(--red-shadow); }
+  50%      { box-shadow: 0 0 0 5px rgba(239, 68, 68, .22); }
+}
+.sys-toggle.sys-required .sys-btn:not(.active) {
+  color: #b91c1c;
+  opacity: 1;
+  font-weight: 700;
+}
+body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 
 .sys-btn {
   padding: 6px 8px;
@@ -524,13 +546,14 @@ body.dark .sys-toggle.sys-required .sys-label { color: #fca5a5; }
 .variant-del-btn:hover { background: rgba(239, 68, 68, .15); }
 .variant-del-btn:active { transform: scale(.94); }
 
-/* Подсветка строки с пропущенной системой */
+/* Подсветка всей строки после неудачного «Добавить в журнал» */
 .variant-line.sys-missing {
   background: var(--red-bg);
   border-radius: 10px;
-  padding: 6px;
+  padding: 6px 6px 6px 6px;
   margin-left: -6px;
   margin-right: -6px;
+  padding-top: 16px;   /* сохраняем место под label */
   box-shadow: 0 0 0 2px var(--red-border);
 }
 .variant-line.sys-missing .variant-input {
