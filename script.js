@@ -69,9 +69,6 @@ const WORK_ADDITIONAL = 'Другие работы';
 
 const SECTION_MENTOR = 'Наставничество';
 
-// ============================================
-//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ С ПРИВЯЗКОЙ К МЕСТУ
-// ============================================
 const LOCATION_WORKS = [
   { key: 'zadelka',      label: 'Штукатурка',             unit: 'шт'  },
   { key: 'tura',         label: 'Тура (монтаж/демонтаж)', unit: 'раз' },
@@ -1343,7 +1340,10 @@ function renderMaterials() {
       line.appendChild(forEl);
 
       const sysEl = document.createElement('span');
-      sysEl.className = 'variant-system';
+      let sysClass = 'variant-system';
+      if (r.system === 'АПС')       sysClass += ' variant-system-aps';
+      else if (r.system === 'СОУЭ') sysClass += ' variant-system-soue';
+      sysEl.className = sysClass;
       sysEl.textContent = r.system;
       line.appendChild(sysEl);
 
