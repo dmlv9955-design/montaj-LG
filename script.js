@@ -26,21 +26,17 @@
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
 
-// Базовые этажи для каждого объекта.
-// Используются, если для корпуса нет переопределения ниже.
 const FLOORS_BY_OBJECT = {
   'Ларинская гимназия': ['1', '2', '3', 'Нет'],
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Переопределение этажей под конкретный корпус.
+// Переопределение этажей под корпус.
 // «Крыло мастерских» — третий этаж отсутствует.
 const FLOORS_OVERRIDE_BY_BUILDING = {
   'Крыло мастерских': ['1', '2', 'Нет']
 };
 
-// Корпуса, доступные для конкретных объектов.
-// Если объекта нет в списке — поле «Корпус» скрыто.
 const BUILDINGS_BY_OBJECT = {
   'Ларинская гимназия': ['Основное здание', 'Крыло мастерских', 'Чердак']
 };
@@ -198,11 +194,9 @@ function showToast(text) {
 //  ЭТАЖИ ПО КОРПУСУ
 // ============================================
 function getFloorsFor(object, building) {
-  // если есть переопределение для корпуса — берём его
   if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) {
     return FLOORS_OVERRIDE_BY_BUILDING[building];
   }
-  // иначе — базовые этажи объекта
   return FLOORS_BY_OBJECT[object] || null;
 }
 
@@ -537,7 +531,6 @@ function rebuildFloors() {
   const build  = buildingInput.value;
   const floors = getFloorsFor(obj, build);
 
-  // Чердак как корпус — этаж не нужен
   if (isAttic()) {
     floorCS.setOptions([]);
     floorCS.disabled = true;
@@ -637,7 +630,7 @@ function isSystemMissing(variant, row) {
   if (variant.fixedSystem) return false;
   const qty = (row.qty || '').trim();
   if (!qty) return false;
-  if (parseFloat(qty) <= 0) return false;
+  if (parseInt(qty, 10) <= 0) return false;
   return !row.system;
 }
 
@@ -741,9 +734,11 @@ function renderMaterials() {
         sysCol.appendChild(sysWrap);
         line.appendChild(sysCol);
 
+        // input количества — только цифры, максимум 4, прижат вправо
         const input = document.createElement('input');
         input.type = 'text';
-        input.inputMode = 'decimal';
+        input.inputMode = 'numeric';
+        input.maxLength = 4;
         input.className = 'variant-input';
         input.dataset.focusId = v.id + '_' + rowIdx;
         input.placeholder = '0';
@@ -751,10 +746,13 @@ function renderMaterials() {
         input.value = row.qty || '';
 
         input.addEventListener('input', () => {
-          let raw = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-          const parts = raw.split('.');
-          if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
-          if (input.value !== raw) input.value = raw;
+          // только цифры, максимум 4
+          let raw = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+          if (input.value !== raw) {
+            input.value = raw;
+            // вернуть курсор в конец
+            input.setSelectionRange(raw.length, raw.length);
+          }
           row.qty = raw;
 
           applySysHighlight(sysCol, v, row);
@@ -809,7 +807,8 @@ function renderMaterials() {
     if (el) {
       el.focus();
       if (selStart !== null && el.setSelectionRange) {
-        el.setSelectionRange(selStart, selStart);
+        const pos = Math.min(selStart, el.value.length);
+        el.setSelectionRange(pos, pos);
       }
     }
   }
@@ -825,7 +824,7 @@ function materialStateToArrayFromState(state) {
       const rows = state[v.id] || [];
       rows.forEach(row => {
         const qty = (row.qty || '').trim();
-        if (qty && parseFloat(qty) > 0) {
+        if (qty && parseInt(qty, 10) > 0) {
           list.push({
             name: mat.label + ' ' + v.label,
             unit: mat.unit,
