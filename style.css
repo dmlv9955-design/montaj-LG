@@ -158,6 +158,17 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.section-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text-title);
+  margin: 18px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+
 /* ============================================ */
 /*  МЕТКИ                                       */
 /* ============================================ */
@@ -274,9 +285,7 @@ input.req-field.is-invalid {
   background: var(--hover-bg);
 }
 
-.segmented-btn:active {
-  transform: scale(.97);
-}
+.segmented-btn:active { transform: scale(.97); }
 
 .segmented-btn.active {
   background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
@@ -286,7 +295,6 @@ input.req-field.is-invalid {
   box-shadow: 0 2px 8px var(--btn-shadow);
 }
 
-/* Пусто — красная рамка */
 .segmented.is-empty {
   border-color: var(--red-border);
   background: var(--red-bg);
@@ -303,7 +311,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   color: #fca5a5;
 }
 
-/* Заполнено — зелёная рамка */
 .segmented.is-filled {
   border-color: var(--green-border);
   box-shadow: 0 0 0 3px var(--green-shadow);
@@ -330,13 +337,8 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   box-shadow: none;
 }
 
-.segmented.segmented-disabled .segmented-hint {
-  display: block;
-}
-
-.segmented.segmented-disabled .segmented-btn {
-  display: none;
-}
+.segmented.segmented-disabled .segmented-hint { display: block; }
+.segmented.segmented-disabled .segmented-btn  { display: none; }
 
 /* ============================================ */
 /*  КАСТОМНЫЙ SELECT                            */
@@ -370,9 +372,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   transition: border-color .2s, box-shadow .2s, background .2s, color .2s;
 }
 
-.cselect-btn:hover {
-  border-color: var(--border-focus);
-}
+.cselect-btn:hover { border-color: var(--border-focus); }
 
 .cselect-btn:focus {
   outline: none;
@@ -388,9 +388,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   white-space: nowrap;
 }
 
-.cselect-value.placeholder {
-  color: var(--text-hint);
-}
+.cselect-value.placeholder { color: var(--text-hint); }
 
 .cselect-arrow {
   width: 10px;
@@ -409,7 +407,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   margin-bottom: -3px;
 }
 
-/* ВЫПАДАЮЩИЙ СПИСОК */
 .cselect-list {
   position: absolute;
   top: calc(100% + 6px);
@@ -470,18 +467,12 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   font-weight: 700;
 }
 
-.cselect-option.selected:hover {
-  background: var(--border-focus);
-  color: #ffffff;
-}
-
 .cselect-option.disabled {
   opacity: .4;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-/* Скроллбар */
 .cselect-list::-webkit-scrollbar { width: 6px; }
 .cselect-list::-webkit-scrollbar-track { background: transparent; }
 .cselect-list::-webkit-scrollbar-thumb {
@@ -489,7 +480,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   border-radius: 3px;
 }
 
-/* ЗАБЛОКИРОВАННЫЙ CUSTOM SELECT */
 .cselect.cselect-disabled .cselect-btn {
   background: var(--input-disabled-bg);
   color: var(--input-disabled-color);
@@ -502,7 +492,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 }
 .cselect.cselect-disabled .cselect-arrow { opacity: .5; }
 
-/* ПОДСВЕТКА CUSTOM SELECT — состояния */
 .cselect.is-empty .cselect-btn {
   background: var(--red-bg);
   border-color: var(--red-border);
@@ -551,8 +540,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
 
 /* ============================================ */
 /*  МАТЕРИАЛЫ — ГРУППАМИ                        */
-/*  Название материала — один раз,              */
-/*  ниже — строки вариантов                     */
 /* ============================================ */
 .material-group {
   padding: 14px 0;
@@ -604,7 +591,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* Специфичный селектор — перебивает глобальный input[type="text"] */
 .variant-line input.variant-input {
   flex: 1 1 0;
   width: auto;
@@ -635,6 +621,145 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) {
   font-size: 13px;
   color: var(--text-hint);
   text-align: left;
+}
+
+/* ============================================ */
+/*  КНОПКА «ДОБАВИТЬ В ЖУРНАЛ»                  */
+/* ============================================ */
+.btn-add-journal {
+  margin-top: 18px;
+  width: 100%;
+  padding: 14px;
+  background: var(--input-bg);
+  border: 2px dashed var(--border-focus);
+  color: var(--border-focus);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-add-journal:hover {
+  background: var(--hover-bg);
+}
+.btn-add-journal:active {
+  transform: scale(.98);
+}
+
+/* ============================================ */
+/*  ЖУРНАЛ ЗАПИСЕЙ                              */
+/* ============================================ */
+.journal-count {
+  font-weight: 700;
+  color: var(--border-focus);
+  margin-left: 4px;
+}
+
+.journal-empty {
+  text-align: center;
+  padding: 24px 8px;
+  font-size: 13px;
+  color: var(--text-hint);
+  font-style: italic;
+}
+
+.journal-entry {
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--input-disabled-bg);
+  transition: border-color .2s, background .2s;
+}
+.journal-entry:last-child { margin-bottom: 0; }
+
+.journal-entry-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.journal-entry-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+
+.journal-entry-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.journal-btn {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.journal-btn:hover {
+  border-color: var(--border-focus);
+}
+.journal-btn:active {
+  transform: scale(.94);
+}
+.journal-btn-edit:hover {
+  background: var(--hover-bg);
+}
+.journal-btn-del:hover {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+}
+
+.journal-entry-meta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--border-focus);
+  margin-bottom: 8px;
+}
+
+.journal-entry-materials {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.journal-entry-mat {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-label);
+}
+
+.jm-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jm-qty {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
 }
 
 /* ============================================ */
@@ -692,7 +817,7 @@ body, .card, input, .cselect-btn, label, .section-title {
   transition: background-color .3s, color .3s, border-color .3s;
 }
 
-/* ПОДСВЕТКА СТАРОЙ ДАТЫ (любой день раньше сегодняшнего) */
+/* ПОДСВЕТКА СТАРОЙ ДАТЫ */
 input[type="date"].is-old-date {
   background: #fef3c7;
   border-color: #f59e0b;
@@ -706,4 +831,35 @@ body.dark input[type="date"].is-old-date {
   border-color: #f59e0b;
   color: #fbbf24;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
+}
+
+/* ============================================ */
+/*  TOAST — всплывающее уведомление             */
+/* ============================================ */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120px);
+  background: #16a34a;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  z-index: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .3s ease, opacity .3s ease;
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+body.dark .toast {
+  background: #22c55e;
+  color: #052e16;
 }
