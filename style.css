@@ -232,6 +232,80 @@ input.req-field.is-invalid {
 }
 
 /* ============================================ */
+/*  SEGMENTED CONTROL — ОБЪЕКТ                  */
+/* ============================================ */
+.segmented {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--input-disabled-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  width: 100%;
+}
+
+.segmented-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-label);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background .18s, color .18s, transform .1s, box-shadow .18s, opacity .18s;
+  opacity: .5;
+  text-align: center;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  user-select: none;
+}
+
+.segmented-btn:hover:not(.active) {
+  opacity: .85;
+  color: var(--text-main);
+}
+
+.segmented-btn:active { transform: scale(.97); }
+
+.segmented-btn.active {
+  background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+  color: #fff;
+  opacity: 1;
+  box-shadow: 0 2px 8px var(--btn-shadow);
+}
+
+/* Подсветка segmented — пусто / заполнено */
+.segmented.is-empty {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--red-shadow);
+}
+.segmented.is-empty .segmented-btn {
+  color: #b91c1c;
+  opacity: .7;
+}
+.segmented.is-empty .segmented-btn.active {
+  color: #fff;
+  opacity: 1;
+}
+body.dark .segmented.is-empty .segmented-btn { color: #fca5a5; }
+body.dark .segmented.is-empty .segmented-btn.active { color: #fff; }
+
+.segmented.is-filled {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--green-shadow);
+}
+
+/* ============================================ */
 /*  КАСТОМНЫЙ SELECT                            */
 /* ============================================ */
 .cselect {
