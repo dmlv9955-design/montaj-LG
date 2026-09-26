@@ -133,6 +133,7 @@ label {
 }
 .req-star { color: #ef4444; margin-left: 2px; }
 
+/* Поля ввода */
 input[type="text"], input[type="date"], input[type="number"], textarea {
   width: 100%;
   padding: 12px 14px;
@@ -227,6 +228,26 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   border-color: var(--green-border);
   box-shadow: 0 0 0 3px var(--green-shadow);
 }
+
+/* SEGMENTED — ЗАБЛОКИРОВАННОЕ */
+.segmented-hint {
+  display: none;
+  width: 100%;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-hint);
+  user-select: none;
+}
+.segmented.segmented-disabled {
+  background: var(--input-disabled-bg);
+  border-style: dashed;
+  border-color: var(--input-disabled-border);
+  box-shadow: none;
+}
+.segmented.segmented-disabled .segmented-hint { display: block; }
+.segmented.segmented-disabled .segmented-btn  { display: none; }
 
 /* CUSTOM SELECT */
 .cselect { position: relative; width: 100%; }
@@ -356,17 +377,16 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   font-size: 13px; font-weight: 700;
   color: var(--text-label);
   line-height: 1.3;
-  margin-bottom: 14px;   /* отступ от названия до строк */
+  margin-bottom: 14px;
   word-break: break-word;
 }
 
-/* одна строка: badge + система + input + unit (+ доп кнопки) */
 .variant-line {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
-  padding-top: 12px;    /* место для подписи «Система» над капсулами */
+  padding-top: 12px;
 }
 .variant-line:first-child { padding-top: 12px; }
 .variant-line:last-child { margin-bottom: 0; }
@@ -390,18 +410,16 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   box-shadow: 0 2px 6px var(--btn-shadow);
 }
 
-/* колонка системы: только капсулы; подпись absolute сверху */
 .sys-col {
   position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  min-height: 32px;   /* чтобы фиксированная одна капсула была той же высоты, что и две */
+  min-height: 32px;
 }
-
 .sys-label {
   position: absolute;
-  bottom: calc(100% + 2px);   /* над капсулами */
+  bottom: calc(100% + 2px);
   left: 50%;
   transform: translateX(-50%);
   font-size: 8px;
@@ -426,8 +444,6 @@ body.dark .sys-label.sys-required { color: #fca5a5; }
   border: 1.5px solid var(--border);
   transition: border-color .15s, background .15s, box-shadow .15s;
 }
-
-/* ЖИВАЯ ПОДСВЕТКА: количество введено, а система не выбрана */
 .sys-toggle.sys-required {
   border-color: var(--red-border);
   border-width: 2px;
@@ -472,13 +488,8 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
   font-weight: 700;
   box-shadow: 0 1px 4px var(--btn-shadow);
 }
-.sys-btn.fixed {
-  cursor: default;
-  opacity: 1;
-}
-.sys-btn:disabled {
-  cursor: not-allowed;
-}
+.sys-btn.fixed { cursor: default; opacity: 1; }
+.sys-btn:disabled { cursor: not-allowed; }
 
 .variant-line input.variant-input {
   flex: 1 1 0;
@@ -546,19 +557,15 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
 .variant-del-btn:hover { background: rgba(239, 68, 68, .15); }
 .variant-del-btn:active { transform: scale(.94); }
 
-/* Подсветка всей строки после неудачного «Добавить в журнал» */
 .variant-line.sys-missing {
   background: var(--red-bg);
   border-radius: 10px;
-  padding: 6px 6px 6px 6px;
+  padding: 16px 6px 6px 6px;
   margin-left: -6px;
   margin-right: -6px;
-  padding-top: 16px;   /* сохраняем место под label */
   box-shadow: 0 0 0 2px var(--red-border);
 }
-.variant-line.sys-missing .variant-input {
-  border-color: var(--red-border);
-}
+.variant-line.sys-missing .variant-input { border-color: var(--red-border); }
 
 /* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
 .btn-add-journal {
