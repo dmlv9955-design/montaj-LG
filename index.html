@@ -39,6 +39,7 @@
   <label class="req">Объект <span class="req-star">*</span></label>
   <div class="segmented" id="object-segmented">
     <input type="hidden" id="object" class="req-field" value="">
+    <span class="segmented-hint">🔒 Введите имя</span>
     <button type="button" class="segmented-btn" data-value="Ларинская гимназия">Ларинская гимназия</button>
     <button type="button" class="segmented-btn" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</button>
   </div>
@@ -55,7 +56,7 @@
       <div class="cselect" data-cselect>
         <input type="hidden" id="floor" class="req-field" value="" disabled>
         <button type="button" class="cselect-btn">
-          <span class="cselect-value placeholder">🔒 Объект</span>
+          <span class="cselect-value placeholder">🔒 Имя</span>
           <span class="cselect-arrow"></span>
         </button>
         <ul class="cselect-list"></ul>
@@ -65,7 +66,7 @@
     <div class="col-2">
       <label class="req">Помещение <span class="req-star">*</span></label>
       <input type="text" id="room" class="req-field"
-             placeholder="🔒 Этаж"
+             placeholder="🔒 Имя"
              inputmode="numeric"
              maxlength="60" disabled>
       <div class="hint-small">Цифры через пробел — сохранятся через запятую. Если помещения нет — введите 0</div>
@@ -76,6 +77,7 @@
   <label class="req">Тип работ <span class="req-star">*</span></label>
   <div class="segmented" id="work-segmented">
     <input type="hidden" id="work" class="req-field" value="">
+    <span class="segmented-hint">🔒 Введите имя</span>
     <button type="button" class="segmented-btn" data-value="Монтаж">Монтаж</button>
     <button type="button" class="segmented-btn" data-value="Демонтаж">Демонтаж</button>
     <button type="button" class="segmented-btn" data-value="Иные работы">Иные работы</button>
