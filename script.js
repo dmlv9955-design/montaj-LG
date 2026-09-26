@@ -35,9 +35,6 @@ const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
-//  systems       — капсулы для выбора
-//  fixedSystem   — система зафиксирована (нельзя менять, без возможности добавить строку)
-//  canAddSecond  — можно добавить вторую строку для противоположной системы
 // ============================================
 const MATERIALS = [
   {
@@ -80,7 +77,6 @@ const MATERIALS = [
 
 // ============================================
 //  СОСТОЯНИЕ МАТЕРИАЛОВ
-//  materialState[variantId] = [ {system, qty}, ... ]
 // ============================================
 let materialState = {};
 
@@ -424,13 +420,24 @@ function updateMaterialsVisibility() {
 }
 
 // ============================================
+//  ПРОВЕРКА: НУЖНА ЛИ ПОДСВЕТКА КАПСУЛ
+//  qty > 0 и нет системы → красный
+// ============================================
+function isSystemMissing(variant, row) {
+  if (variant.fixedSystem) return false;
+  const qty = (row.qty || '').trim();
+  if (!qty) return false;
+  if (parseFloat(qty) <= 0) return false;
+  return !row.system;
+}
+
+// ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
   if (!container) return;
 
-  // сохраняем фокус, чтобы он не терялся при перерисовке
   const active = document.activeElement;
   const focusId = active && active.dataset ? active.dataset.focusId : null;
   const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
@@ -462,9 +469,22 @@ function renderMaterials() {
         badge.textContent = v.label;
         line.appendChild(badge);
 
-        // капсулы систем
+        // колонка с капсулами: подпись «Система» + сами капсулы
+        const sysCol = document.createElement('div');
+        sysCol.className = 'sys-col';
+
+        const sysLabel = document.createElement('div');
+        sysLabel.className = 'sys-label';
+        sysLabel.textContent = 'Система';
+        sysCol.appendChild(sysLabel);
+
         const sysWrap = document.createElement('div');
         sysWrap.className = 'sys-toggle';
+
+        // живая подсветка при отсутствии системы
+        if (isSystemMissing(v, row)) {
+          sysWrap.classList.add('sys-required');
+        }
 
         if (v.fixedSystem) {
           const sysBtn = document.createElement('button');
@@ -502,7 +522,9 @@ function renderMaterials() {
             sysWrap.appendChild(btn);
           });
         }
-        line.appendChild(sysWrap);
+
+        sysCol.appendChild(sysWrap);
+        line.appendChild(sysCol);
 
         // input количества
         const input = document.createElement('input');
@@ -513,14 +535,27 @@ function renderMaterials() {
         input.placeholder = '0';
         input.autocomplete = 'off';
         input.value = row.qty || '';
+
         input.addEventListener('input', () => {
           let raw = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
           const parts = raw.split('.');
           if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
           if (input.value !== raw) input.value = raw;
           row.qty = raw;
+
+          // живая подсветка капсул
+          if (!v.fixedSystem) {
+            if (isSystemMissing(v, row)) {
+              sysWrap.classList.add('sys-required');
+            } else {
+              sysWrap.classList.remove('sys-required');
+            }
+          }
+
+          // скрываем старую ошибку валидации
           line.classList.remove('sys-missing');
         });
+
         line.appendChild(input);
 
         // единица измерения
@@ -565,7 +600,6 @@ function renderMaterials() {
     container.appendChild(group);
   });
 
-  // восстановить фокус
   if (focusId) {
     const el = container.querySelector('[data-focus-id="' + focusId + '"]');
     if (el) {
@@ -601,7 +635,7 @@ function materialStateToArrayFromState(state) {
   return list;
 }
 
-// проверка: если qty > 0, а system пусто — ошибка
+// проверка при добавлении в журнал
 function validateMaterialsSystems() {
   let hasError = false;
 
@@ -610,10 +644,7 @@ function validateMaterialsSystems() {
       if (v.fixedSystem) return;
       const rows = materialState[v.id] || [];
       rows.forEach(row => {
-        const qty = (row.qty || '').trim();
-        if (qty && parseFloat(qty) > 0 && !row.system) {
-          hasError = true;
-        }
+        if (isSystemMissing(v, row)) hasError = true;
       });
     });
   });
@@ -626,8 +657,7 @@ function validateMaterialsSystems() {
       if (!variant || variant.fixedSystem) return;
       const row = materialState[vId] && materialState[vId][idx];
       if (!row) return;
-      const qty = (row.qty || '').trim();
-      if (qty && parseFloat(qty) > 0 && !row.system) {
+      if (isSystemMissing(variant, row)) {
         line.classList.add('sys-missing');
       }
     });
