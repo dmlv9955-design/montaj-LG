@@ -849,4 +849,239 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   color: var(--border-focus);
   border-radius: 10px;
   font-family: inherit;
-  font-size
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-add-mentor:hover { background: var(--hover-bg); }
+.btn-add-mentor:active { transform: scale(.98); }
+
+/* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
+.btn-add-journal {
+  margin-top: 18px;
+  width: 100%;
+  padding: 14px;
+  background: var(--input-bg);
+  border: 2px dashed var(--border-focus);
+  color: var(--border-focus);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-add-journal:hover { background: var(--hover-bg); }
+.btn-add-journal:active { transform: scale(.98); }
+
+/* ============================================ */
+/*  ЖУРНАЛ                                      */
+/* ============================================ */
+.journal-building-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--border-focus);
+  margin: 14px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+.journal-building-title:first-child { margin-top: 0; }
+
+.journal-count { font-weight: 700; color: var(--border-focus); margin-left: 4px; }
+.journal-empty {
+  text-align: center;
+  padding: 24px 8px;
+  font-size: 13px;
+  color: var(--text-hint);
+  font-style: italic;
+}
+.journal-entry {
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--input-disabled-bg);
+  transition: border-color .2s, background .2s;
+}
+.journal-entry:last-child { margin-bottom: 0; }
+.journal-entry-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.journal-entry-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--text-main);
+  flex: 1 1 auto; word-break: break-word;
+}
+.journal-entry-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.journal-btn {
+  width: 32px; height: 32px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.journal-btn:hover { border-color: var(--border-focus); }
+.journal-btn:active { transform: scale(.94); }
+.journal-btn-edit:hover { background: var(--hover-bg); }
+.journal-btn-del:hover { background: var(--red-bg); border-color: var(--red-border); }
+.journal-entry-meta {
+  font-size: 12px; font-weight: 600;
+  color: var(--border-focus);
+  margin-bottom: 8px;
+}
+.journal-entry-materials {
+  display: flex; flex-direction: column;
+  gap: 4px; padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.journal-entry-mat {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--text-label);
+}
+.jm-name {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.jm-qty {
+  flex: 0 0 auto;
+  font-weight: 700; color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* КНОПКА ОТПРАВКИ */
+button.submit {
+  margin-top: 8px;
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px var(--btn-shadow);
+  transition: transform .1s;
+}
+button.submit:active { transform: scale(.98); }
+button.submit:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: .75;
+}
+
+#msg {
+  margin-top: 14px;
+  text-align: center;
+  font-weight: 600;
+  min-height: 22px;
+  font-size: 15px;
+}
+.ok { color: #16a34a; }
+body.dark .ok { color: #4ade80; }
+.err { color: #ef4444; }
+body.dark .err { color: #f87171; }
+
+.hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-hint);
+  margin: 8px 0 0;
+}
+.footer {
+  text-align: center;
+  padding: 8px 0 24px;
+  font-size: 12px;
+  color: var(--text-hint);
+}
+
+body, .card, input, .cselect-btn, label, .section-title {
+  transition: background-color .3s, color .3s, border-color .3s;
+}
+
+input[type="date"].is-old-date {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .12);
+  color: #92400e;
+  font-weight: 600;
+}
+body.dark input[type="date"].is-old-date {
+  background: #422006;
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
+}
+
+.toast {
+  position: fixed;
+  bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(120px);
+  background: #16a34a;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  z-index: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .3s ease, opacity .3s ease;
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+body.dark .toast {
+  background: #22c55e;
+  color: #052e16;
+}
+
+/* ============================================ */
+/*  ПОМЕЩЕНИЕ — ПРЕФИКС «к»                     */
+/* ============================================ */
+.room-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.room-wrap input.req-field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.room-prefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--input-disabled-bg);
+  border: 1.5px solid var(--border);
+  color: var(--text-label);
+  font-size: 16px;
+  font-weight: 700;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+#building-section {
+  animation: fadeSlideIn .25s ease;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
