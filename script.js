@@ -366,15 +366,8 @@ function isNameValid(value) {
 
 // ============================================
 //  ДОСТУПНОСТЬ ПОЛЕЙ
-//  Цепочка:
-//    Имя → Дата, Объект
-//    Объект → Этаж
-//    Этаж → Помещение
-//    Объект + Этаж + Помещение → Тип работ
-//    Тип работ (Монтаж/Демонтаж) → Материалы
 // ============================================
 
-// Обновить только доступность Типа работ
 function updateWorkAccessibility() {
   const nameOk  = isNameValid(nameInput.value);
   const objOk   = !!objectSelect.value;
@@ -395,18 +388,14 @@ function updateWorkAccessibility() {
     workSeg.classList.remove('segmented-disabled');
   }
 
-  // материалы показываем только если тип работ выбран и это Монтаж/Демонтаж
   updateMaterialsVisibility();
 }
 
-// Полное обновление всей цепочки
 function updateFormAccessibility() {
   const nameOk = isNameValid(nameInput.value);
 
-  // Дата
   dateInput.disabled = !nameOk;
 
-  // Объект
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
@@ -415,11 +404,8 @@ function updateFormAccessibility() {
     objectSeg.classList.remove('segmented-disabled');
   }
 
-  // Этаж + Помещение
   rebuildFloors();
   updateRoomState();
-
-  // Тип работ
   updateWorkAccessibility();
 }
 
@@ -479,7 +465,7 @@ function updateRoomState() {
   }
 
   roomInput.disabled = false;
-  roomInput.placeholder = '32 105 108';
+  roomInput.placeholder = '1234';
   updateFieldState(roomInput);
 }
 
@@ -764,7 +750,6 @@ function resetCurrentEntry() {
     if (el) el.classList.remove('show');
   });
 
-  // пересчитать доступность (тип работ вернётся в disabled)
   updateWorkAccessibility();
 }
 
@@ -1009,15 +994,11 @@ workInput.addEventListener('change', () => {
 });
 
 // ============================================
-//  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЯ
+//  ФОРМАТ ПОМЕЩЕНИЯ
+//  Только цифры, максимум 4
 // ============================================
 function formatRoom(value) {
-  let cleaned = value.replace(/[^0-9\s]/g, '');
-  cleaned = cleaned.replace(/\s+/g, ' ');
-  const parts = cleaned.split(' ').filter(p => p !== '');
-  let result = parts.join(', ');
-  if (cleaned.endsWith(' ') && parts.length > 0) result += ', ';
-  return result;
+  return value.replace(/[^0-9]/g, '').slice(0, 4);
 }
 
 roomInput.addEventListener('input', () => {
@@ -1062,8 +1043,6 @@ nameInput.addEventListener('input', () => {
     nameInput.classList.remove('is-invalid');
   }
   updateFieldState(nameInput);
-
-  // пересчитать доступность всей цепочки
   updateFormAccessibility();
 });
 
@@ -1202,7 +1181,7 @@ async function sendAll() {
 //  СТАРТ
 // ============================================
 initMaterialState();
-updateFormAccessibility();   // сразу выставит все блокировки
+updateFormAccessibility();
 updateMaterialsVisibility();
 renderMaterials();
 renderJournal();
