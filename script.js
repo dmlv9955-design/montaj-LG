@@ -222,6 +222,35 @@ document.querySelectorAll('[data-cselect]').forEach(rootEl => {
 });
 
 // ============================================
+//  SEGMENTED CONTROL — ОБЪЕКТ
+// ============================================
+(function initObjectSegmented() {
+  const root = document.getElementById('object-segmented');
+  const input = document.getElementById('object');
+  if (!root || !input) return;
+
+  function updateDisplay() {
+    const v = input.value;
+    root.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === v);
+    });
+  }
+
+  root.querySelectorAll('.segmented-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      input.value = btn.dataset.value;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      updateDisplay();
+    });
+  });
+
+  // если значение сбрасывается извне — перерисовать
+  input.addEventListener('change', updateDisplay);
+
+  updateDisplay();
+})();
+
+// ============================================
 //  ЭЛЕМЕНТЫ
 // ============================================
 const objectSelect = document.getElementById('object');
@@ -373,7 +402,7 @@ nameInput.addEventListener('blur', () => {
 //  ПОДСВЕТКА ПОЛЕЙ
 // ============================================
 function updateFieldState(el) {
-  const wrap = el.closest && el.closest('.cselect');
+  const wrap = el.closest && (el.closest('.cselect') || el.closest('.segmented'));
   if (wrap) {
     wrap.classList.remove('is-empty', 'is-filled');
     if (el.disabled) return;
@@ -554,7 +583,13 @@ async function send() {
 
     nameInput.value = '';
 
+    // сброс кастомных селектов (объект — не кастомный, он в segmented)
     Object.values(customSelects).forEach(cs => { cs.value = ''; });
+
+    // сброс segmented объекта
+    const objInput = document.getElementById('object');
+    objInput.value = '';
+    objInput.dispatchEvent(new Event('change', { bubbles: true }));
 
     document.getElementById('materials').innerHTML = '';
     addMaterial();
