@@ -24,6 +24,10 @@
   --green-border: #22c55e;
   --green-shadow: rgba(34, 197, 94, .08);
   --green-focus: #16a34a;
+  --yellow-bg: #fef3c7;
+  --yellow-border: #f59e0b;
+  --yellow-shadow: rgba(245, 158, 11, .12);
+  --yellow-text: #92400e;
   --btn-from: #2563eb;
   --btn-to: #1d4ed8;
   --btn-shadow: rgba(37, 99, 235, .3);
@@ -57,6 +61,10 @@ body.dark {
   --green-border: #22c55e;
   --green-shadow: rgba(34, 197, 94, .15);
   --green-focus: #4ade80;
+  --yellow-bg: #422006;
+  --yellow-border: #f59e0b;
+  --yellow-shadow: rgba(245, 158, 11, .18);
+  --yellow-text: #fbbf24;
   --btn-from: #3b82f6;
   --btn-to: #2563eb;
   --btn-shadow: rgba(59, 130, 246, .4);
@@ -472,6 +480,33 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .field-clear:hover {
   background: var(--input-disabled-bg);
   color: var(--text-main);
+}
+
+/* ============================================ */
+/*  ИМЯ — ТРИ СОСТОЯНИЯ (пусто/частично/ок)      */
+/* ============================================ */
+input.req-field.is-partial,
+.mentor-name-input.is-partial {
+  background: var(--yellow-bg);
+  border-color: var(--yellow-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--yellow-shadow);
+  color: var(--yellow-text);
+  font-style: normal;
+}
+
+.mentor-name-input.is-empty {
+  background: var(--red-bg);
+  border-color: var(--red-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--red-shadow);
+}
+
+.mentor-name-input.is-filled {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--green-shadow);
 }
 
 /* ============================================ */
