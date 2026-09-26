@@ -152,8 +152,6 @@ function updateSendButton() {
 
 // ============================================
 //  «ТОЛЬКО ДОП. РАБОТЫ»?
-//  true, если активирована хотя бы одна доп. работа
-//  и при этом не заполнены этаж, помещение, тип работ.
 // ============================================
 function isOnlyAdditional() {
   const hasAdd = additionalState.zadelka.active || additionalState.mentorship.active;
@@ -239,7 +237,7 @@ function floorWeight(floor) {
     '2': 2,
     '3': 3,
     'Чердак': 100,
-    '': 900,     // доп. работы без этажа — идут в конце
+    '': 900,
     'Нет': 1000
   };
   return (floor in w) ? w[floor] : 500;
@@ -279,7 +277,6 @@ function formatFloorLabel(floor) {
 }
 
 function formatJournalTitle(entry) {
-  // Запись без этажа и помещения — это доп. работы
   if (entry.work === WORK_ADDITIONAL) {
     return 'Дополнительные работы';
   }
@@ -1498,7 +1495,6 @@ function editJournalEntry(idx) {
     updateRoomPrefix();
   }
 
-  // Если запись — это только доп. работы, не восстанавливаем этаж/помещение/тип
   if (entry.work !== WORK_ADDITIONAL) {
     if (entry.floor) {
       floorInput.value = entry.floor;
@@ -1589,13 +1585,13 @@ function validateHeader() {
     if (!firstProblem) firstProblem = objectSelect;
   }
 
-  if (isBuildingRequired() && !buildingInput.value.trim()) {
+  // Корпус не требуется, если это только доп. работы
+  if (isBuildingRequired() && !buildingInput.value.trim() && !isOnlyAdditional()) {
     const err = document.getElementById('err-building');
     if (err) err.classList.add('show');
     if (!firstProblem) firstProblem = buildingInput;
   }
 
-  // Этаж не требуем, если это только доп. работы
   if (!isOnlyAdditional() && !isAttic() && !floorInput.value.trim()) {
     const err = document.getElementById('err-floor');
     if (err) err.classList.add('show');
@@ -1622,7 +1618,6 @@ function validateCurrentEntry() {
     if (el) el.classList.remove('show');
   });
 
-  // Помещение и тип работ не требуются, если это только доп. работы
   if (!onlyAdditional) {
     if (!roomInput.value.trim()) {
       roomInput.classList.add('shake');
@@ -1648,7 +1643,6 @@ function validateCurrentEntry() {
     return false;
   }
 
-  // Проверка наставничества
   if (additionalState.mentorship.active) {
     let bad = false;
     additionalState.mentorship.items.forEach((m, idx) => {
@@ -1704,7 +1698,6 @@ function addToJournal() {
   let entry;
 
   if (onlyAdditional) {
-    // Запись без этажа и помещения — только доп. работы
     entry = {
       room: '',
       room_none: true,
@@ -1724,7 +1717,6 @@ function addToJournal() {
 
     journal.push(entry);
   } else {
-    // Обычная запись: этаж + помещение + тип работ (могут быть + доп. работы)
     entry = {
       room: roomInput.value.trim(),
       room_none: floorInput.value === 'Нет',
