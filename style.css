@@ -435,63 +435,6 @@ input.req-field.is-invalid {
 
 .hint-small { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
 
-.hint-lock {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-title);
-  background: var(--input-disabled-bg);
-  padding: 4px 8px;
-  border-radius: 6px;
-  margin-top: 4px;
-}
-
-/* ============================================ */
-/*  ЗАГОЛОВОК + ЧЕКБОКС СПРАВА                  */
-/* ============================================ */
-.label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 14px;
-  margin-bottom: 6px;
-}
-.label-row > label { margin: 0; }
-
-.check-none {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-label);
-  user-select: none;
-  white-space: nowrap;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: background .15s;
-}
-.check-none:hover { background: var(--input-disabled-bg); }
-.check-none input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #2563eb;
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-  margin: 0;
-}
-.check-none input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .5; }
-.check-none.is-disabled {
-  opacity: .45;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
 /* ============================================ */
 /*  ПРОПОРЦИИ                                   */
 /* ============================================ */
@@ -600,7 +543,7 @@ body, .card, input, .cselect-btn, label, .section-title {
   transition: background-color .3s, color .3s, border-color .3s;
 }
 
-/* ПОДСВЕТКА СТАРОЙ ДАТЫ — ВЧЕРА (жёлтая) */
+/* ПОДСВЕТКА СТАРОЙ ДАТЫ (любой день раньше сегодняшнего) */
 input[type="date"].is-old-date {
   background: #fef3c7;
   border-color: #f59e0b;
@@ -614,20 +557,4 @@ body.dark input[type="date"].is-old-date {
   border-color: #f59e0b;
   color: #fbbf24;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, .18);
-}
-
-/* ПОДСВЕТКА СТАРОЙ ДАТЫ — РАНЬШЕ ВЧЕРАШНЕГО (красная) */
-input[type="date"].is-very-old-date {
-  background: #fee2e2;
-  border-color: #ef4444;
-  border-width: 2px;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, .12);
-  color: #991b1b;
-  font-weight: 600;
-}
-body.dark input[type="date"].is-very-old-date {
-  background: #3b1416;
-  border-color: #ef4444;
-  color: #f87171;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, .18);
 }
