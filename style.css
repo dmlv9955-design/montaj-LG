@@ -408,7 +408,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding-top: 12px;
   min-height: 44px;
   min-width: 0;
@@ -446,6 +446,17 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   border-color: transparent;
   color: #fff;
   box-shadow: 0 2px 6px var(--btn-shadow);
+}
+
+/* подпись «для» перед системой */
+.variant-for {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-hint);
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 /* метка системы — серая плашка, не кликабельная */
