@@ -1119,4 +1119,1331 @@ function renderMaterials() {
       clearBtn.style.display = input.value ? 'inline-flex' : 'none';
       line.appendChild(clearBtn);
 
-      const unit = document.createElement('span
+      const unit = document.createElement('span');
+      unit.className = 'variant-unit';
+      unit.textContent = mat.unit;
+      line.appendChild(unit);
+
+      input.addEventListener('input', () => {
+        const before = input.value;
+        const after = formatQty(before);
+        if (before !== after) {
+          input.value = after;
+          input.setSelectionRange(after.length, after.length);
+        }
+        materialState[r.key] = input.value;
+        clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+        updateMinusState(input, minusBtn);
+      });
+
+      minusBtn.addEventListener('click', () => {
+        bumpQty(input, v => { materialState[r.key] = v; }, -1, clearBtn, minusBtn);
+      });
+      plusBtn.addEventListener('click', () => {
+        bumpQty(input, v => { materialState[r.key] = v; }, 1, clearBtn, minusBtn);
+      });
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        materialState[r.key] = '';
+        clearBtn.style.display = 'none';
+        updateMinusState(input, minusBtn);
+        input.focus();
+      });
+
+      updateMinusState(input, minusBtn);
+      variantsWrap.appendChild(line);
+    });
+
+    container.appendChild(group);
+  });
+
+  if (focusId) {
+    const el = container.querySelector('[data-focus-id="' + focusId + '"]');
+    if (el) {
+      el.focus();
+      if (selStart !== null && el.setSelectionRange) {
+        const pos = Math.min(selStart, el.value.length);
+        el.setSelectionRange(pos, pos);
+      }
+    }
+  }
+}
+
+// ============================================
+//  РЕНДЕР ПОЛЕЙ ЗАДЕЛКИ
+// ============================================
+function renderZadelkaFields(container) {
+  const group = document.createElement('div');
+  group.className = 'additional-group';
+
+  const name = document.createElement('div');
+  name.className = 'additional-group-name';
+  name.textContent = 'Заделка поверхностей';
+  group.appendChild(name);
+
+  // Корпус
+  if (isBuildingRequired()) {
+    const bLabel = document.createElement('label');
+    bLabel.className = 'req';
+    bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
+    group.appendChild(bLabel);
+
+    const bSeg = document.createElement('div');
+    bSeg.className = 'segmented';
+
+    BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'segmented-btn';
+      btn.dataset.value = val;
+      if (additionalState.zadelka.building === val) btn.classList.add('active');
+      btn.textContent = val;
+      btn.addEventListener('click', () => {
+        additionalState.zadelka.building = val;
+        additionalState.zadelka.floor = '';
+        additionalState.zadelka.room = '';
+        renderAdditionalFields();
+      });
+      bSeg.appendChild(btn);
+    });
+
+    group.appendChild(bSeg);
+  }
+
+  // Этаж
+  const building = additionalState.zadelka.building;
+  let showFloor = true;
+
+  if (isBuildingRequired()) {
+    if (!building) showFloor = false;
+    else if (building === 'Чердак') showFloor = false;
+  }
+
+  if (showFloor) {
+    const floorList = getZadelkaFloors();
+
+    if (floorList) {
+      const fLabel = document.createElement('label');
+      fLabel.className = 'req';
+      fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
+      group.appendChild(fLabel);
+
+      const fWrap = document.createElement('div');
+      fWrap.className = 'cselect';
+      fWrap.innerHTML = `
+        <input type="hidden" value="">
+        <button type="button" class="cselect-btn">
+          <span class="cselect-value placeholder">— выберите —</span>
+          <span class="cselect-arrow"></span>
+        </button>
+        <ul class="cselect-list"></ul>
+      `;
+      group.appendChild(fWrap);
+
+      const cs = new CustomSelect(fWrap);
+      cs.setOptions(floorList);
+      cs.placeholder = '— выберите —';
+      if (additionalState.zadelka.floor) cs.value = additionalState.zadelka.floor;
+
+      cs.input.addEventListener('change', () => {
+        additionalState.zadelka.floor = cs.value;
+        additionalState.zadelka.room = '';
+        renderAdditionalFields();
+      });
+
+      _zadelkaCustomSelects.push(cs);
+    }
+  }
+
+  // Помещение
+  const floor = additionalState.zadelka.floor;
+  const isAtticZ = (building === 'Чердак');
+  const floorIsNo = (floor === 'Нет');
+  const floorChosen = !!floor || isAtticZ;
+  const showRoom = floorChosen && !floorIsNo;
+
+  if (showRoom) {
+    const rLabel = document.createElement('label');
+    rLabel.className = 'req';
+    rLabel.innerHTML = 'Помещение <span class="req-star">*</span>';
+    group.appendChild(rLabel);
+
+    const rWrap = document.createElement('div');
+    rWrap.className = 'room-wrap';
+
+    // Префикс «к» для крыла мастерских
+    if (building === MASTER_WING) {
+      const prefix = document.createElement('span');
+      prefix.className = 'room-prefix';
+      prefix.textContent = 'к';
+      rWrap.appendChild(prefix);
+    }
+
+    const rInp = document.createElement('input');
+    rInp.type = 'text';
+    rInp.className = 'req-field';
+    rInp.placeholder = '12 15 20';
+    rInp.inputMode = 'numeric';
+    rInp.maxLength = 60;
+    rInp.value = additionalState.zadelka.room || '';
+
+    rInp.addEventListener('input', () => {
+      const before = rInp.value;
+      const after = formatZadelkaRoom(before);
+      if (before !== after) {
+        rInp.value = after;
+        rInp.setSelectionRange(after.length, after.length);
+      }
+      additionalState.zadelka.room = rInp.value;
+    });
+
+    rWrap.appendChild(rInp);
+    group.appendChild(rWrap);
+
+    const hint = document.createElement('div');
+    hint.className = 'hint-small';
+    hint.textContent = 'Несколько помещений — через пробел или точку, сохранятся через запятую';
+    group.appendChild(hint);
+  }
+
+  // Строка количества
+  const qLine = document.createElement('div');
+  qLine.className = 'variant-line';
+
+  const badge = document.createElement('span');
+  badge.className = 'variant-badge';
+  badge.textContent = '—';
+  qLine.appendChild(badge);
+
+  const forEl = document.createElement('span');
+  forEl.className = 'variant-for';
+  forEl.textContent = 'без сист.';
+  qLine.appendChild(forEl);
+
+  const minusBtn = document.createElement('button');
+  minusBtn.type = 'button';
+  minusBtn.className = 'qty-btn qty-btn-minus';
+  minusBtn.textContent = '−';
+  qLine.appendChild(minusBtn);
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.inputMode = 'decimal';
+  input.className = 'variant-input';
+  input.placeholder = '0';
+  input.autocomplete = 'off';
+  input.value = additionalState.zadelka.value || '';
+  qLine.appendChild(input);
+
+  const plusBtn = document.createElement('button');
+  plusBtn.type = 'button';
+  plusBtn.className = 'qty-btn qty-btn-plus';
+  plusBtn.textContent = '+';
+  qLine.appendChild(plusBtn);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'variant-clear-btn';
+  clearBtn.textContent = '×';
+  clearBtn.title = 'Очистить';
+  clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+  qLine.appendChild(clearBtn);
+
+  const unit = document.createElement('span');
+  unit.className = 'variant-unit';
+  unit.textContent = 'шт';
+  qLine.appendChild(unit);
+
+  input.addEventListener('input', () => {
+    const before = input.value;
+    const after = formatQty(before);
+    if (before !== after) {
+      input.value = after;
+      input.setSelectionRange(after.length, after.length);
+    }
+    additionalState.zadelka.value = input.value;
+    clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+    updateMinusState(input, minusBtn);
+  });
+  minusBtn.addEventListener('click', () => {
+    bumpQty(input, v => { additionalState.zadelka.value = v; }, -1, clearBtn, minusBtn);
+  });
+  plusBtn.addEventListener('click', () => {
+    bumpQty(input, v => { additionalState.zadelka.value = v; }, 1, clearBtn, minusBtn);
+  });
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    additionalState.zadelka.value = '';
+    clearBtn.style.display = 'none';
+    updateMinusState(input, minusBtn);
+    input.focus();
+  });
+
+  updateMinusState(input, minusBtn);
+  group.appendChild(qLine);
+  container.appendChild(group);
+}
+
+// ============================================
+//  РЕНДЕР ПОЛЕЙ НАСТАВНИЧЕСТВА
+// ============================================
+function renderMentorshipFields(container) {
+  const group = document.createElement('div');
+  group.className = 'additional-group';
+
+  const name = document.createElement('div');
+  name.className = 'additional-group-name';
+  name.textContent = 'Наставничество';
+  group.appendChild(name);
+
+  additionalState.mentorship.items.forEach((m, idx) => {
+    const line = document.createElement('div');
+    line.className = 'variant-line';
+    line.dataset.mentorIdx = idx;
+
+    const nameIn = document.createElement('input');
+    nameIn.type = 'text';
+    nameIn.className = 'mentor-name-input';
+    nameIn.placeholder = 'Василий Пупкин';
+    nameIn.autocomplete = 'off';
+    nameIn.autocapitalize = 'words';
+    nameIn.spellcheck = false;
+    nameIn.maxLength = 40;
+    nameIn.value = m.name || '';
+    nameIn.dataset.focusId = 'mentor_name_' + idx;
+
+    nameIn.addEventListener('input', () => {
+      const before = nameIn.value;
+      const pos = nameIn.selectionStart;
+      const after = formatName(before);
+      if (before !== after) {
+        nameIn.value = after;
+        const delta = before.length - after.length;
+        const newPos = Math.max(0, Math.min(after.length, pos - delta));
+        nameIn.setSelectionRange(newPos, newPos);
+      }
+      m.name = nameIn.value;
+      nameIn.classList.remove('is-invalid');
+    });
+
+    nameIn.addEventListener('blur', () => {
+      const v = nameIn.value.trim();
+      if (v && !isNameValid(v)) {
+        nameIn.classList.add('is-invalid');
+      } else {
+        nameIn.classList.remove('is-invalid');
+      }
+    });
+
+    line.appendChild(nameIn);
+
+    const minusBtn = document.createElement('button');
+    minusBtn.type = 'button';
+    minusBtn.className = 'qty-btn qty-btn-minus';
+    minusBtn.textContent = '−';
+    line.appendChild(minusBtn);
+
+    const inputH = document.createElement('input');
+    inputH.type = 'text';
+    inputH.inputMode = 'decimal';
+    inputH.className = 'variant-input';
+    inputH.dataset.focusId = 'mentor_hours_' + idx;
+    inputH.placeholder = '0';
+    inputH.autocomplete = 'off';
+    inputH.value = m.hours || '';
+    line.appendChild(inputH);
+
+    const plusBtn = document.createElement('button');
+    plusBtn.type = 'button';
+    plusBtn.className = 'qty-btn qty-btn-plus';
+    plusBtn.textContent = '+';
+    line.appendChild(plusBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'variant-clear-btn';
+    delBtn.textContent = '×';
+    delBtn.title = 'Удалить человека';
+    delBtn.style.display = additionalState.mentorship.items.length > 1 ? 'inline-flex' : 'none';
+    line.appendChild(delBtn);
+
+    const unit = document.createElement('span');
+    unit.className = 'variant-unit';
+    unit.textContent = 'ч';
+    line.appendChild(unit);
+
+    inputH.addEventListener('input', () => {
+      const before = inputH.value;
+      const after = formatQty(before);
+      if (before !== after) {
+        inputH.value = after;
+        inputH.setSelectionRange(after.length, after.length);
+      }
+      m.hours = inputH.value;
+      updateMinusState(inputH, minusBtn);
+    });
+    minusBtn.addEventListener('click', () => {
+      bumpQty(inputH, v => { m.hours = v; }, -1, null, minusBtn);
+    });
+    plusBtn.addEventListener('click', () => {
+      bumpQty(inputH, v => { m.hours = v; }, 1, null, minusBtn);
+    });
+    delBtn.addEventListener('click', () => {
+      additionalState.mentorship.items.splice(idx, 1);
+      if (additionalState.mentorship.items.length === 0) {
+        additionalState.mentorship.items.push({ name: '', hours: '' });
+      }
+      renderAdditionalFields();
+    });
+
+    updateMinusState(inputH, minusBtn);
+    group.appendChild(line);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-add-mentor';
+  addBtn.textContent = '+ Добавить человека';
+  addBtn.addEventListener('click', () => {
+    additionalState.mentorship.items.push({ name: '', hours: '' });
+    renderAdditionalFields();
+  });
+  group.appendChild(addBtn);
+
+  container.appendChild(group);
+}
+
+// ============================================
+//  ОБЩИЙ РЕНДЕР ДРУГИХ РАБОТ
+// ============================================
+function renderAdditionalFields() {
+  if (!additionalFields) return;
+
+  const active = document.activeElement;
+  const focusId = active && active.dataset ? active.dataset.focusId : null;
+  const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
+
+  _destroyZadelkaCustomSelects();
+  additionalFields.innerHTML = '';
+
+  if (additionalState.zadelka.active) {
+    renderZadelkaFields(additionalFields);
+  }
+
+  if (additionalState.mentorship.active) {
+    renderMentorshipFields(additionalFields);
+  }
+
+  if (focusId) {
+    const el = additionalFields.querySelector('[data-focus-id="' + focusId + '"]');
+    if (el) {
+      el.focus();
+      if (selStart !== null && el.setSelectionRange) {
+        const pos = Math.min(selStart, el.value.length);
+        el.setSelectionRange(pos, pos);
+      }
+    }
+  }
+}
+
+// ============================================
+//  АКТИВНОСТЬ PILL-КНОПОК
+// ============================================
+function updateAdditionalPills() {
+  if (!additionalPills) return;
+  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
+    const key = btn.dataset.additional;
+    const active = key === 'zadelka'
+      ? additionalState.zadelka.active
+      : additionalState.mentorship.active;
+    btn.classList.toggle('active', active);
+  });
+}
+
+// ============================================
+//  МАТЕРИАЛЫ → МАССИВ
+// ============================================
+function materialStateToArrayFromState(state) {
+  const list = [];
+  MATERIALS.forEach(mat => {
+    mat.rows.forEach(r => {
+      const raw = (state[r.key] || '').trim();
+      if (!raw) return;
+      const num = parseFloat(raw.replace(',', '.'));
+      if (!isFinite(num) || num <= 0) return;
+      list.push({
+        name: mat.label + ' ' + r.variant,
+        unit: mat.unit,
+        qty: raw.replace(',', '.'),
+        system: r.system
+      });
+    });
+  });
+  return list;
+}
+
+// ============================================
+//  СБРОС ТЕКУЩЕЙ ЗАПИСИ
+// ============================================
+function resetCurrentEntry() {
+  initMaterialState();
+  initAdditionalState();
+  renderMaterials();
+  renderAdditionalFields();
+  updateAdditionalPills();
+
+  workInput.value = '';
+  if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
+
+  roomInput.value = '';
+  updateFieldState(roomInput);
+  roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
+
+  ['err-room', 'err-work'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+
+  updateRoomState();
+  updateWorkAccessibility();
+  updateAdditionalAccessibility();
+}
+
+// ============================================
+//  ЖУРНАЛ — РЕНДЕР
+// ============================================
+function renderJournal() {
+  journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
+
+  updateSendButton();
+
+  if (journal.length === 0) {
+    journalCont.innerHTML = '';
+    journalEmpty.style.display = 'block';
+    return;
+  }
+
+  journalEmpty.style.display = 'none';
+  journalCont.innerHTML = '';
+
+  const sorted = journal.slice().sort(compareEntries);
+
+  const groups = {};
+  sorted.forEach(entry => {
+    const key = (entry.kind === 'zadelka' || entry.kind === 'mentorship')
+      ? ADDITIONAL_SECTION_KEY
+      : (entry.building || '');
+
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(entry);
+  });
+
+  const keys = Object.keys(groups).sort((a, b) => {
+    if (a === ADDITIONAL_SECTION_KEY) return 1;
+    if (b === ADDITIONAL_SECTION_KEY) return -1;
+    const ia = BUILDING_ORDER.indexOf(a);
+    const ib = BUILDING_ORDER.indexOf(b);
+    const wa = ia === -1 ? 999 : ia;
+    const wb = ib === -1 ? 999 : ib;
+    if (wa !== wb) return wa - wb;
+    return a.localeCompare(b);
+  });
+
+  keys.forEach(key => {
+    if (key === ADDITIONAL_SECTION_KEY) {
+      const t = document.createElement('div');
+      t.className = 'journal-building-title';
+      t.textContent = WORK_ADDITIONAL;
+      journalCont.appendChild(t);
+    } else if (key) {
+      const t = document.createElement('div');
+      t.className = 'journal-building-title';
+      t.textContent = key;
+      journalCont.appendChild(t);
+    }
+
+    groups[key].forEach(entry => {
+      const realIdx = journal.indexOf(entry);
+
+      const el = document.createElement('div');
+      el.className = 'journal-entry';
+
+      const header = document.createElement('div');
+      header.className = 'journal-entry-header';
+
+      const title = document.createElement('div');
+      title.className = 'journal-entry-title';
+      title.textContent = formatJournalTitle(entry);
+      header.appendChild(title);
+
+      const actions = document.createElement('div');
+      actions.className = 'journal-entry-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'journal-btn journal-btn-edit';
+      editBtn.title = 'Изменить';
+      editBtn.textContent = '✏️';
+      editBtn.addEventListener('click', () => editJournalEntry(realIdx));
+      actions.appendChild(editBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'journal-btn journal-btn-del';
+      delBtn.title = 'Удалить';
+      delBtn.textContent = '🗑';
+      delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
+      actions.appendChild(delBtn);
+
+      header.appendChild(actions);
+      el.appendChild(header);
+
+      // Мета-строка (тип работ) — только для main
+      if (entry.kind === 'main') {
+        const meta = document.createElement('div');
+        meta.className = 'journal-entry-meta';
+        meta.textContent = entry.work;
+        el.appendChild(meta);
+      }
+
+      // Материалы / позиции
+      let matsArr = [];
+
+      if (entry.kind === 'main') {
+        matsArr = materialStateToArrayFromState(entry.materialState || {});
+      } else if (entry.kind === 'zadelka') {
+        matsArr = [{
+          name: 'Заделка поверхностей',
+          unit: 'шт',
+          qty: entry.qty.replace(',', '.'),
+          system: ''
+        }];
+      } else if (entry.kind === 'mentorship') {
+        matsArr = [{
+          name: 'Наставничество — ' + entry.name,
+          unit: 'ч',
+          qty: entry.hours.replace(',', '.'),
+          system: ''
+        }];
+      }
+
+      if (matsArr.length > 0) {
+        const mats = document.createElement('div');
+        mats.className = 'journal-entry-materials';
+        matsArr.forEach(m => {
+          const row = document.createElement('div');
+          row.className = 'journal-entry-mat';
+          const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
+          row.innerHTML =
+            '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
+            '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
+          mats.appendChild(row);
+        });
+        el.appendChild(mats);
+      }
+
+      journalCont.appendChild(el);
+    });
+  });
+}
+
+// ============================================
+//  ЖУРНАЛ — РЕДАКТИРОВАНИЕ
+// ============================================
+function editJournalEntry(idx) {
+  const entry = journal[idx];
+  if (!entry) return;
+
+  journal.splice(idx, 1);
+  renderJournal();
+
+  if (entry.kind === 'main') {
+    if (isBuildingRequired() && entry.building) {
+      buildingInput.value = entry.building;
+      if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
+      updateFloorVisibility();
+      updateRoomPrefix();
+    }
+
+    if (entry.floor) {
+      floorInput.value = entry.floor;
+      if (floorCS) {
+        const obj = objectSelect.value;
+        const build = buildingInput.value;
+        const floors = getFloorsFor(obj, build);
+        if (floors) {
+          floorCS.setOptions(floors);
+          floorCS.disabled = false;
+          floorCS.value = entry.floor;
+        }
+      }
+    }
+
+    workInput.value = entry.work;
+    if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
+
+    materialState = Object.assign({}, entry.materialState || {});
+    roomInput.value = entry.room;
+    updateFieldState(roomInput);
+
+    renderMaterials();
+  } else if (entry.kind === 'zadelka') {
+    additionalState.zadelka.active = true;
+    additionalState.zadelka.building = entry.building || '';
+    additionalState.zadelka.floor = entry.floor || '';
+    additionalState.zadelka.room = entry.room || '';
+    additionalState.zadelka.value = entry.qty || '';
+    updateAdditionalPills();
+    renderAdditionalFields();
+  } else if (entry.kind === 'mentorship') {
+    additionalState.mentorship.active = true;
+    additionalState.mentorship.items = [
+      { name: entry.name || '', hours: entry.hours || '' }
+    ];
+    updateAdditionalPills();
+    renderAdditionalFields();
+  }
+
+  const card = document.getElementById('entry-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  updateRoomState();
+  updateWorkAccessibility();
+  updateAdditionalAccessibility();
+  showToast('Запись загружена для редактирования');
+}
+
+function removeJournalEntry(idx) {
+  if (!journal[idx]) return;
+  journal.splice(idx, 1);
+  renderJournal();
+  showToast('Запись удалена');
+}
+
+// ============================================
+//  ВАЛИДАЦИЯ
+// ============================================
+function validateHeader() {
+  let firstProblem = null;
+
+  ['err-date', 'err-object', 'err-floor', 'err-building'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+  nameErr.classList.remove('show');
+  nameInput.classList.remove('is-invalid');
+
+  if (!isNameValid(nameInput.value)) {
+    nameErr.textContent = nameInput.value.trim()
+      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)'
+      : 'Введите Имя и Фамилию — ровно 2 слова';
+    nameErr.classList.add('show');
+    nameInput.classList.add('is-invalid');
+    if (!firstProblem) firstProblem = nameInput;
+  }
+
+  if (!objectSelect.value.trim()) {
+    const err = document.getElementById('err-object');
+    if (err) err.classList.add('show');
+    if (!firstProblem) firstProblem = objectSelect;
+  }
+
+  const mainComplete = isMainEntryComplete();
+
+  if (mainComplete && isBuildingRequired() && !buildingInput.value.trim()) {
+    const err = document.getElementById('err-building');
+    if (err) err.classList.add('show');
+    if (!firstProblem) firstProblem = buildingInput;
+  }
+
+  if (mainComplete && !isAttic() && !floorInput.value.trim()) {
+    const err = document.getElementById('err-floor');
+    if (err) err.classList.add('show');
+    if (!firstProblem) firstProblem = floorInput;
+  }
+
+  if (firstProblem) {
+    show('⚠️ Заполните поля сверху', 'err');
+    if (firstProblem.focus) firstProblem.focus();
+    if (firstProblem.scrollIntoView) {
+      firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return false;
+  }
+  return true;
+}
+
+function validateCurrentEntry() {
+  const hasAdd = hasActiveAdditional();
+  const mainComplete = isMainEntryComplete();
+  const mainStarted = !!(
+    floorInput.value.trim() ||
+    roomInput.value.trim() ||
+    workInput.value.trim()
+  );
+
+  ['err-room', 'err-work'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+
+  let firstProblem = null;
+
+  // Если нет других работ — проверяем основную часть
+  if (!hasAdd) {
+    if (!mainComplete) {
+      if (!floorInput.value.trim() && !isAttic()) {
+        const err = document.getElementById('err-floor');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = floorInput;
+      }
+      if (!roomInput.value.trim() && floorInput.value !== 'Нет') {
+        roomInput.classList.add('shake');
+        setTimeout(() => roomInput.classList.remove('shake'), 500);
+        const err = document.getElementById('err-room');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = roomInput;
+      }
+      if (!workInput.value.trim()) {
+        const err = document.getElementById('err-work');
+        if (err) err.classList.add('show');
+        if (!firstProblem) firstProblem = workInput;
+      }
+    }
+  }
+
+  // Заделка
+  if (additionalState.zadelka.active) {
+    const needB = isBuildingRequired();
+    const b = additionalState.zadelka.building;
+    if (needB && !b) {
+      show('⚠️ Укажите корпус для заделки', 'err');
+      return false;
+    }
+
+    const isAtticZ = (b === 'Чердак');
+    const f = additionalState.zadelka.floor;
+    if (!isAtticZ && !f) {
+      show('⚠️ Укажите этаж для заделки', 'err');
+      return false;
+    }
+
+    const floorIsNo = (f === 'Нет');
+    const r = additionalState.zadelka.room;
+    if (!isAtticZ && !floorIsNo && !r) {
+      show('⚠️ Укажите помещение для заделки', 'err');
+      return false;
+    }
+
+    const v = parseFloat(String(additionalState.zadelka.value || '').replace(',', '.'));
+    if (!isFinite(v) || v <= 0) {
+      show('⚠️ Укажите количество заделки', 'err');
+      return false;
+    }
+  }
+
+  // Наставничество
+  if (additionalState.mentorship.active) {
+    let bad = false;
+    additionalState.mentorship.items.forEach((m, idx) => {
+      const name = String(m.name || '').trim();
+      const hours = String(m.hours || '').trim();
+      if (!name && !hours) return;
+      if (!name || !isNameValid(name)) {
+        bad = true;
+        const inp = document.querySelector('[data-focus-id="mentor_name_' + idx + '"]');
+        if (inp) inp.classList.add('is-invalid');
+      }
+      const n = parseFloat(hours.replace(',', '.'));
+      if (!hours || !isFinite(n) || n <= 0) {
+        bad = true;
+      }
+    });
+    if (bad) {
+      show('⚠️ Укажите имя (2 слова) и часы для каждого наставника', 'err');
+      const badEl = document.querySelector('.mentor-name-input.is-invalid');
+      if (badEl && badEl.scrollIntoView) {
+        badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    }
+  }
+
+  // Если есть только частично заполненная основная часть — без доп. работ
+  if (!hasAdd && !mainComplete && !mainStarted) {
+    show('⚠️ Заполните основную часть или добавьте другие работы', 'err');
+    return false;
+  }
+
+  if (firstProblem) {
+    show('⚠️ Заполните поля записи', 'err');
+    if (firstProblem.focus) firstProblem.focus();
+    if (firstProblem.scrollIntoView) {
+      firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================
+//  ПОИСК ДЛЯ СЛИЯНИЯ (основные записи)
+// ============================================
+function findMergeIndex(newEntry) {
+  return journal.findIndex(e =>
+    e.kind === 'main' &&
+    e.floor === newEntry.floor &&
+    e.room === newEntry.room &&
+    !!e.room_none === !!newEntry.room_none &&
+    !!e.is_master_wing === !!newEntry.is_master_wing &&
+    (e.building || '') === (newEntry.building || '') &&
+    e.work === newEntry.work
+  );
+}
+
+// ============================================
+//  ДОБАВИТЬ В ЖУРНАЛ
+// ============================================
+function addToJournal() {
+  if (!validateHeader()) return;
+  if (!validateCurrentEntry()) return;
+
+  const mainComplete = isMainEntryComplete();
+  const zActive = additionalState.zadelka.active;
+  const mActive = additionalState.mentorship.active;
+
+  let added = false;
+  let merged = false;
+
+  // 1. Основная запись — только если заполнена целиком
+  if (mainComplete) {
+    const mainEntry = {
+      kind: 'main',
+      room: roomInput.value.trim(),
+      room_none: floorInput.value === 'Нет',
+      is_master_wing: isMasterWing(),
+      building: buildingInput.value.trim(),
+      floor: floorInput.value.trim(),
+      work: workInput.value,
+      materialState: Object.assign({}, materialState)
+    };
+
+    const idx = findMergeIndex(mainEntry);
+    if (idx !== -1) {
+      journal[idx].materialState = sumMaterialStates(
+        journal[idx].materialState,
+        mainEntry.materialState
+      );
+      merged = true;
+    } else {
+      journal.push(mainEntry);
+      added = true;
+    }
+  }
+
+  // 2. Заделка — отдельная запись, слияние по (building, floor, room)
+  if (zActive) {
+    const zVal = parseFloat(String(additionalState.zadelka.value || '').replace(',', '.'));
+    if (isFinite(zVal) && zVal > 0) {
+      const zEntry = {
+        kind: 'zadelka',
+        building: additionalState.zadelka.building || '',
+        floor: additionalState.zadelka.floor || '',
+        room: additionalState.zadelka.room || '',
+        qty: additionalState.zadelka.value
+      };
+
+      const idx = journal.findIndex(e =>
+        e.kind === 'zadelka' &&
+        e.building === zEntry.building &&
+        e.floor === zEntry.floor &&
+        e.room === zEntry.room
+      );
+
+      if (idx !== -1) {
+        const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
+        const newQ = oldQ + zVal;
+        journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
+        merged = true;
+      } else {
+        journal.push(zEntry);
+        added = true;
+      }
+    }
+  }
+
+  // 3. Наставничество — по одному человеку = одна запись, слияние по имени
+  if (mActive) {
+    additionalState.mentorship.items.forEach(m => {
+      const n = String(m.name || '').trim();
+      const h = String(m.hours || '').trim();
+      if (!n || !h) return;
+      const hn = parseFloat(h.replace(',', '.'));
+      if (!isFinite(hn) || hn <= 0) return;
+
+      const idx = journal.findIndex(e =>
+        e.kind === 'mentorship' &&
+        String(e.name).toLowerCase() === n.toLowerCase()
+      );
+
+      if (idx !== -1) {
+        const oldH = parseFloat(String(journal[idx].hours).replace(',', '.')) || 0;
+        const newH = oldH + hn;
+        journal[idx].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
+        merged = true;
+      } else {
+        journal.push({ kind: 'mentorship', name: n, hours: String(hn).replace('.', ',') });
+        added = true;
+      }
+    });
+  }
+
+  renderJournal();
+  resetCurrentEntry();
+
+  if (added) {
+    showToast('Запись добавлена в журнал');
+  } else if (merged) {
+    showToast('Позиции объединены с существующей записью');
+  }
+}
+
+// ============================================
+//  ОБРАБОТЧИКИ
+// ============================================
+objectSelect.addEventListener('change', () => {
+  updateBuildingVisibility();
+  updateBuildingAccessibility();
+
+  rebuildFloors();
+  updateRoomState();
+  updateFieldState(objectSelect);
+  updateWorkAccessibility();
+  updateAdditionalAccessibility();
+
+  // Сбрасываем поля заделки (корпус изменился)
+  additionalState.zadelka.building = '';
+  additionalState.zadelka.floor = '';
+  additionalState.zadelka.room = '';
+  renderAdditionalFields();
+});
+
+buildingInput.addEventListener('change', () => {
+  floorInput.value = '';
+  if (floorCS) floorCS.value = '';
+  roomInput.value = '';
+
+  updateFieldState(buildingInput);
+  updateFloorVisibility();
+  updateRoomPrefix();
+  rebuildFloors();
+  updateRoomState();
+  updateWorkAccessibility();
+  updateAdditionalAccessibility();
+});
+
+floorInput.addEventListener('change', () => {
+  if (floorInput.value !== 'Нет' && roomInput.value === 'Нет') {
+    roomInput.value = '';
+  }
+  updateRoomState();
+  updateFieldState(floorInput);
+  updateWorkAccessibility();
+});
+
+workInput.addEventListener('change', () => {
+  updateFieldState(workInput);
+  updateMaterialsVisibility();
+});
+
+// ---- Аккордеон других работ ----
+if (additionalToggle) {
+  additionalToggle.addEventListener('click', () => {
+    if (additionalBlock.classList.contains('additional-block-disabled')) return;
+    additionalBlock.classList.toggle('open');
+  });
+}
+
+// ---- Pills ----
+if (additionalPills) {
+  additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (additionalBlock.classList.contains('additional-block-disabled')) return;
+      const key = btn.dataset.additional;
+      if (key === 'zadelka') {
+        additionalState.zadelka.active = !additionalState.zadelka.active;
+        if (!additionalState.zadelka.active) {
+          // При выключении — обнуляем поля
+          additionalState.zadelka.building = '';
+          additionalState.zadelka.floor = '';
+          additionalState.zadelka.room = '';
+          additionalState.zadelka.value = '';
+        }
+      } else if (key === 'mentorship') {
+        additionalState.mentorship.active = !additionalState.mentorship.active;
+      }
+      updateAdditionalPills();
+      renderAdditionalFields();
+    });
+  });
+}
+
+// ============================================
+//  ФОРМАТ ПОМЕЩЕНИЯ (основная часть)
+// ============================================
+function formatRoom(value) {
+  return value.replace(/[^0-9]/g, '').slice(0, 4);
+}
+
+roomInput.addEventListener('input', () => {
+  if (roomInput.disabled) return;
+  const before = roomInput.value;
+  const after = formatRoom(before);
+  if (before !== after) {
+    roomInput.value = after;
+    roomInput.setSelectionRange(after.length, after.length);
+  }
+  updateFieldState(roomInput);
+  updateWorkAccessibility();
+});
+
+// ============================================
+//  ФОРМАТ ИМЕНИ
+// ============================================
+function formatName(value) {
+  let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.replace(/-+/g, '-');
+  cleaned = cleaned.replace(/\s-|-\s/g, '-');
+  cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
+                            (m, p1, p2) => p1 + p2.toUpperCase());
+  const parts = cleaned.split(' ');
+  if (parts.length > 2) cleaned = parts.slice(0, 2).join(' ');
+  return cleaned;
+}
+
+nameInput.addEventListener('input', () => {
+  const before = nameInput.value;
+  const pos = nameInput.selectionStart;
+  const after = formatName(before);
+  if (before !== after) {
+    nameInput.value = after;
+    const delta = before.length - after.length;
+    const newPos = Math.max(0, Math.min(after.length, pos - delta));
+    nameInput.setSelectionRange(newPos, newPos);
+  }
+  if (isNameValid(nameInput.value)) {
+    nameErr.classList.remove('show');
+    nameInput.classList.remove('is-invalid');
+  }
+  updateFieldState(nameInput);
+  updateFormAccessibility();
+});
+
+nameInput.addEventListener('blur', () => {
+  const v = nameInput.value.trim();
+  if (v && !isNameValid(v)) {
+    nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)';
+    nameErr.classList.add('show');
+    nameInput.classList.add('is-invalid');
+  } else {
+    nameErr.classList.remove('show');
+    nameInput.classList.remove('is-invalid');
+  }
+});
+
+// ============================================
+//  ПОДСВЕТКА ПОЛЕЙ
+// ============================================
+function updateFieldState(el) {
+  const wrap = el.closest && (el.closest('.cselect') || el.closest('.segmented'));
+  if (wrap) {
+    if (el.disabled || wrap.classList.contains('segmented-disabled')) {
+      wrap.classList.remove('is-empty', 'is-filled');
+      return;
+    }
+    wrap.classList.remove('is-empty', 'is-filled');
+    const isEmpty = !el.value || !el.value.trim();
+    wrap.classList.toggle('is-empty', isEmpty);
+    wrap.classList.toggle('is-filled', !isEmpty);
+    return;
+  }
+
+  if (!el.classList.contains('req-field')) return;
+  if (el.disabled) {
+    el.classList.remove('is-empty', 'is-filled', 'is-invalid');
+    return;
+  }
+  const isEmpty = !el.value || !el.value.trim();
+  el.classList.toggle('is-empty', isEmpty);
+  el.classList.toggle('is-filled', !isEmpty);
+}
+
+['date', 'name', 'object', 'building', 'floor', 'work', 'room'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  updateFieldState(el);
+  el.addEventListener('input', () => updateFieldState(el));
+  el.addEventListener('change', () => {
+    updateFieldState(el);
+    if (el.value.trim()) {
+      const err = document.getElementById('err-' + id);
+      if (err) err.classList.remove('show');
+    }
+  });
+});
+
+// ============================================
+//  ОТПРАВКА
+//  Другие работы идут последними, разбиваются на отдельные records.
+// ============================================
+async function sendAll() {
+  show('');
+
+  if (!validateHeader()) return;
+
+  const roomFilled = roomInput.value.trim() && roomInput.value.trim() !== 'Нет';
+  const workFilled = workInput.value.trim();
+  const currentFilled = roomFilled || workFilled;
+
+  if (currentFilled) {
+    const doAdd = confirm('В форме есть незанесённые в журнал данные. Добавить их в журнал перед отправкой?');
+    if (doAdd) {
+      addToJournal();
+      if (document.getElementById('msg').className === 'err') return;
+    }
+  }
+
+  if (journal.length === 0) {
+    show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
+    return;
+  }
+
+  const sortedJournal = journal.slice().sort(compareEntries);
+
+  const records = [];
+
+  sortedJournal.forEach(entry => {
+    if (entry.kind === 'main') {
+      let room = entry.room || '';
+      if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
+
+      records.push({
+        room: room,
+        room_none: entry.room_none,
+        floor: entry.floor || '',
+        work: entry.work,
+        materials: materialStateToArrayFromState(entry.materialState || {})
+      });
+    } else if (entry.kind === 'zadelka') {
+      const z = parseFloat(String(entry.qty).replace(',', '.'));
+      if (!isFinite(z) || z <= 0) return;
+
+      let room = entry.room || '';
+      if (entry.building === MASTER_WING && room) room = MASTER_WING_PREFIX + room;
+
+      records.push({
+        room: room,
+        room_none: false,
+        floor: entry.floor || '',
+        work: WORK_ADDITIONAL,
+        materials: [{
+          name: 'Заделка поверхностей',
+          unit: 'шт',
+          qty: String(z),
+          system: ''
+        }]
+      });
+    } else if (entry.kind === 'mentorship') {
+      const h = parseFloat(String(entry.hours).replace(',', '.'));
+      if (!isFinite(h) || h <= 0) return;
+
+      records.push({
+        room: '',
+        room_none: false,
+        floor: '',
+        work: WORK_ADDITIONAL,
+        materials: [{
+          name: 'Наставничество — ' + entry.name,
+          unit: 'ч',
+          qty: String(h),
+          system: ''
+        }]
+      });
+    }
+  });
+
+  const payload = {
+    object:  objectSelect.value.trim(),
+    date:    dateInput.value.trim(),
+    name:    nameInput.value.trim(),
+    records: records
+  };
+
+  const totalRows = records.reduce((sum, r) =>
+    sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+
+  showProgress(totalRows);
+
+  let shown = 0;
+  const tickMs = Math.max(60, Math.floor(1800 / totalRows));
+  const ticker = setInterval(() => {
+    if (shown < totalRows - 1) {
+      shown++;
+      updateProgress(shown, totalRows);
+    }
+  }, tickMs);
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+
+    clearInterval(ticker);
+    updateProgress(totalRows, totalRows);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    hideProgress();
+    show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+
+    journal.length = 0;
+    renderJournal();
+    resetCurrentEntry();
+
+    setupDateRange();
+    dateInput.value = toISODate(new Date());
+    updateDateHighlight();
+  } catch (e) {
+    clearInterval(ticker);
+    hideProgress();
+    show('❌ Ошибка: ' + e.message, 'err');
+  } finally {
+    btn.textContent = 'Отправить отчет';
+    updateSendButton();
+  }
+}
+
+// ============================================
+//  СТАРТ
+// ============================================
+initMaterialState();
+initAdditionalState();
+updateFormAccessibility();
+updateMaterialsVisibility();
+renderMaterials();
+renderAdditionalFields();
+updateAdditionalPills();
+renderJournal();
+updateSendButton();
+
+window.addToJournal = addToJournal;
+window.sendAll = sendAll;
