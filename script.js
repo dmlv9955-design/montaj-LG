@@ -662,13 +662,11 @@ function renderMaterials() {
     const group = document.createElement('div');
     group.className = 'material-group';
 
-    // Название материала — слева
     const nameEl = document.createElement('div');
     nameEl.className = 'material-group-name';
     nameEl.textContent = mat.label;
     group.appendChild(nameEl);
 
-    // Контейнер разновидностей — справа
     const variantsWrap = document.createElement('div');
     variantsWrap.className = 'material-variants';
     group.appendChild(variantsWrap);
@@ -683,13 +681,11 @@ function renderMaterials() {
         line.dataset.variantId = v.id;
         line.dataset.rowIdx = rowIdx;
 
-        // badge
         const badge = document.createElement('span');
         badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
         badge.textContent = v.label;
         line.appendChild(badge);
 
-        // sys-col (подпись + капсулы)
         const sysCol = document.createElement('div');
         sysCol.className = 'sys-col';
 
@@ -744,7 +740,6 @@ function renderMaterials() {
         sysCol.appendChild(sysWrap);
         line.appendChild(sysCol);
 
-        // input количества
         const input = document.createElement('input');
         input.type = 'text';
         input.inputMode = 'numeric';
@@ -769,13 +764,11 @@ function renderMaterials() {
 
         line.appendChild(input);
 
-        // единица измерения
         const unit = document.createElement('span');
         unit.className = 'variant-unit';
         unit.textContent = mat.unit;
         line.appendChild(unit);
 
-        // кнопки + и × — справа от поля
         const actions = document.createElement('div');
         actions.className = 'variant-actions';
 
@@ -1042,7 +1035,7 @@ function validateHeader() {
 
   if (!isNameValid(nameInput.value)) {
     nameErr.textContent = nameInput.value.trim()
-      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)'
+      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)'
       : 'Введите Имя и Фамилию — ровно 2 слова';
     nameErr.classList.add('show');
     nameInput.classList.add('is-invalid');
@@ -1238,7 +1231,7 @@ nameInput.addEventListener('input', () => {
 nameInput.addEventListener('blur', () => {
   const v = nameInput.value.trim();
   if (v && !isNameValid(v)) {
-    nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)';
+    nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)';
     nameErr.classList.add('show');
     nameInput.classList.add('is-invalid');
   } else {
