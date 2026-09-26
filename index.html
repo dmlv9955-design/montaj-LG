@@ -64,18 +64,12 @@
       <div class="field-error" id="err-floor">Заполните это поле</div>
     </div>
     <div class="col-2">
-      <div class="label-row">
-        <label class="req" style="margin:0;">Помещение <span class="req-star">*</span></label>
-        <label class="check-none is-disabled" id="room-none-label">
-          <input type="checkbox" id="room-none" disabled>
-          Нет помещения
-        </label>
-      </div>
+      <label class="req">Помещение <span class="req-star">*</span></label>
       <input type="text" id="room" class="req-field"
              placeholder="🔒 Сначала выберите этаж"
              inputmode="numeric"
              maxlength="60" disabled>
-      <div class="hint-small">Цифры через пробел — сохранятся через запятую</div>
+      <div class="hint-small">Цифры через пробел — сохранятся через запятую. Если помещения нет — введите 0</div>
       <div class="field-error" id="err-room">Заполните это поле</div>
     </div>
   </div>
