@@ -411,7 +411,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   padding-top: 12px;
   min-height: 44px;
   min-width: 0;
@@ -652,6 +652,7 @@ body.dark .sys-toggle.sys-required .sys-btn:not(.active) { color: #fca5a5; }
   }
   .variant-line {
     padding-top: 8px;
+    gap: 8px;
   }
 }
 
