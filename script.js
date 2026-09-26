@@ -26,20 +26,22 @@
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
 
+// У Ларинской гимназии Чердак убран из этажей — он на уровне корпуса
+// У ЖЕДЕПОМ всё как было — Чердак остаётся в этажах
 const FLOORS_BY_OBJECT = {
-  'Ларинская гимназия': ['1', '2', '3', 'Чердак', 'Нет'],
+  'Ларинская гимназия': ['1', '2', '3', 'Нет'],
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Корпуса, доступные для конкретных объектов.
-// Если объекта нет в списке — поле «Корпус» скрыто.
+// Корпуса, доступные для объекта.
+// ЖЕДЕПОМ отсутствует — поле «Корпус» для него не показывается.
 const BUILDINGS_BY_OBJECT = {
-  'Ларинская гимназия': ['Основное здание', 'Крыло мастерских']
+  'Ларинская гимназия': ['Основное здание', 'Крыло мастерских', 'Чердак']
 };
 
-// Корпус, для которого к номеру помещения добавляется префикс «к»
 const MASTER_WING = 'Крыло мастерских';
 const MASTER_WING_PREFIX = 'к';
+const ATTIC = 'Чердак';
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
@@ -359,6 +361,7 @@ const buildingSeg      = document.getElementById('building-segmented');
 const buildingSection  = document.getElementById('building-section');
 const floorInput       = document.getElementById('floor');
 const floorCS          = customSelects.floor;
+const floorCol         = document.getElementById('floor-col');
 const roomInput        = document.getElementById('room');
 const roomPrefix       = document.getElementById('room-prefix');
 const nameInput        = document.getElementById('name');
@@ -390,6 +393,10 @@ function isMasterWing() {
   return buildingInput.value === MASTER_WING;
 }
 
+function isAttic() {
+  return buildingInput.value === ATTIC;
+}
+
 function updateBuildingVisibility() {
   const required = isBuildingRequired();
 
@@ -403,6 +410,7 @@ function updateBuildingVisibility() {
     }
   }
 
+  updateFloorVisibility();
   updateRoomPrefix();
 }
 
@@ -424,6 +432,25 @@ function updateBuildingAccessibility() {
 }
 
 // ============================================
+//  ВИДИМОСТЬ ЭТАЖА
+//  При корпусе «Чердак» этаж скрыт, floor = «Чердак»
+// ============================================
+function updateFloorVisibility() {
+  if (!floorCol) return;
+
+  if (isAttic()) {
+    floorCol.style.display = 'none';
+    floorInput.value = ATTIC;
+  } else {
+    floorCol.style.display = '';
+    if (floorInput.value === ATTIC) {
+      floorInput.value = '';
+      if (floorCS) floorCS.value = '';
+    }
+  }
+}
+
+// ============================================
 //  ПРЕФИКС «к» У ПОМЕЩЕНИЯ
 // ============================================
 function updateRoomPrefix() {
@@ -439,7 +466,7 @@ function updateWorkAccessibility() {
   const nameOk   = isNameValid(nameInput.value);
   const objOk    = !!objectSelect.value;
   const buildOk  = !isBuildingRequired() || !!buildingInput.value;
-  const floorOk  = !!floorInput.value;
+  const floorOk  = isAttic() || !!floorInput.value;
   const roomOk   = !!roomInput.value.trim() || floorInput.value === 'Нет';
   const workOk   = nameOk && objOk && buildOk && floorOk && roomOk;
 
@@ -492,6 +519,14 @@ function rebuildFloors() {
   const obj    = objectSelect.value;
   const floors = FLOORS_BY_OBJECT[obj];
 
+  // Чердак (как корпус) — этаж не нужен
+  if (isAttic()) {
+    floorCS.setOptions([]);
+    floorCS.disabled = true;
+    floorInput.value = ATTIC;
+    return;
+  }
+
   if (!nameOk) {
     floorCS.placeholder = '🔒 Имя';
     floorCS.disabled = true;
@@ -530,6 +565,15 @@ function updateRoomState() {
   if (!nameOk) {
     roomInput.disabled = true;
     roomInput.placeholder = '🔒 Имя';
+    updateRoomPrefix();
+    return;
+  }
+
+  // Чердак — этажа нет, помещение можно вводить сразу
+  if (isAttic()) {
+    roomInput.disabled = false;
+    roomInput.placeholder = '1234';
+    updateFieldState(roomInput);
     updateRoomPrefix();
     return;
   }
@@ -922,10 +966,11 @@ function editJournalEntry(idx) {
   journal.splice(idx, 1);
   renderJournal();
 
-  // восстановить корпус (для случая, когда запись была из крыла мастерских)
+  // восстановить корпус (для случая записи из крыла мастерских или с чердака)
   if (isBuildingRequired() && entry.building) {
     buildingInput.value = entry.building;
     if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
+    updateFloorVisibility();
     updateRoomPrefix();
   }
 
@@ -986,7 +1031,7 @@ function validateHeader() {
     if (!firstProblem) firstProblem = buildingInput;
   }
 
-  if (!floorInput.value.trim()) {
+  if (!isAttic() && !floorInput.value.trim()) {
     const err = document.getElementById('err-floor');
     if (err) err.classList.add('show');
     if (!firstProblem) firstProblem = floorInput;
@@ -1086,6 +1131,7 @@ objectSelect.addEventListener('change', () => {
 
 buildingInput.addEventListener('change', () => {
   updateFieldState(buildingInput);
+  updateFloorVisibility();
   updateRoomPrefix();
   rebuildFloors();
   updateRoomState();
