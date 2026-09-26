@@ -222,12 +222,16 @@ document.querySelectorAll('[data-cselect]').forEach(rootEl => {
 });
 
 // ============================================
-//  SEGMENTED CONTROL — ОБЪЕКТ
+//  SEGMENTED CONTROL (ОБЩАЯ ФУНКЦИЯ)
+//  - allowDeselect: повторный клик по активной снимает выбор
 // ============================================
-(function initObjectSegmented() {
-  const root = document.getElementById('object-segmented');
-  const input = document.getElementById('object');
+function initSegmented(rootId, inputId, opts) {
+  opts = opts || {};
+  const root = document.getElementById(rootId);
+  const input = document.getElementById(inputId);
   if (!root || !input) return;
+
+  const allowDeselect = opts.allowDeselect === true;
 
   function updateDisplay() {
     const v = input.value;
@@ -238,17 +242,28 @@ document.querySelectorAll('[data-cselect]').forEach(rootEl => {
 
   root.querySelectorAll('.segmented-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      input.value = btn.dataset.value;
+      const isActive = btn.classList.contains('active');
+
+      if (allowDeselect && isActive) {
+        input.value = '';
+      } else {
+        input.value = btn.dataset.value;
+      }
+
       input.dispatchEvent(new Event('change', { bubbles: true }));
       updateDisplay();
     });
   });
 
-  // если значение сбрасывается извне — перерисовать
   input.addEventListener('change', updateDisplay);
-
   updateDisplay();
-})();
+}
+
+// Объект — обязательный, снять выбор нельзя
+initSegmented('object-segmented', 'object', { allowDeselect: false });
+
+// Система — тоже обязательная, снять выбор нельзя
+initSegmented('system-segmented', 'system', { allowDeselect: false });
 
 // ============================================
 //  ЭЛЕМЕНТЫ
@@ -260,7 +275,7 @@ const roomInput    = document.getElementById('room');
 const nameInput    = document.getElementById('name');
 const nameErr      = document.getElementById('err-name');
 
-const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
+const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room', 'system'];
 
 // ============================================
 //  ЭТАЖИ
@@ -583,13 +598,17 @@ async function send() {
 
     nameInput.value = '';
 
-    // сброс кастомных селектов (объект — не кастомный, он в segmented)
+    // сброс кастомных селектов (этаж, тип работ, единицы материалов)
     Object.values(customSelects).forEach(cs => { cs.value = ''; });
 
-    // сброс segmented объекта
+    // сброс segmented (объект и система)
     const objInput = document.getElementById('object');
     objInput.value = '';
     objInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const sysInput = document.getElementById('system');
+    sysInput.value = '';
+    sysInput.dispatchEvent(new Event('change', { bubbles: true }));
 
     document.getElementById('materials').innerHTML = '';
     addMaterial();
