@@ -67,7 +67,7 @@ const ATTIC = 'Чердак';
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 const WORK_ADDITIONAL = 'Другие работы';
 
-const SECTION_ZADELKA = 'Заделка поверхностей';
+const SECTION_ZADELKA = 'Штукатурка';
 const SECTION_MENTOR  = 'Наставничество';
 
 const MATERIALS = [
@@ -249,7 +249,7 @@ function hasActiveAdditional() {
 }
 
 // ============================================
-//  ЭТАЖИ ДЛЯ ЗАДЕЛКИ (по корпусу конкретной строки)
+//  ЭТАЖИ ДЛЯ ШТУКАТУРКИ (по корпусу конкретной строки)
 // ============================================
 function getZadelkaFloors(building) {
   const obj = objectSelect.value;
@@ -293,7 +293,7 @@ function formatQty(raw) {
 }
 
 // ============================================
-//  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ЗАДЕЛКИ ПРИ ВВОДЕ
+//  МЯГКАЯ ОЧИСТКА ПОМЕЩЕНИЯ ШТУКАТУРКИ ПРИ ВВОДЕ
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
@@ -305,7 +305,7 @@ function sanitizeZadelkaRoomInput(value) {
 }
 
 // ============================================
-//  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ЗАДЕЛКИ
+//  НОРМАЛИЗАЦИЯ ПОМЕЩЕНИЯ ШТУКАТУРКИ
 // ============================================
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
@@ -442,7 +442,7 @@ function sectionWeight(key) {
 }
 
 // ============================================
-//  ВЕС КОРПУСА (для сортировки заделки)
+//  ВЕС КОРПУСА (для сортировки штукатурки)
 // ============================================
 function buildingWeight(b) {
   if (!b) return -1;
@@ -1080,8 +1080,6 @@ function updateWorkAccessibility() {
 
 // ============================================
 //  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
-//  Блокируем всю карточку #additional-card,
-//  если не заполнены имя и объект.
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalCard) return;
@@ -1392,7 +1390,7 @@ function renderMaterials() {
 }
 
 // ============================================
-//  РЕНДЕР ЗАДЕЛКИ — СПИСОК МЕСТ
+//  РЕНДЕР ШТУКАТУРКИ — СПИСОК МЕСТ
 // ============================================
 function renderZadelkaFields(container) {
   const group = document.createElement('div');
@@ -1644,7 +1642,7 @@ function renderZadelkaFields(container) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn-add-mentor';
-  addBtn.textContent = '+ Добавить место заделки';
+  addBtn.textContent = '+ Добавить место';
   addBtn.addEventListener('click', () => {
     additionalState.zadelka.items.push(makeZadelkaItem());
     renderAdditionalFields();
@@ -2204,26 +2202,26 @@ function validateCurrentEntry() {
       if (isEmptyRow) continue;
 
       if (needB && !it.building) {
-        show('⚠️ Укажите корпус в заделке (место ' + (i + 1) + ')', 'err');
+        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите корпус', 'err');
         return false;
       }
 
       const isAtticZ = (it.building === 'Чердак');
       if (!isAtticZ && !it.floor) {
-        show('⚠️ Укажите этаж в заделке (место ' + (i + 1) + ')', 'err');
+        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите этаж', 'err');
         return false;
       }
 
       const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
       if (!isAtticZ && !floorIsNo && !r) {
-        show('⚠️ Укажите помещение в заделке (место ' + (i + 1) + ')', 'err');
+        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите помещение', 'err');
         return false;
       }
 
       const v = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(v) || v <= 0) {
-        show('⚠️ Укажите количество в заделке (место ' + (i + 1) + ')', 'err');
+        show('⚠️ Штукатурка, место ' + (i + 1) + ': укажите количество', 'err');
         return false;
       }
     }
