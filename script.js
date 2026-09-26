@@ -154,17 +154,25 @@ function updateSendButton() {
 }
 
 // ============================================
-//  «ТОЛЬКО ДОП. РАБОТЫ»?
+//  ОСНОВНАЯ ЧАСТЬ ЗАПИСИ ЗАПОЛНЕНА ПОЛНОСТЬЮ?
+//  (этаж + помещение + тип работ)
+// ============================================
+function isMainEntryComplete() {
+  const floorOk = isAttic() || !!floorInput.value.trim();
+  const roomOk  = !!roomInput.value.trim() || floorInput.value === 'Нет';
+  const workOk  = !!workInput.value.trim();
+  return floorOk && roomOk && workOk;
+}
+
+// ============================================
+//  ЗАПИСЬ ИДЁТ ТОЛЬКО КАК «ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ»?
+//  Да, если активирована хотя бы одна доп. работа
+//  и основная часть (этаж/помещение/тип) не заполнена целиком.
 // ============================================
 function isOnlyAdditional() {
   const hasAdd = additionalState.zadelka.active || additionalState.mentorship.active;
   if (!hasAdd) return false;
-
-  const hasFloor = !!floorInput.value.trim() || isAttic();
-  const hasRoom  = !!roomInput.value.trim() || floorInput.value === 'Нет';
-  const hasWork  = !!workInput.value.trim();
-
-  return !hasFloor && !hasRoom && !hasWork;
+  return !isMainEntryComplete();
 }
 
 // ============================================
@@ -226,14 +234,12 @@ function sumMaterialStates(a, b) {
 function workWeight(work) {
   if (work === 'Демонтаж')                 return 0;
   if (work === 'Монтаж')                   return 1;
-  if (work === 'Дополнительные работы')    return 900;   // всегда последние
+  if (work === 'Дополнительные работы')    return 900;
   return 99;
 }
 
 // ============================================
 //  СОРТИРОВКА
-//  Доп. работы — всегда в самом конце,
-//  независимо от этажа/помещения.
 // ============================================
 function floorWeight(floor) {
   const w = {
@@ -255,13 +261,11 @@ function roomWeight(room) {
 }
 
 function compareEntries(a, b) {
-  // Сначала — разделяем по признаку «доп. работа»
   const aAdd = a.work === WORK_ADDITIONAL;
   const bAdd = b.work === WORK_ADDITIONAL;
 
   if (aAdd !== bAdd) return aAdd ? 1 : -1;
 
-  // Внутри одной категории:
   const fa = floorWeight(a.floor);
   const fb = floorWeight(b.floor);
   if (fa !== fb) return fa - fb;
@@ -290,7 +294,6 @@ function formatFloorLabel(floor) {
 
 function formatJournalTitle(entry) {
   if (entry.work === WORK_ADDITIONAL) {
-    // для доп. работ — не указываем этаж/помещение
     return 'Дополнительные работы';
   }
 
@@ -1421,7 +1424,6 @@ function resetCurrentEntry() {
 
 // ============================================
 //  ЖУРНАЛ — РЕНДЕР
-//  Доп. работы — отдельная секция в самом низу.
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
@@ -1439,7 +1441,6 @@ function renderJournal() {
 
   const sorted = journal.slice().sort(compareEntries);
 
-  // Группировка: обычные — по корпусам, доп. работы — отдельная секция
   const groups = {};
   sorted.forEach(entry => {
     const key = entry.work === WORK_ADDITIONAL
@@ -1450,7 +1451,6 @@ function renderJournal() {
     groups[key].push(entry);
   });
 
-  // Порядок секций: корпуса по BUILDING_ORDER, доп. работы — всегда последние
   const keys = Object.keys(groups).sort((a, b) => {
     if (a === ADDITIONAL_SECTION_KEY) return 1;
     if (b === ADDITIONAL_SECTION_KEY) return -1;
@@ -1464,7 +1464,6 @@ function renderJournal() {
   });
 
   keys.forEach(key => {
-    // Заголовок секции
     if (key === ADDITIONAL_SECTION_KEY) {
       const titleEl = document.createElement('div');
       titleEl.className = 'journal-building-title';
@@ -1513,7 +1512,6 @@ function renderJournal() {
       header.appendChild(actions);
       el.appendChild(header);
 
-      // meta — только для обычных работ, у доп. работ заголовок уже «Дополнительные работы»
       if (entry.work !== WORK_ADDITIONAL) {
         const meta = document.createElement('div');
         meta.className = 'journal-entry-meta';
@@ -1996,7 +1994,6 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА
-//  Доп. работы уходят последними (за счёт sortedJournal).
 // ============================================
 async function sendAll() {
   show('');
@@ -2020,7 +2017,6 @@ async function sendAll() {
     return;
   }
 
-  // Сортируем: обычные записи, в конце — доп. работы
   const sortedJournal = journal.slice().sort(compareEntries);
 
   const records = sortedJournal.map(entry => {
