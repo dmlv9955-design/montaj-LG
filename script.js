@@ -747,6 +747,43 @@ function updateWorkAccessibility() {
 }
 
 // ============================================
+//  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  Разблокировано, когда заполнены имя и объект.
+//  При блокировке — сбрасываем активные доп. работы.
+// ============================================
+function updateAdditionalAccessibility() {
+  if (!additionalBlock || !additionalToggle) return;
+
+  const nameOk   = isNameValid(nameInput.value);
+  const objectOk = !!objectSelect.value;
+  const unlocked = nameOk && objectOk;
+
+  const label = additionalToggle.querySelector('.additional-toggle-label');
+
+  if (unlocked) {
+    additionalBlock.classList.remove('additional-block-disabled');
+    if (label) label.textContent = 'Дополнительные работы';
+    return;
+  }
+
+  // Заблокировано — закрываем и сбрасываем активные доп. работы
+  additionalBlock.classList.add('additional-block-disabled');
+  additionalBlock.classList.remove('open');
+
+  const hadActive = additionalState.zadelka.active || additionalState.mentorship.active;
+  if (hadActive) {
+    additionalState.zadelka.active = false;
+    additionalState.zadelka.value = '';
+    additionalState.mentorship.active = false;
+    additionalState.mentorship.items = [{ name: '', hours: '' }];
+    updateAdditionalPills();
+    renderAdditionalFields();
+  }
+
+  if (label) label.textContent = '🔒 Дополнительные работы';
+}
+
+// ============================================
 //  ПОЛНЫЙ ПЕРЕСЧЁТ
 // ============================================
 function updateFormAccessibility() {
@@ -769,6 +806,7 @@ function updateFormAccessibility() {
   updateRoomState();
 
   updateWorkAccessibility();
+  updateAdditionalAccessibility();
 }
 
 // ============================================
@@ -1368,6 +1406,7 @@ function resetCurrentEntry() {
 
   updateRoomState();
   updateWorkAccessibility();
+  updateAdditionalAccessibility();
 }
 
 // ============================================
@@ -1547,6 +1586,7 @@ function editJournalEntry(idx) {
 
   updateRoomState();
   updateWorkAccessibility();
+  updateAdditionalAccessibility();
   showToast('Запись загружена для редактирования');
 }
 
@@ -1765,6 +1805,7 @@ objectSelect.addEventListener('change', () => {
   updateRoomState();
   updateFieldState(objectSelect);
   updateWorkAccessibility();
+  updateAdditionalAccessibility();
 });
 
 buildingInput.addEventListener('change', () => {
@@ -1778,6 +1819,7 @@ buildingInput.addEventListener('change', () => {
   rebuildFloors();
   updateRoomState();
   updateWorkAccessibility();
+  updateAdditionalAccessibility();
 });
 
 floorInput.addEventListener('change', () => {
@@ -1797,6 +1839,7 @@ workInput.addEventListener('change', () => {
 // ---- Аккордеон доп. работ ----
 if (additionalToggle) {
   additionalToggle.addEventListener('click', () => {
+    if (additionalBlock.classList.contains('additional-block-disabled')) return;
     additionalBlock.classList.toggle('open');
   });
 }
@@ -1805,6 +1848,7 @@ if (additionalToggle) {
 if (additionalPills) {
   additionalPills.querySelectorAll('.additional-pill').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (additionalBlock.classList.contains('additional-block-disabled')) return;
       const key = btn.dataset.additional;
       if (key === 'zadelka') {
         additionalState.zadelka.active = !additionalState.zadelka.active;
