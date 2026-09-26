@@ -126,6 +126,15 @@ function initMaterialState() {
 const journal = [];
 
 // ============================================
+//  АКТИВНОСТЬ КНОПКИ «ОТПРАВИТЬ ОТЧЕТ»
+// ============================================
+function updateSendButton() {
+  const btn = document.getElementById('btn');
+  if (!btn) return;
+  btn.disabled = journal.length === 0;
+}
+
+// ============================================
 //  ФОРМАТИРОВАНИЕ КОЛИЧЕСТВА
 // ============================================
 function formatQty(raw) {
@@ -891,7 +900,6 @@ function renderMaterials() {
       sysEl.textContent = r.system;
       line.appendChild(sysEl);
 
-      // кнопка −
       const minusBtn = document.createElement('button');
       minusBtn.type = 'button';
       minusBtn.className = 'qty-btn qty-btn-minus';
@@ -899,7 +907,6 @@ function renderMaterials() {
       minusBtn.title = 'Уменьшить на 1';
       line.appendChild(minusBtn);
 
-      // input
       const input = document.createElement('input');
       input.type = 'text';
       input.inputMode = 'decimal';
@@ -911,7 +918,6 @@ function renderMaterials() {
 
       line.appendChild(input);
 
-      // кнопка +
       const plusBtn = document.createElement('button');
       plusBtn.type = 'button';
       plusBtn.className = 'qty-btn qty-btn-plus';
@@ -919,7 +925,6 @@ function renderMaterials() {
       plusBtn.title = 'Увеличить на 1';
       line.appendChild(plusBtn);
 
-      // кнопка ×
       const clearBtn = document.createElement('button');
       clearBtn.type = 'button';
       clearBtn.className = 'variant-clear-btn';
@@ -933,7 +938,6 @@ function renderMaterials() {
       unit.textContent = mat.unit;
       line.appendChild(unit);
 
-      // Обработчики
       input.addEventListener('input', () => {
         const before = input.value;
         const after = formatQty(before);
@@ -962,7 +966,6 @@ function renderMaterials() {
         input.focus();
       });
 
-      // начальное состояние «−»
       updateMinusState(input, minusBtn);
 
       variantsWrap.appendChild(line);
@@ -1033,6 +1036,8 @@ function resetCurrentEntry() {
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
+
+  updateSendButton();
 
   if (journal.length === 0) {
     journalCont.innerHTML = '';
@@ -1474,7 +1479,6 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА С ПРОГРЕССОМ
-//  Каждая запись — отдельный запрос.
 // ============================================
 async function sendAll() {
   show('');
@@ -1498,7 +1502,6 @@ async function sendAll() {
     return;
   }
 
-  // Готовим записи
   const records = journal.map(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
@@ -1545,14 +1548,12 @@ async function sendAll() {
 
     updateProgress(sent + failed, records.length);
 
-    // небольшая пауза, чтобы прогресс был виден
     if (i < records.length - 1) {
       await new Promise(r => setTimeout(r, 250));
     }
   }
 
   hideProgress();
-  btn.disabled = false;
   btn.textContent = 'Отправить отчет';
 
   if (failed === 0) {
@@ -1567,6 +1568,8 @@ async function sendAll() {
   } else {
     show('⚠️ Отправлено ' + sent + ', ошибок ' + failed + '. Проверьте журнал.', 'err');
   }
+
+  updateSendButton();
 }
 
 // ============================================
@@ -1577,6 +1580,7 @@ updateFormAccessibility();
 updateMaterialsVisibility();
 renderMaterials();
 renderJournal();
+updateSendButton();   // ← начальное состояние кнопки
 
 window.addToJournal = addToJournal;
 window.sendAll = sendAll;
