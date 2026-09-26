@@ -420,8 +420,7 @@ function updateSystemState() {
 
 // ============================================
 //  МАТЕРИАЛЫ — РЕНДЕР
-//  Каждый вариант — одна строка:
-//  [название] [вариант] [ввод] [единица]
+//  Группа = название материала + строки вариантов
 // ============================================
 const materialValues = {};
 
@@ -444,20 +443,24 @@ function renderMaterials() {
       return v.systems.indexOf(system) !== -1;
     });
 
-    visible.forEach(v => {
-      const row = document.createElement('div');
-      row.className = 'material-line';
+    if (visible.length === 0) return;
 
-      const name = document.createElement('span');
-      name.className = 'material-name';
-      name.textContent = mat.label;
-      name.title = mat.label;   // подсказка при обрезке
-      row.appendChild(name);
+    const group = document.createElement('div');
+    group.className = 'material-group';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'material-group-name';
+    nameEl.textContent = mat.label;
+    group.appendChild(nameEl);
+
+    visible.forEach(v => {
+      const line = document.createElement('div');
+      line.className = 'variant-line';
 
       const badge = document.createElement('span');
       badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
       badge.textContent = v.label;
-      row.appendChild(badge);
+      line.appendChild(badge);
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -476,15 +479,17 @@ function renderMaterials() {
         materialValues[v.id] = raw;
       });
 
-      row.appendChild(input);
+      line.appendChild(input);
 
       const unit = document.createElement('span');
       unit.className = 'variant-unit';
       unit.textContent = mat.unit;
-      row.appendChild(unit);
+      line.appendChild(unit);
 
-      container.appendChild(row);
+      group.appendChild(line);
     });
+
+    container.appendChild(group);
   });
 }
 
@@ -494,19 +499,21 @@ function renderMaterials() {
 // ============================================
 function getMaterialValues() {
   const list = [];
-  document.querySelectorAll('.material-line').forEach(row => {
-    const name = row.querySelector('.material-name').textContent;
-    const variant = row.querySelector('.variant-badge').textContent;
-    const input = row.querySelector('.variant-input');
-    const unit = row.querySelector('.variant-unit').textContent;
-    const qty = input.value.trim();
-    if (qty && parseFloat(qty) > 0) {
-      list.push({
-        name: name + ' ' + variant,
-        unit: unit,
-        qty: qty
-      });
-    }
+  document.querySelectorAll('.material-group').forEach(group => {
+    const materialName = group.querySelector('.material-group-name').textContent;
+    group.querySelectorAll('.variant-line').forEach(line => {
+      const variant = line.querySelector('.variant-badge').textContent;
+      const input = line.querySelector('.variant-input');
+      const unit = line.querySelector('.variant-unit').textContent;
+      const qty = input.value.trim();
+      if (qty && parseFloat(qty) > 0) {
+        list.push({
+          name: materialName + ' ' + variant,
+          unit: unit,
+          qty: qty
+        });
+      }
+    });
   });
   return list;
 }
