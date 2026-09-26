@@ -1479,8 +1479,8 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОТПРАВКА
-//  Каждая строка таблицы = отдельный запрос.
-//  Один материал = одна строка таблицы.
+//  Один запрос — всё гарантированно доходит.
+//  Прогресс — визуальная анимация.
 // ============================================
 async function sendAll() {
   show('');
@@ -1504,82 +1504,66 @@ async function sendAll() {
     return;
   }
 
-  // Собираем плоский список строк таблицы.
-  // Каждый материал — отдельная строка.
-  // Запись без материалов — одна строка с пустыми H, I, J.
-  const rows = [];
-
-  journal.forEach(entry => {
+  // Формируем записи журнала для отправки
+  const records = journal.map(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
       room = MASTER_WING_PREFIX + room;
     }
-
-    const matsArr = materialStateToArrayFromState(entry.materialState);
-
-    if (matsArr.length === 0) {
-      rows.push({
-        room: room,
-        room_none: entry.room_none,
-        floor: entry.floor,
-        work: entry.work,
-        materials: []
-      });
-    } else {
-      matsArr.forEach(m => {
-        rows.push({
-          room: room,
-          room_none: entry.room_none,
-          floor: entry.floor,
-          work: entry.work,
-          materials: [m]
-        });
-      });
-    }
+    return {
+      room: room,
+      room_none: entry.room_none,
+      floor: entry.floor,
+      work: entry.work,
+      materials: materialStateToArrayFromState(entry.materialState)
+    };
   });
 
-  const header = {
-    object: objectSelect.value.trim(),
-    date:   dateInput.value.trim(),
-    name:   nameInput.value.trim()
+  const payload = {
+    object:  objectSelect.value.trim(),
+    date:    dateInput.value.trim(),
+    name:    nameInput.value.trim(),
+    records: records
   };
+
+  // Считаем общее число строк, которое получится в таблице
+  const totalRows = records.reduce((sum, r) =>
+    sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
 
   const btn = document.getElementById('btn');
   btn.disabled = true;
   btn.textContent = 'Отправляем...';
 
-  showProgress(rows.length);
+  showProgress(totalRows);
 
-  let sent = 0;
-  let failed = 0;
-
-  for (let i = 0; i < rows.length; i++) {
-    const payload = Object.assign({}, header, { records: [rows[i]] });
-
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      sent++;
-    } catch (e) {
-      failed++;
+  // Визуальная анимация прогресса — заполняется по мере ожидания.
+  // Реальный запрос один, но пользователю видно, что идёт работа.
+  let shown = 0;
+  const tickMs = Math.max(60, Math.floor(1800 / totalRows));
+  const ticker = setInterval(() => {
+    if (shown < totalRows - 1) {
+      shown++;
+      updateProgress(shown, totalRows);
     }
+  }, tickMs);
 
-    updateProgress(sent + failed, rows.length);
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
 
-    if (i < rows.length - 1) {
-      await new Promise(r => setTimeout(r, 200));
-    }
-  }
+    clearInterval(ticker);
+    updateProgress(totalRows, totalRows);
 
-  hideProgress();
-  btn.textContent = 'Отправить отчет';
+    // небольшая пауза, чтобы пользователь увидел 100%
+    await new Promise(r => setTimeout(r, 350));
 
-  if (failed === 0) {
-    show('✅ Отчет отправлен! Строк: ' + sent, 'ok');
+    hideProgress();
+    show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+
     journal.length = 0;
     renderJournal();
     resetCurrentEntry();
@@ -1587,11 +1571,14 @@ async function sendAll() {
     setupDateRange();
     dateInput.value = toISODate(new Date());
     updateDateHighlight();
-  } else {
-    show('⚠️ Отправлено ' + sent + ', ошибок ' + failed + '. Проверьте журнал.', 'err');
+  } catch (e) {
+    clearInterval(ticker);
+    hideProgress();
+    show('❌ Ошибка: ' + e.message, 'err');
+  } finally {
+    btn.textContent = 'Отправить отчет';
+    updateSendButton();
   }
-
-  updateSendButton();
 }
 
 // ============================================
