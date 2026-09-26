@@ -1478,7 +1478,9 @@ function updateFieldState(el) {
 });
 
 // ============================================
-//  ОТПРАВКА С ПРОГРЕССОМ
+//  ОТПРАВКА
+//  Каждая строка таблицы = отдельный запрос.
+//  Один материал = одна строка таблицы.
 // ============================================
 async function sendAll() {
   show('');
@@ -1502,18 +1504,38 @@ async function sendAll() {
     return;
   }
 
-  const records = journal.map(entry => {
+  // Собираем плоский список строк таблицы.
+  // Каждый материал — отдельная строка.
+  // Запись без материалов — одна строка с пустыми H, I, J.
+  const rows = [];
+
+  journal.forEach(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
       room = MASTER_WING_PREFIX + room;
     }
-    return {
-      room: room,
-      room_none: entry.room_none,
-      floor: entry.floor,
-      work: entry.work,
-      materials: materialStateToArrayFromState(entry.materialState)
-    };
+
+    const matsArr = materialStateToArrayFromState(entry.materialState);
+
+    if (matsArr.length === 0) {
+      rows.push({
+        room: room,
+        room_none: entry.room_none,
+        floor: entry.floor,
+        work: entry.work,
+        materials: []
+      });
+    } else {
+      matsArr.forEach(m => {
+        rows.push({
+          room: room,
+          room_none: entry.room_none,
+          floor: entry.floor,
+          work: entry.work,
+          materials: [m]
+        });
+      });
+    }
   });
 
   const header = {
@@ -1526,13 +1548,13 @@ async function sendAll() {
   btn.disabled = true;
   btn.textContent = 'Отправляем...';
 
-  showProgress(records.length);
+  showProgress(rows.length);
 
   let sent = 0;
   let failed = 0;
 
-  for (let i = 0; i < records.length; i++) {
-    const payload = Object.assign({}, header, { records: [records[i]] });
+  for (let i = 0; i < rows.length; i++) {
+    const payload = Object.assign({}, header, { records: [rows[i]] });
 
     try {
       await fetch(API_URL, {
@@ -1546,10 +1568,10 @@ async function sendAll() {
       failed++;
     }
 
-    updateProgress(sent + failed, records.length);
+    updateProgress(sent + failed, rows.length);
 
-    if (i < records.length - 1) {
-      await new Promise(r => setTimeout(r, 250));
+    if (i < rows.length - 1) {
+      await new Promise(r => setTimeout(r, 200));
     }
   }
 
@@ -1557,7 +1579,7 @@ async function sendAll() {
   btn.textContent = 'Отправить отчет';
 
   if (failed === 0) {
-    show('✅ Отчет отправлен! Записей: ' + sent, 'ok');
+    show('✅ Отчет отправлен! Строк: ' + sent, 'ok');
     journal.length = 0;
     renderJournal();
     resetCurrentEntry();
@@ -1580,7 +1602,7 @@ updateFormAccessibility();
 updateMaterialsVisibility();
 renderMaterials();
 renderJournal();
-updateSendButton();   // ← начальное состояние кнопки
+updateSendButton();
 
 window.addToJournal = addToJournal;
 window.sendAll = sendAll;
