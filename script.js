@@ -25,7 +25,6 @@
 //  НАСТРОЙКИ
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
-const SECRET_KEY = 'montaj2026';
 
 const FLOORS_BY_OBJECT = {
   'Ларинская гимназия': ['1', '2', '3', 'Чердак', 'Нет'],
@@ -33,12 +32,11 @@ const FLOORS_BY_OBJECT = {
 };
 
 // ============================================
-//  ПОЛЕ «ДАТА» — ДИАПАЗОН, ПОДСВЕТКА, АВТОСМЕНА
+//  ПОЛЕ «ДАТА»
 // ============================================
-const DATE_MIN_DAYS_AGO = 7;   // на сколько дней назад максимум
+const DATE_MIN_DAYS_AGO = 7;
 const dateInput = document.getElementById('date');
 
-// утилита: дата в формате YYYY-MM-DD (по локальному времени)
 function toISODate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -46,7 +44,6 @@ function toISODate(d) {
   return `${y}-${m}-${day}`;
 }
 
-// установить min / max и значение по умолчанию
 function setupDateRange() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -62,56 +59,43 @@ function setupDateRange() {
   }
 }
 
-// подсветка: любой день раньше сегодняшнего — жёлтый, сегодня — нейтральный
 function updateDateHighlight() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayISO = toISODate(today);
 
   const v = dateInput.value;
-
-  // сбрасываем оба класса
   dateInput.classList.remove('is-old-date', 'is-very-old-date');
 
-  if (!v || v === todayISO) return;              // сегодня или пусто — без подсветки
-  dateInput.classList.add('is-old-date');        // любой день раньше — жёлтый
+  if (!v || v === todayISO) return;
+  dateInput.classList.add('is-old-date');
 }
 
-// стартовая настройка
 setupDateRange();
 updateDateHighlight();
 
-// при изменении — обновляем подсветку
 dateInput.addEventListener('change', () => {
-  // проверим, что введённая дата в диапазоне
   if (dateInput.value) {
-    if (dateInput.value < dateInput.min) {
-      dateInput.value = dateInput.min;
-    }
-    if (dateInput.value > dateInput.max) {
-      dateInput.value = dateInput.max;
-    }
+    if (dateInput.value < dateInput.min) dateInput.value = dateInput.min;
+    if (dateInput.value > dateInput.max) dateInput.value = dateInput.max;
   }
   updateDateHighlight();
   updateFieldState(dateInput);
 });
 
-// автообновление раз в день: раз в минуту проверяем — не наступил ли новый день
 let lastKnownDay = toISODate(new Date());
 setInterval(() => {
   const todayISO = toISODate(new Date());
   if (todayISO !== lastKnownDay) {
     lastKnownDay = todayISO;
-    // новый день — обновим min/max
     setupDateRange();
-    // если монтажник не менял дату вручную (стояла «вчерашняя»), поставим сегодня
     if (!dateInput.value || dateInput.value < dateInput.min) {
       dateInput.value = todayISO;
     }
     updateDateHighlight();
     updateFieldState(dateInput);
   }
-}, 60 * 1000); // проверка раз в минуту
+}, 60 * 1000);
 
 // ============================================
 //  КАСТОМНЫЙ SELECT
@@ -137,7 +121,6 @@ class CustomSelect {
       this.select(li.dataset.value);
     });
 
-    // сохраняем ссылки на слушатели, чтобы потом можно было снять
     this._onDocClick = (e) => {
       if (!this.root.contains(e.target)) this.close();
     };
@@ -246,8 +229,6 @@ const floorInput    = document.getElementById('floor');
 const floorCS       = customSelects.floor;
 const floorHint     = document.getElementById('floor-hint');
 const roomInput     = document.getElementById('room');
-const roomNone      = document.getElementById('room-none');
-const roomNoneLabel = document.getElementById('room-none-label');
 const nameInput     = document.getElementById('name');
 const nameErr       = document.getElementById('err-name');
 
@@ -281,7 +262,6 @@ function rebuildFloors() {
 // ============================================
 function updateRoomState() {
   const floorVal = floorInput.value;
-  const noneChecked = roomNone.checked;
 
   roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
 
@@ -289,9 +269,6 @@ function updateRoomState() {
     roomInput.value = '';
     roomInput.disabled = true;
     roomInput.placeholder = '🔒 Сначала выберите этаж';
-    roomNone.checked = false;
-    roomNone.disabled = true;
-    roomNoneLabel.classList.add('is-disabled');
     return;
   }
 
@@ -299,23 +276,12 @@ function updateRoomState() {
     roomInput.value = 'Нет';
     roomInput.disabled = true;
     roomInput.placeholder = '';
-    roomNone.checked = false;
-    roomNone.disabled = true;
-    roomNoneLabel.classList.add('is-disabled');
     return;
   }
 
-  roomNone.disabled = false;
-  roomNoneLabel.classList.remove('is-disabled');
+  roomInput.disabled = false;
   roomInput.placeholder = '32 105 108';
-
-  if (noneChecked) {
-    roomInput.value = 'Нет';
-    roomInput.disabled = true;
-  } else {
-    roomInput.disabled = false;
-    updateFieldState(roomInput);
-  }
+  updateFieldState(roomInput);
 }
 
 // ============================================
@@ -328,16 +294,11 @@ objectSelect.addEventListener('change', () => {
 });
 
 floorInput.addEventListener('change', () => {
-  if (floorInput.value !== 'Нет') {
-    roomNone.checked = false;
-    if (roomInput.value === 'Нет') roomInput.value = '';
+  if (floorInput.value !== 'Нет' && roomInput.value === 'Нет') {
+    roomInput.value = '';
   }
   updateRoomState();
   updateFieldState(floorInput);
-});
-
-roomNone.addEventListener('change', () => {
-  updateRoomState();
 });
 
 // ============================================
@@ -497,7 +458,7 @@ function addMaterial() {
   cs.updateDisplay();
 
   removeBtn.addEventListener('click', () => {
-    cs.destroy();   // снимаем document-слушатели
+    cs.destroy();
     row.remove();
   });
 }
@@ -508,7 +469,6 @@ function collectMaterials() {
     const name = r.querySelector('.m-name').value.trim();
     const unit = r.querySelector('.m-unit').value;
     const qty  = r.querySelector('.m-qty').value.trim();
-    // строку берём только если заполнено название
     if (name) list.push({ name, unit, qty });
   });
   return list;
@@ -568,16 +528,15 @@ async function send() {
     return;
   }
 
-  const roomNoneChecked = roomNone.checked || floorInput.value === 'Нет';
+  const roomNoneFlag = floorInput.value === 'Нет';
 
   const payload = {
-    key:       SECRET_KEY,
     object:    val('object'),
     date:      val('date'),
     name:      val('name'),
     floor:     val('floor'),
-    room:      roomNoneChecked ? 'Нет' : val('room').replace(/,\s*$/, ''),
-    room_none: roomNoneChecked,
+    room:      roomNoneFlag ? 'Нет' : val('room').replace(/,\s*$/, ''),
+    room_none: roomNoneFlag,
     work:      val('work'),
     system:    val('system'),
     materials: collectMaterials()
@@ -597,11 +556,8 @@ async function send() {
     });
     show('✅ Отчет отправлен!', 'ok');
 
-    // сброс обычных полей
     nameInput.value = '';
-    roomNone.checked = false;
 
-    // сброс всех кастомных селектов (сеттер value сразу перерисует display)
     Object.values(customSelects).forEach(cs => { cs.value = ''; });
 
     document.getElementById('materials').innerHTML = '';
@@ -610,7 +566,6 @@ async function send() {
     rebuildFloors();
     updateRoomState();
 
-    // сброс даты на сегодня
     setupDateRange();
     dateInput.value = toISODate(new Date());
     updateDateHighlight();
