@@ -146,13 +146,24 @@ class CustomSelect {
       this.select(li.dataset.value);
     });
 
-    document.addEventListener('click', (e) => {
+    // сохраняем ссылки на слушатели, чтобы потом можно было снять
+    this._onDocClick = (e) => {
       if (!this.root.contains(e.target)) this.close();
-    });
-
-    document.addEventListener('keydown', (e) => {
+    };
+    this._onDocKey = (e) => {
       if (e.key === 'Escape') this.close();
-    });
+    };
+
+    document.addEventListener('click', this._onDocClick);
+    document.addEventListener('keydown', this._onDocKey);
+
+    this.updateDisplay();
+  }
+
+  destroy() {
+    document.removeEventListener('click', this._onDocClick);
+    document.removeEventListener('keydown', this._onDocKey);
+  }
 
     this.updateDisplay();
   }
