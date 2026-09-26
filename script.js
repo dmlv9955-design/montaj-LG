@@ -48,7 +48,7 @@ const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
 //  Каждая строка = фиксированное сочетание «вариант + система».
-//  primary: true — вариант выделяется синим (основной размер).
+//  primary: true — вариант выделяется синим.
 // ============================================
 const MATERIALS = [
   {
@@ -634,7 +634,7 @@ function updateMaterialsVisibility() {
 // ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
 //  Слева — название материала,
-//  справа — список строк: [вариант] [система] [ввод] [единица]
+//  справа — строки: [вариант] [для] [система] [ввод] [единица]
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
@@ -669,7 +669,13 @@ function renderMaterials() {
       badge.textContent = r.variant;
       line.appendChild(badge);
 
-      // метка системы (не кликабельная)
+      // подпись «для»
+      const forEl = document.createElement('span');
+      forEl.className = 'variant-for';
+      forEl.textContent = 'для';
+      line.appendChild(forEl);
+
+      // метка системы
       const sysEl = document.createElement('span');
       sysEl.className = 'variant-system';
       sysEl.textContent = r.system;
