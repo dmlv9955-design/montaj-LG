@@ -1759,6 +1759,7 @@ function renderLocationFields(workKey, container) {
 // ============================================
 //  РЕНДЕР НАСТАВНИЧЕСТВА
 //  Имя не подсвечивается, пока не введены часы.
+//  Вводится имя УЧЕНИКА (не наставника).
 // ============================================
 function renderMentorshipFields(container) {
   const group = document.createElement('div');
@@ -1769,6 +1770,12 @@ function renderMentorshipFields(container) {
   name.textContent = SECTION_MENTOR;
   group.appendChild(name);
 
+  const subtitle = document.createElement('div');
+  subtitle.className = 'hint-small';
+  subtitle.style.marginBottom = '6px';
+  subtitle.textContent = 'Укажите имя и фамилию ученика и количество часов';
+  group.appendChild(subtitle);
+
   additionalState.mentorship.items.forEach((m, idx) => {
     const line = document.createElement('div');
     line.className = 'variant-line';
@@ -1777,7 +1784,7 @@ function renderMentorshipFields(container) {
     const nameIn = document.createElement('input');
     nameIn.type = 'text';
     nameIn.className = 'mentor-name-input';
-    nameIn.placeholder = 'Василий Пупкин';
+    nameIn.placeholder = 'Иван Иванов';
     nameIn.autocomplete = 'off';
     nameIn.autocapitalize = 'words';
     nameIn.spellcheck = false;
@@ -1831,7 +1838,7 @@ function renderMentorshipFields(container) {
     delBtn.type = 'button';
     delBtn.className = 'variant-clear-btn';
     delBtn.textContent = '×';
-    delBtn.title = 'Удалить человека';
+    delBtn.title = 'Удалить ученика';
     delBtn.style.display = additionalState.mentorship.items.length > 1 ? 'inline-flex' : 'none';
     line.appendChild(delBtn);
 
@@ -1878,7 +1885,7 @@ function renderMentorshipFields(container) {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn-add-mentor';
-  addBtn.textContent = '+ Добавить человека';
+  addBtn.textContent = '+ Добавить ученика';
   addBtn.addEventListener('click', () => {
     additionalState.mentorship.items.push({ name: '', hours: '' });
     renderAdditionalFields();
@@ -2331,7 +2338,7 @@ function validateCurrentEntry() {
     }
   });
   if (mentorBad) {
-    show('⚠️ Укажите имя (2 слова) и часы для каждого наставника', 'err');
+    show('⚠️ Укажите имя ученика (2 слова) и часы', 'err');
     const badEl = document.querySelector('.mentor-name-input.is-invalid');
     if (badEl && badEl.scrollIntoView) {
       badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2586,8 +2593,6 @@ nameInput.addEventListener('blur', () => {
 
 // ============================================
 //  ПОДСВЕТКА ПОЛЕЙ
-//  Для #name — простая логика (без гейта).
-//  Для .mentor-name-input — гейт по полю часов.
 // ============================================
 function updateFieldState(el) {
   if (el.id === 'name') {
