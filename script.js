@@ -45,9 +45,6 @@ const ATTIC = 'Чердак';
 
 const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
-// ============================================
-//  КОНФИГ МАТЕРИАЛОВ
-// ============================================
 const MATERIALS = [
   {
     id: 'cable',
@@ -109,17 +106,11 @@ const journal = [];
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ КОЛИЧЕСТВА
-//  - только цифры и запятая
-//  - максимум одна запятая
-//  - целая часть ≤ 4
-//  - дробная часть ≤ 2
-//  - авто-запятая: «0» + цифра → «0,<цифра>»
 // ============================================
 function formatQty(raw) {
   let s = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
   s = s.replace(/\./g, ',');
 
-  // только первая запятая
   const firstComma = s.indexOf(',');
   if (firstComma !== -1) {
     s = s.slice(0, firstComma + 1) + s.slice(firstComma + 1).replace(/,/g, '');
@@ -129,7 +120,7 @@ function formatQty(raw) {
   let intPart = parts[0] || '';
   let fracPart = parts.length > 1 ? parts[1] : null;
 
-  // авто-запятая: если целая часть начинается с 0 и есть ещё цифры
+  // авто-запятая: 0 + цифра → 0,<цифра>
   if (intPart.length > 1 && intPart.charAt(0) === '0') {
     const extra = intPart.slice(1);
     intPart = '0';
@@ -144,31 +135,86 @@ function formatQty(raw) {
 }
 
 // ============================================
-//  КНОПКА ОЧИСТКИ ПОЛЯ
+//  СУММИРОВАНИЕ ДВУХ materialState
+//  a — текущая запись в журнале, b — новая порция
 // ============================================
-function attachClearButton(inputId, btnId) {
-  const input = document.getElementById(inputId);
-  const btn = document.getElementById(btnId);
-  if (!input || !btn) return;
+function sumMaterialStates(a, b) {
+  const result = Object.assign({}, a);
+  Object.keys(b).forEach(key => {
+    const av = String(result[key] || '').trim();
+    const bv = String(b[key] || '').trim();
+    if (!av && !bv) return;
 
-  function update() {
-    const show = !!input.value && !input.disabled;
-    btn.style.display = show ? 'inline-flex' : 'none';
-  }
+    const an = av ? parseFloat(av.replace(',', '.')) : 0;
+    const bn = bv ? parseFloat(bv.replace(',', '.')) : 0;
+    const sum = (isFinite(an) ? an : 0) + (isFinite(bn) ? bn : 0);
 
-  input.addEventListener('input', update);
-  input.addEventListener('change', update);
-
-  btn.addEventListener('click', () => {
-    input.value = '';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    input.focus();
-    update();
+    if (sum <= 0) {
+      result[key] = '';
+    } else {
+      const rounded = Math.round(sum * 100) / 100;
+      result[key] = String(rounded).replace('.', ',');
+    }
   });
+  return result;
+}
 
-  update();
-  input._updateClearBtn = update;
+// ============================================
+//  СОРТИРОВКА ЖУРНАЛА
+// ============================================
+function floorWeight(floor) {
+  const w = {
+    'Подвал': -1,
+    '1': 1,
+    '2': 2,
+    '3': 3,
+    'Чердак': 100,
+    'Нет': 1000
+  };
+  return (floor in w) ? w[floor] : 500;
+}
+
+function roomWeight(room) {
+  if (!room || room === 'Нет') return 1000000;
+  const num = parseInt(String(room).replace(/^к/, ''), 10);
+  return isFinite(num) ? num : 999999;
+}
+
+function compareEntries(a, b) {
+  const fa = floorWeight(a.floor);
+  const fb = floorWeight(b.floor);
+  if (fa !== fb) return fa - fb;
+
+  const ra = roomWeight(a.room);
+  const rb = roomWeight(b.room);
+  if (ra !== rb) return ra - rb;
+
+  return String(a.work || '').localeCompare(String(b.work || ''));
+}
+
+// ============================================
+//  ФОРМАТ ЗАГОЛОВКА В ЖУРНАЛЕ
+// ============================================
+function formatFloorLabel(floor) {
+  if (!floor) return '';
+  if (floor === 'Нет') return 'Без этажа';
+  if (floor === 'Подвал') return 'Подвал';
+  if (floor === 'Чердак') return 'Чердак';
+  return floor + ' этаж';
+}
+
+function formatJournalTitle(entry) {
+  const floorLabel = formatFloorLabel(entry.floor);
+  let roomLabel;
+  if (entry.room_none) {
+    roomLabel = 'без помещения';
+  } else {
+    roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
+  }
+  if (!floorLabel) {
+    return roomLabel.charAt(0).toUpperCase() + roomLabel.slice(1);
+  }
+  return floorLabel + ' · ' + roomLabel;
 }
 
 // ============================================
@@ -455,7 +501,34 @@ const materialsSection = document.getElementById('materials-section');
 const objectSeg        = document.getElementById('object-segmented');
 const workSeg          = document.getElementById('work-segmented');
 
-// привязка кнопок очистки
+// ============================================
+//  КНОПКА ОЧИСТКИ
+// ============================================
+function attachClearButton(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input || !btn) return;
+
+  function update() {
+    const show = !!input.value && !input.disabled;
+    btn.style.display = show ? 'inline-flex' : 'none';
+  }
+
+  input.addEventListener('input', update);
+  input.addEventListener('change', update);
+
+  btn.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.focus();
+    update();
+  });
+
+  update();
+  input._updateClearBtn = update;
+}
+
 attachClearButton('name', 'clear-name');
 attachClearButton('room', 'clear-room');
 
@@ -703,8 +776,6 @@ function updateMaterialsVisibility() {
 
 // ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
-//  Слева — название, справа строки:
-//  [badge] [для] [система] [ввод] [×] [единица]
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
@@ -733,25 +804,21 @@ function renderMaterials() {
       const line = document.createElement('div');
       line.className = 'variant-line';
 
-      // badge варианта
       const badge = document.createElement('span');
       badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
       badge.textContent = r.variant;
       line.appendChild(badge);
 
-      // подпись «для»
       const forEl = document.createElement('span');
       forEl.className = 'variant-for';
       forEl.textContent = 'для';
       line.appendChild(forEl);
 
-      // метка системы
       const sysEl = document.createElement('span');
       sysEl.className = 'variant-system';
       sysEl.textContent = r.system;
       line.appendChild(sysEl);
 
-      // поле ввода
       const input = document.createElement('input');
       input.type = 'text';
       input.inputMode = 'decimal';
@@ -769,14 +836,11 @@ function renderMaterials() {
           input.setSelectionRange(after.length, after.length);
         }
         materialState[r.key] = input.value;
-
-        // показать/скрыть крестик
         clearBtn.style.display = input.value ? 'inline-flex' : 'none';
       });
 
       line.appendChild(input);
 
-      // кнопка очистки
       const clearBtn = document.createElement('button');
       clearBtn.type = 'button';
       clearBtn.className = 'variant-clear-btn';
@@ -791,7 +855,6 @@ function renderMaterials() {
       });
       line.appendChild(clearBtn);
 
-      // единица
       const unit = document.createElement('span');
       unit.className = 'variant-unit';
       unit.textContent = mat.unit;
@@ -817,7 +880,6 @@ function renderMaterials() {
 
 // ============================================
 //  МАТЕРИАЛЫ → МАССИВ
-//  В отчёт уходит qty с точкой (5,5 → 5.5)
 // ============================================
 function materialStateToArrayFromState(state) {
   const list = [];
@@ -862,7 +924,8 @@ function resetCurrentEntry() {
 }
 
 // ============================================
-//  ЖУРНАЛ
+//  ЖУРНАЛ — РЕНДЕР
+//  Отсортировано по этажу и помещению.
 // ============================================
 function renderJournal() {
   journalCount.textContent = journal.length > 0 ? '(' + journal.length + ')' : '';
@@ -876,7 +939,13 @@ function renderJournal() {
   journalEmpty.style.display = 'none';
   journalCont.innerHTML = '';
 
-  journal.forEach((entry, idx) => {
+  // копия для сортировки, чтобы не двигать сам массив журнала
+  const sorted = journal.slice().sort(compareEntries);
+
+  sorted.forEach((entry) => {
+    // находим реальный индекс в исходном массиве
+    const realIdx = journal.indexOf(entry);
+
     const el = document.createElement('div');
     el.className = 'journal-entry';
 
@@ -885,9 +954,7 @@ function renderJournal() {
 
     const title = document.createElement('div');
     title.className = 'journal-entry-title';
-    title.textContent = entry.room_none
-      ? 'Без помещения'
-      : 'Пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
+    title.textContent = formatJournalTitle(entry);
     header.appendChild(title);
 
     const actions = document.createElement('div');
@@ -898,7 +965,7 @@ function renderJournal() {
     editBtn.className = 'journal-btn journal-btn-edit';
     editBtn.title = 'Изменить';
     editBtn.textContent = '✏️';
-    editBtn.addEventListener('click', () => editJournalEntry(idx));
+    editBtn.addEventListener('click', () => editJournalEntry(realIdx));
     actions.appendChild(editBtn);
 
     const delBtn = document.createElement('button');
@@ -906,7 +973,7 @@ function renderJournal() {
     delBtn.className = 'journal-btn journal-btn-del';
     delBtn.title = 'Удалить';
     delBtn.textContent = '🗑';
-    delBtn.addEventListener('click', () => removeJournalEntry(idx));
+    delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
     actions.appendChild(delBtn);
 
     header.appendChild(actions);
@@ -937,6 +1004,9 @@ function renderJournal() {
   });
 }
 
+// ============================================
+//  ЖУРНАЛ — РЕДАКТИРОВАНИЕ
+// ============================================
 function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
@@ -944,11 +1014,28 @@ function editJournalEntry(idx) {
   journal.splice(idx, 1);
   renderJournal();
 
+  // восстановить корпус
   if (isBuildingRequired() && entry.building) {
     buildingInput.value = entry.building;
     if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
     updateFloorVisibility();
     updateRoomPrefix();
+  }
+
+  // восстановить этаж
+  if (entry.floor) {
+    floorInput.value = entry.floor;
+    if (floorCS) {
+      // перестроить опции и выбрать нужную
+      const obj = objectSelect.value;
+      const build = buildingInput.value;
+      const floors = getFloorsFor(obj, build);
+      if (floors) {
+        floorCS.setOptions(floors);
+        floorCS.disabled = false;
+        floorCS.value = entry.floor;
+      }
+    }
   }
 
   workInput.value = entry.work;
@@ -963,6 +1050,7 @@ function editJournalEntry(idx) {
   const card = document.getElementById('entry-card');
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  updateRoomState();
   updateWorkAccessibility();
   showToast('Запись загружена для редактирования');
 }
@@ -1060,6 +1148,20 @@ function validateCurrentEntry() {
 }
 
 // ============================================
+//  ПОИСК ЗАПИСИ ДЛЯ СЛИЯНИЯ
+//  Ключ: этаж + помещение + признак «крыло» + тип работ
+// ============================================
+function findMergeIndex(newEntry) {
+  return journal.findIndex(e =>
+    e.floor === newEntry.floor &&
+    e.room === newEntry.room &&
+    !!e.room_none === !!newEntry.room_none &&
+    !!e.is_master_wing === !!newEntry.is_master_wing &&
+    e.work === newEntry.work
+  );
+}
+
+// ============================================
 //  ДОБАВИТЬ В ЖУРНАЛ
 // ============================================
 function addToJournal() {
@@ -1073,15 +1175,32 @@ function addToJournal() {
     room_none: floorInput.value === 'Нет',
     is_master_wing: isMasterWing(),
     building: buildingInput.value.trim(),
+    floor: floorInput.value.trim(),
     work: workInput.value,
     materialState: withMaterials ? Object.assign({}, materialState) : {}
   };
 
-  journal.push(entry);
-  renderJournal();
+  let merged = false;
 
+  if (withMaterials) {
+    const idx = findMergeIndex(entry);
+    if (idx !== -1) {
+      // сливаем материалы
+      journal[idx].materialState = sumMaterialStates(
+        journal[idx].materialState,
+        entry.materialState
+      );
+      merged = true;
+    }
+  }
+
+  if (!merged) {
+    journal.push(entry);
+  }
+
+  renderJournal();
   resetCurrentEntry();
-  showToast('Запись добавлена в журнал');
+  showToast(merged ? 'Позиции объединены с существующей записью' : 'Запись добавлена в журнал');
 }
 
 // ============================================
@@ -1241,19 +1360,8 @@ async function sendAll() {
   if (currentFilled) {
     const doAdd = confirm('В форме есть незанесённые в журнал данные. Добавить их в журнал перед отправкой?');
     if (doAdd) {
-      if (!validateCurrentEntry()) return;
-      const withMaterials = isWorkWithMaterials();
-      const entry = {
-        room: roomInput.value.trim(),
-        room_none: floorInput.value === 'Нет',
-        is_master_wing: isMasterWing(),
-        building: buildingInput.value.trim(),
-        work: workInput.value,
-        materialState: withMaterials ? Object.assign({}, materialState) : {}
-      };
-      journal.push(entry);
-      renderJournal();
-      resetCurrentEntry();
+      addToJournal();
+      if (document.getElementById('msg').className === 'err') return;
     }
   }
 
