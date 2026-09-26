@@ -22,6 +22,25 @@
 })();
 
 // ============================================
+//  КНОПКА «ВВЕРХ»
+// ============================================
+(function initScrollTop() {
+  const btn = document.getElementById('scroll-top');
+  if (!btn) return;
+
+  function update() {
+    if (window.scrollY > 300) btn.classList.add('show');
+    else btn.classList.remove('show');
+  }
+
+  window.addEventListener('scroll', update, { passive: true });
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  update();
+})();
+
+// ============================================
 //  НАСТРОЙКИ
 // ============================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
@@ -307,6 +326,27 @@ function showToast(text) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ============================================
+//  ПРОГРЕСС
+// ============================================
+function showProgress(total) {
+  const o = document.getElementById('progress-overlay');
+  const c = document.getElementById('progress-counter');
+  if (!o || !c) return;
+  c.textContent = '0 из ' + total;
+  o.classList.add('show');
+}
+
+function updateProgress(done, total) {
+  const c = document.getElementById('progress-counter');
+  if (c) c.textContent = done + ' из ' + total;
+}
+
+function hideProgress() {
+  const o = document.getElementById('progress-overlay');
+  if (o) o.classList.remove('show');
 }
 
 // ============================================
@@ -779,6 +819,34 @@ function updateMaterialsVisibility() {
 }
 
 // ============================================
+//  РАБОТА С ЧИСЛОМ
+// ============================================
+function parseQty(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return 0;
+  const n = parseFloat(s.replace(',', '.'));
+  return isFinite(n) ? n : 0;
+}
+
+function updateMinusState(input, minusBtn) {
+  const num = parseQty(input.value);
+  minusBtn.disabled = num <= 0;
+}
+
+function bumpQty(input, key, delta, clearBtn, minusBtn) {
+  const num = parseQty(input.value);
+  let next = num + delta;
+  if (next < 0) next = 0;
+
+  const formatted = next === 0 ? '' : formatQty(String(next).replace('.', ','));
+
+  input.value = formatted;
+  materialState[key] = formatted;
+  clearBtn.style.display = formatted ? 'inline-flex' : 'none';
+  updateMinusState(input, minusBtn);
+}
+
+// ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
 // ============================================
 function renderMaterials() {
@@ -823,6 +891,15 @@ function renderMaterials() {
       sysEl.textContent = r.system;
       line.appendChild(sysEl);
 
+      // кнопка −
+      const minusBtn = document.createElement('button');
+      minusBtn.type = 'button';
+      minusBtn.className = 'qty-btn qty-btn-minus';
+      minusBtn.textContent = '−';
+      minusBtn.title = 'Уменьшить на 1';
+      line.appendChild(minusBtn);
+
+      // input
       const input = document.createElement('input');
       input.type = 'text';
       input.inputMode = 'decimal';
@@ -832,6 +909,31 @@ function renderMaterials() {
       input.autocomplete = 'off';
       input.value = materialState[r.key] || '';
 
+      line.appendChild(input);
+
+      // кнопка +
+      const plusBtn = document.createElement('button');
+      plusBtn.type = 'button';
+      plusBtn.className = 'qty-btn qty-btn-plus';
+      plusBtn.textContent = '+';
+      plusBtn.title = 'Увеличить на 1';
+      line.appendChild(plusBtn);
+
+      // кнопка ×
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'variant-clear-btn';
+      clearBtn.textContent = '×';
+      clearBtn.title = 'Очистить';
+      clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+      line.appendChild(clearBtn);
+
+      const unit = document.createElement('span');
+      unit.className = 'variant-unit';
+      unit.textContent = mat.unit;
+      line.appendChild(unit);
+
+      // Обработчики
       input.addEventListener('input', () => {
         const before = input.value;
         const after = formatQty(before);
@@ -841,28 +943,27 @@ function renderMaterials() {
         }
         materialState[r.key] = input.value;
         clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+        updateMinusState(input, minusBtn);
       });
 
-      line.appendChild(input);
+      minusBtn.addEventListener('click', () => {
+        bumpQty(input, r.key, -1, clearBtn, minusBtn);
+      });
 
-      const clearBtn = document.createElement('button');
-      clearBtn.type = 'button';
-      clearBtn.className = 'variant-clear-btn';
-      clearBtn.textContent = '×';
-      clearBtn.title = 'Очистить';
-      clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+      plusBtn.addEventListener('click', () => {
+        bumpQty(input, r.key, 1, clearBtn, minusBtn);
+      });
+
       clearBtn.addEventListener('click', () => {
         input.value = '';
         materialState[r.key] = '';
         clearBtn.style.display = 'none';
+        updateMinusState(input, minusBtn);
         input.focus();
       });
-      line.appendChild(clearBtn);
 
-      const unit = document.createElement('span');
-      unit.className = 'variant-unit';
-      unit.textContent = mat.unit;
-      line.appendChild(unit);
+      // начальное состояние «−»
+      updateMinusState(input, minusBtn);
 
       variantsWrap.appendChild(line);
     });
@@ -1239,7 +1340,6 @@ objectSelect.addEventListener('change', () => {
 });
 
 buildingInput.addEventListener('change', () => {
-  // при смене корпуса сбрасываем этаж и помещение
   floorInput.value = '';
   if (floorCS) floorCS.value = '';
   roomInput.value = '';
@@ -1373,7 +1473,8 @@ function updateFieldState(el) {
 });
 
 // ============================================
-//  ОТПРАВКА
+//  ОТПРАВКА С ПРОГРЕССОМ
+//  Каждая запись — отдельный запрос.
 // ============================================
 async function sendAll() {
   show('');
@@ -1397,6 +1498,7 @@ async function sendAll() {
     return;
   }
 
+  // Готовим записи
   const records = journal.map(entry => {
     let room = entry.room_none ? 'Нет' : entry.room;
     if (!entry.room_none && entry.is_master_wing) {
@@ -1411,27 +1513,50 @@ async function sendAll() {
     };
   });
 
-  const payload = {
-    object:  objectSelect.value.trim(),
-    date:    dateInput.value.trim(),
-    name:    nameInput.value.trim(),
-    records: records
+  const header = {
+    object: objectSelect.value.trim(),
+    date:   dateInput.value.trim(),
+    name:   nameInput.value.trim()
   };
 
   const btn = document.getElementById('btn');
   btn.disabled = true;
   btn.textContent = 'Отправляем...';
 
-  try {
-    await fetch(API_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
+  showProgress(records.length);
 
-    show('✅ Отчет отправлен! Записей: ' + records.length, 'ok');
+  let sent = 0;
+  let failed = 0;
 
+  for (let i = 0; i < records.length; i++) {
+    const payload = Object.assign({}, header, { records: [records[i]] });
+
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      sent++;
+    } catch (e) {
+      failed++;
+    }
+
+    updateProgress(sent + failed, records.length);
+
+    // небольшая пауза, чтобы прогресс был виден
+    if (i < records.length - 1) {
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }
+
+  hideProgress();
+  btn.disabled = false;
+  btn.textContent = 'Отправить отчет';
+
+  if (failed === 0) {
+    show('✅ Отчет отправлен! Записей: ' + sent, 'ok');
     journal.length = 0;
     renderJournal();
     resetCurrentEntry();
@@ -1439,11 +1564,8 @@ async function sendAll() {
     setupDateRange();
     dateInput.value = toISODate(new Date());
     updateDateHighlight();
-  } catch (e) {
-    show('❌ Ошибка: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Отправить отчет';
+  } else {
+    show('⚠️ Отправлено ' + sent + ', ошибок ' + failed + '. Проверьте журнал.', 'err');
   }
 }
 
