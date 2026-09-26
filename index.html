@@ -68,17 +68,11 @@
   </div>
 
   <label class="req">Тип работ <span class="req-star">*</span></label>
-  <div class="cselect" data-cselect>
+  <div class="segmented" id="work-segmented">
     <input type="hidden" id="work" class="req-field" value="">
-    <button type="button" class="cselect-btn">
-      <span class="cselect-value placeholder">— выберите —</span>
-      <span class="cselect-arrow"></span>
-    </button>
-    <ul class="cselect-list">
-      <li class="cselect-option" data-value="Монтаж">Монтаж</li>
-      <li class="cselect-option" data-value="Демонтаж">Демонтаж</li>
-      <li class="cselect-option" data-value="Наставничество">Наставничество</li>
-    </ul>
+    <button type="button" class="segmented-btn" data-value="Монтаж">Монтаж</button>
+    <button type="button" class="segmented-btn" data-value="Демонтаж">Демонтаж</button>
+    <button type="button" class="segmented-btn" data-value="Иные работы">Иные работы</button>
   </div>
   <div class="field-error" id="err-work">Заполните это поле</div>
 
