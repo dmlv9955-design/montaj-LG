@@ -31,8 +31,52 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Тип работ, при котором «Система» становится обязательной
 const SYSTEM_REQUIRED_WORKS = ['Монтаж', 'Демонтаж'];
+
+// ============================================
+//  КОНФИГ МАТЕРИАЛОВ
+//  primary: true — «основной» вариант, выделяется цветом
+//  systems: массив систем, для которых этот вариант виден
+//           (если не указан — виден всегда)
+// ============================================
+const MATERIALS = [
+  {
+    id: 'cable',
+    label: 'Кабель КПСЭнг(A)FRHF 1x2x',
+    unit: 'м',
+    variants: [
+      { id: 'cable_075', label: 'х0,75', systems: ['АПС/СОУЭ', 'АПС'] },
+      { id: 'cable_1',   label: 'х1',    systems: ['АПС/СОУЭ', 'СОУЭ'] }
+    ]
+  },
+  {
+    id: 'channel',
+    label: 'Кабель-канал',
+    unit: 'м',
+    variants: [
+      { id: 'channel_40x25', label: '40х25', primary: true },
+      { id: 'channel_25x16', label: '25х16' }
+    ]
+  },
+  {
+    id: 'corrugated',
+    label: 'Труба гофрированная d=',
+    unit: 'м',
+    variants: [
+      { id: 'corrugated_16', label: '16 мм' },
+      { id: 'corrugated_20', label: '20 мм', primary: true }
+    ]
+  },
+  {
+    id: 'steel',
+    label: 'Труба стальная ВГП ДУ d=',
+    unit: 'м',
+    variants: [
+      { id: 'steel_15', label: '15 мм', primary: true },
+      { id: 'steel_20', label: '20 мм' }
+    ]
+  }
+];
 
 // ============================================
 //  ПОЛЕ «ДАТА»
@@ -341,7 +385,6 @@ function updateSystemState() {
   const required = isSystemRequired();
 
   if (required) {
-    // Монтаж / Демонтаж — система активна и обязательна
     systemSeg.classList.remove('segmented-disabled');
     systemSeg.classList.remove('is-empty', 'is-filled');
     systemInput.disabled = false;
@@ -349,10 +392,10 @@ function updateSystemState() {
     const star = systemLabel.querySelector('.req-star');
     if (star) star.style.display = '';
     updateFieldState(systemInput);
+    renderMaterials();
     return;
   }
 
-  // Тип работ не выбран или Наставничество — система заблокирована
   if (systemInput.value) {
     systemInput.value = '';
     systemInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -364,16 +407,116 @@ function updateSystemState() {
   const star = systemLabel.querySelector('.req-star');
   if (star) star.style.display = 'none';
 
-  // Подсказка: разный текст в зависимости от того, выбран ли тип работ
   if (systemHint) {
     systemHint.textContent = workChosen
       ? 'Не используется'
       : '🔒 Сначала тип работ';
   }
 
-  // очистить ошибку, если она была
   const err = document.getElementById('err-system');
   if (err) err.classList.remove('show');
+
+  renderMaterials();
+}
+
+// ============================================
+//  МАТЕРИАЛЫ — РЕНДЕР
+// ============================================
+const materialValues = {};  // сохранение между перерисовками
+
+function renderMaterials() {
+  const container = document.getElementById('materials-container');
+  if (!container) return;
+
+  // сохранить введённые значения перед перерисовкой
+  document.querySelectorAll('.variant-input').forEach(inp => {
+    materialValues[inp.dataset.id] = inp.value;
+  });
+
+  const system = systemInput.value;
+  container.innerHTML = '';
+
+  MATERIALS.forEach(mat => {
+    // фильтруем варианты по системе
+    const visible = mat.variants.filter(v => {
+      if (!v.systems) return true;
+      if (!system) return true;   // система не выбрана — показываем все
+      return v.systems.indexOf(system) !== -1;
+    });
+
+    if (visible.length === 0) return;
+
+    const item = document.createElement('div');
+    item.className = 'material-item';
+
+    const label = document.createElement('div');
+    label.className = 'material-label';
+    label.textContent = mat.label;
+    item.appendChild(label);
+
+    visible.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'material-row';
+
+      const badge = document.createElement('span');
+      badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
+      badge.textContent = v.label;
+      row.appendChild(badge);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'decimal';
+      input.className = 'variant-input';
+      input.dataset.id = v.id;
+      input.placeholder = '0';
+      input.autocomplete = 'off';
+      input.value = materialValues[v.id] || '';
+
+      input.addEventListener('input', () => {
+        let raw = input.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        const parts = raw.split('.');
+        if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
+        if (input.value !== raw) input.value = raw;
+        materialValues[v.id] = raw;
+      });
+
+      row.appendChild(input);
+
+      const unit = document.createElement('span');
+      unit.className = 'variant-unit';
+      unit.textContent = mat.unit;
+      row.appendChild(unit);
+
+      item.appendChild(row);
+    });
+
+    container.appendChild(item);
+  });
+}
+
+// ============================================
+//  МАТЕРИАЛЫ — СБОР ДАННЫХ
+//  Пустые поля не попадают в отчёт
+// ============================================
+function getMaterialValues() {
+  const list = [];
+  document.querySelectorAll('.material-item').forEach(item => {
+    const label = item.querySelector('.material-label').textContent;
+    item.querySelectorAll('.material-row').forEach(row => {
+      const variant = row.querySelector('.variant-badge').textContent;
+      const input = row.querySelector('.variant-input');
+      const unit = row.querySelector('.variant-unit').textContent;
+      const qty = input.value.trim();
+      if (qty && parseFloat(qty) > 0) {
+        list.push({
+          name: label + ' ' + variant,
+          unit: unit,
+          qty: qty
+        });
+      }
+    });
+  });
+  return list;
 }
 
 // ============================================
@@ -395,6 +538,11 @@ floorInput.addEventListener('change', () => {
 
 workInput.addEventListener('change', () => {
   updateSystemState();
+});
+
+// при смене системы — перерисовать материалы
+systemInput.addEventListener('change', () => {
+  renderMaterials();
 });
 
 // ============================================
@@ -514,70 +662,6 @@ REQUIRED_IDS.forEach(id => {
 });
 
 // ============================================
-//  МАТЕРИАЛЫ
-// ============================================
-const MATERIAL_UNITS = ['шт', 'м', 'м²', 'м³', 'кг', 'л', 'компл', 'упак'];
-
-function addMaterial() {
-  const wrap = document.getElementById('materials');
-  const row = document.createElement('div');
-  row.className = 'material-row';
-
-  const nameIn = document.createElement('input');
-  nameIn.type = 'text';
-  nameIn.className = 'm-name';
-  nameIn.placeholder = 'Название';
-
-  const unitWrap = document.createElement('div');
-  unitWrap.className = 'cselect';
-  unitWrap.dataset.cselect = '';
-  unitWrap.innerHTML = `
-    <input type="hidden" class="m-unit" value="">
-    <button type="button" class="cselect-btn">
-      <span class="cselect-value placeholder">ед.</span>
-      <span class="cselect-arrow"></span>
-    </button>
-    <ul class="cselect-list"></ul>
-  `;
-
-  const qtyIn = document.createElement('input');
-  qtyIn.type = 'number';
-  qtyIn.className = 'm-qty';
-  qtyIn.placeholder = '0';
-  qtyIn.step = '0.01';
-  qtyIn.min = '0';
-
-  const removeBtn = document.createElement('button');
-  removeBtn.type = 'button';
-  removeBtn.className = 'btn-remove';
-  removeBtn.textContent = '×';
-
-  row.append(nameIn, unitWrap, qtyIn, removeBtn);
-  wrap.appendChild(row);
-
-  const cs = new CustomSelect(unitWrap);
-  cs.setOptions(MATERIAL_UNITS);
-  cs.placeholder = 'ед.';
-  cs.updateDisplay();
-
-  removeBtn.addEventListener('click', () => {
-    cs.destroy();
-    row.remove();
-  });
-}
-
-function collectMaterials() {
-  const list = [];
-  document.querySelectorAll('.material-row').forEach(r => {
-    const name = r.querySelector('.m-name').value.trim();
-    const unit = r.querySelector('.m-unit').value;
-    const qty  = r.querySelector('.m-qty').value.trim();
-    if (name) list.push({ name, unit, qty });
-  });
-  return list;
-}
-
-// ============================================
 //  УТИЛИТЫ
 // ============================================
 function val(id) { return document.getElementById(id).value.trim(); }
@@ -643,7 +727,7 @@ async function send() {
     room_none: roomNoneFlag,
     work:      val('work'),
     system:    val('system'),
-    materials: collectMaterials()
+    materials: getMaterialValues()
   };
 
   const btn = document.getElementById('btn');
@@ -668,10 +752,11 @@ async function send() {
     objInput.value = '';
     objInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    updateSystemState();
+    // очистить материалы
+    Object.keys(materialValues).forEach(k => delete materialValues[k]);
+    document.querySelectorAll('.variant-input').forEach(inp => { inp.value = ''; });
 
-    document.getElementById('materials').innerHTML = '';
-    addMaterial();
+    updateSystemState();
 
     rebuildFloors();
     updateRoomState();
@@ -681,6 +766,7 @@ async function send() {
     updateDateHighlight();
 
     REQUIRED_IDS.forEach(id => updateFieldState(document.getElementById(id)));
+    renderMaterials();
   } catch (e) {
     show('❌ Ошибка: ' + e.message, 'err');
   } finally {
@@ -695,7 +781,6 @@ async function send() {
 rebuildFloors();
 updateRoomState();
 updateSystemState();
-addMaterial();
+renderMaterials();
 
-window.addMaterial = addMaterial;
 window.send = send;
