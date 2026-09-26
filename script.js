@@ -31,16 +31,14 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-const SYSTEM_REQUIRED_WORKS = ['Монтаж', 'Демонтаж'];
-
 const MATERIALS = [
   {
     id: 'cable',
     label: 'Кабель КПСЭнг(A)FRHF 1x2x',
     unit: 'м',
     variants: [
-      { id: 'cable_075', label: 'х0,75', systems: ['АПС/СОУЭ', 'АПС', 'СОУЭ'] },
-      { id: 'cable_1',   label: 'х1',    systems: ['АПС/СОУЭ', 'СОУЭ'] }
+      { id: 'cable_075', label: 'х0,75' },
+      { id: 'cable_1',   label: 'х1' }
     ]
   },
   {
@@ -75,8 +73,8 @@ const MATERIALS = [
 // ============================================
 //  СОСТОЯНИЕ
 // ============================================
-const materialValues = {};  // текущие значения полей материалов в форме
-const journal = [];         // массив сохранённых записей
+const materialValues = {};
+const journal = [];
 
 // ============================================
 //  ДАТА
@@ -142,7 +140,6 @@ setInterval(() => {
 // ============================================
 //  УТИЛИТЫ
 // ============================================
-function val(id) { return document.getElementById(id).value.trim(); }
 function show(text, cls) {
   const m = document.getElementById('msg');
   m.textContent = text; m.className = cls || '';
@@ -168,7 +165,7 @@ function showToast(text) {
 }
 
 // ============================================
-//  КАСТОМНЫЙ SELECT (только этаж)
+//  КАСТОМНЫЙ SELECT (этаж)
 // ============================================
 class CustomSelect {
   constructor(rootEl) {
@@ -324,34 +321,25 @@ function initSegmented(rootId, inputId, opts) {
   input.addEventListener('change', updateDisplay);
   updateDisplay();
 
-  // сохраняем функцию обновления в input для внешнего использования
   input._updateSegmentedDisplay = updateDisplay;
 }
+
+initSegmented('object-segmented', 'object', { allowDeselect: false });
+initSegmented('work-segmented',   'work',   { allowDeselect: false });
 
 // ============================================
 //  ЭЛЕМЕНТЫ
 // ============================================
-const objectSelect   = document.getElementById('object');
-const floorInput     = document.getElementById('floor');
-const floorCS        = customSelects.floor;
-const roomInput      = document.getElementById('room');
-const nameInput      = document.getElementById('name');
-const nameErr        = document.getElementById('err-name');
-const workInput      = document.getElementById('work');
-const systemInput    = document.getElementById('system');
-const systemSeg      = document.getElementById('system-segmented');
-const systemLabel    = document.getElementById('system-label');
-const systemHint     = systemSeg.querySelector('.segmented-hint');
-const journalCont    = document.getElementById('journal-container');
-const journalEmpty   = document.getElementById('journal-empty');
-const journalCount   = document.getElementById('journal-count');
-
-// ============================================
-//  SEGMENTED ИНИЦИАЛИЗАЦИЯ
-// ============================================
-initSegmented('object-segmented', 'object', { allowDeselect: false });
-initSegmented('work-segmented',   'work',   { allowDeselect: false });
-initSegmented('system-segmented', 'system', { allowDeselect: false });
+const objectSelect = document.getElementById('object');
+const floorInput   = document.getElementById('floor');
+const floorCS      = customSelects.floor;
+const roomInput    = document.getElementById('room');
+const nameInput    = document.getElementById('name');
+const nameErr      = document.getElementById('err-name');
+const workInput    = document.getElementById('work');
+const journalCont  = document.getElementById('journal-container');
+const journalEmpty = document.getElementById('journal-empty');
+const journalCount = document.getElementById('journal-count');
 
 // ============================================
 //  ЭТАЖИ
@@ -401,74 +389,20 @@ function updateRoomState() {
 }
 
 // ============================================
-//  СИСТЕМА
-// ============================================
-function isSystemRequired() {
-  return SYSTEM_REQUIRED_WORKS.indexOf(workInput.value) !== -1;
-}
-
-function updateSystemState() {
-  const workChosen = workInput.value !== '';
-  const required = isSystemRequired();
-
-  if (required) {
-    systemSeg.classList.remove('segmented-disabled');
-    systemSeg.classList.remove('is-empty', 'is-filled');
-    systemInput.disabled = false;
-    systemLabel.classList.add('req');
-    const star = systemLabel.querySelector('.req-star');
-    if (star) star.style.display = '';
-    updateFieldState(systemInput);
-    renderMaterials();
-    return;
-  }
-
-  if (systemInput.value) {
-    systemInput.value = '';
-    if (systemInput._updateSegmentedDisplay) systemInput._updateSegmentedDisplay();
-  }
-  systemSeg.classList.add('segmented-disabled');
-  systemSeg.classList.remove('is-empty', 'is-filled');
-  systemInput.disabled = true;
-  systemLabel.classList.remove('req');
-  const star = systemLabel.querySelector('.req-star');
-  if (star) star.style.display = 'none';
-
-  if (systemHint) {
-    systemHint.textContent = workChosen
-      ? 'Не используется'
-      : '🔒 Сначала тип работ';
-  }
-
-  const err = document.getElementById('err-system');
-  if (err) err.classList.remove('show');
-
-  renderMaterials();
-}
-
-// ============================================
 //  МАТЕРИАЛЫ — РЕНДЕР
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
   if (!container) return;
 
-  // сохраняем значения перед перерисовкой
   document.querySelectorAll('.variant-input').forEach(inp => {
     materialValues[inp.dataset.id] = inp.value;
   });
 
-  const system = systemInput.value;
   container.innerHTML = '';
 
   MATERIALS.forEach(mat => {
-    const visible = mat.variants.filter(v => {
-      if (!v.systems) return true;
-      if (!system) return true;
-      return v.systems.indexOf(system) !== -1;
-    });
-
-    if (visible.length === 0) return;
+    if (mat.variants.length === 0) return;
 
     const group = document.createElement('div');
     group.className = 'material-group';
@@ -478,7 +412,7 @@ function renderMaterials() {
     nameEl.textContent = mat.label;
     group.appendChild(nameEl);
 
-    visible.forEach(v => {
+    mat.variants.forEach(v => {
       const line = document.createElement('div');
       line.className = 'variant-line';
 
@@ -520,13 +454,11 @@ function renderMaterials() {
 
 // ============================================
 //  МАТЕРИАЛЫ — В МАССИВ
-//  Из объекта значений → в список { name, unit, qty }
 // ============================================
-function materialValuesToArray(mv, system) {
+function materialValuesToArray(mv) {
   const list = [];
   MATERIALS.forEach(mat => {
     mat.variants.forEach(v => {
-      if (v.systems && system && v.systems.indexOf(system) === -1) return;
       const qty = mv[v.id];
       if (qty && parseFloat(qty) > 0) {
         list.push({
@@ -542,15 +474,12 @@ function materialValuesToArray(mv, system) {
 
 // ============================================
 //  СБРОС ТЕКУЩЕЙ ЗАПИСИ
-//  Снизу вверх: материалы → система → тип работ → помещение
+//  Снизу вверх: материалы → тип работ → помещение
 // ============================================
 function resetCurrentEntry() {
   // материалы
   Object.keys(materialValues).forEach(k => delete materialValues[k]);
-
-  // система
-  systemInput.value = '';
-  if (systemInput._updateSegmentedDisplay) systemInput._updateSegmentedDisplay();
+  renderMaterials();
 
   // тип работ
   workInput.value = '';
@@ -562,14 +491,10 @@ function resetCurrentEntry() {
   roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
 
   // ошибки
-  ['err-room', 'err-work', 'err-system'].forEach(id => {
+  ['err-room', 'err-work'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
-
-  // система заблокируется автоматически
-  updateSystemState();
-  renderMaterials();
 }
 
 // ============================================
@@ -591,7 +516,6 @@ function renderJournal() {
     const el = document.createElement('div');
     el.className = 'journal-entry';
 
-    // header
     const header = document.createElement('div');
     header.className = 'journal-entry-header';
 
@@ -624,16 +548,12 @@ function renderJournal() {
     header.appendChild(actions);
     el.appendChild(header);
 
-    // meta: тип работ · система
     const meta = document.createElement('div');
     meta.className = 'journal-entry-meta';
-    const metaParts = [entry.work];
-    if (entry.system) metaParts.push(entry.system);
-    meta.textContent = metaParts.join(' · ');
+    meta.textContent = entry.work;
     el.appendChild(meta);
 
-    // материалы
-    const matsArr = materialValuesToArray(entry.materialValues, entry.system);
+    const matsArr = materialValuesToArray(entry.materialValues);
     if (matsArr.length > 0) {
       const mats = document.createElement('div');
       mats.className = 'journal-entry-materials';
@@ -659,30 +579,19 @@ function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
 
-  // забираем из журнала
   journal.splice(idx, 1);
   renderJournal();
 
-  // восстанавливаем шапку записи в форме
-  // тип работ
   workInput.value = entry.work;
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
-  updateSystemState();
 
-  // система
-  systemInput.value = entry.system;
-  if (systemInput._updateSegmentedDisplay) systemInput._updateSegmentedDisplay();
-
-  // материалы
   Object.keys(materialValues).forEach(k => delete materialValues[k]);
   Object.assign(materialValues, entry.materialValues);
   renderMaterials();
 
-  // помещение
   roomInput.value = entry.room;
   updateFieldState(roomInput);
 
-  // прокрутка к форме
   const card = document.getElementById('entry-card');
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -737,8 +646,10 @@ function validateHeader() {
 
   if (firstProblem) {
     show('⚠️ Заполните поля сверху', 'err');
-    firstProblem.focus();
-    firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (firstProblem.focus) firstProblem.focus();
+    if (firstProblem.scrollIntoView) {
+      firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     return false;
   }
   return true;
@@ -747,7 +658,7 @@ function validateHeader() {
 function validateCurrentEntry() {
   let firstProblem = null;
 
-  ['err-room', 'err-work', 'err-system'].forEach(id => {
+  ['err-room', 'err-work'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
@@ -764,12 +675,6 @@ function validateCurrentEntry() {
     const err = document.getElementById('err-work');
     if (err) err.classList.add('show');
     if (!firstProblem) firstProblem = workInput;
-  }
-
-  if (isSystemRequired() && !systemInput.value.trim()) {
-    const err = document.getElementById('err-system');
-    if (err) err.classList.add('show');
-    if (!firstProblem) firstProblem = systemInput;
   }
 
   if (firstProblem) {
@@ -792,25 +697,20 @@ function isNameValid(value) {
 //  ДОБАВИТЬ В ЖУРНАЛ
 // ============================================
 function addToJournal() {
-  // проверяем шапку и запись
   if (!validateHeader()) return;
   if (!validateCurrentEntry()) return;
 
-  // сохраняем запись
   const entry = {
     room: roomInput.value.trim(),
     room_none: floorInput.value === 'Нет',
     work: workInput.value,
-    system: systemInput.value,
     materialValues: Object.assign({}, materialValues)
   };
 
   journal.push(entry);
   renderJournal();
 
-  // сброс формы снизу вверх до помещения включительно
   resetCurrentEntry();
-
   showToast('Запись добавлена в журнал');
 }
 
@@ -832,13 +732,7 @@ floorInput.addEventListener('change', () => {
 });
 
 workInput.addEventListener('change', () => {
-  updateSystemState();
   updateFieldState(workInput);
-});
-
-systemInput.addEventListener('change', () => {
-  renderMaterials();
-  updateFieldState(systemInput);
 });
 
 // ============================================
@@ -918,10 +812,6 @@ function updateFieldState(el) {
       wrap.classList.remove('is-empty', 'is-filled');
       return;
     }
-    if (el.id === 'system' && !isSystemRequired()) {
-      wrap.classList.remove('is-empty', 'is-filled');
-      return;
-    }
     wrap.classList.remove('is-empty', 'is-filled');
     const isEmpty = !el.value || !el.value.trim();
     wrap.classList.toggle('is-empty', isEmpty);
@@ -939,8 +829,7 @@ function updateFieldState(el) {
   el.classList.toggle('is-filled', !isEmpty);
 }
 
-// подключаем подсветку ко всем обязательным полям
-['date', 'name', 'object', 'floor', 'work', 'room', 'system'].forEach(id => {
+['date', 'name', 'object', 'floor', 'work', 'room'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   updateFieldState(el);
@@ -960,14 +849,11 @@ function updateFieldState(el) {
 async function sendAll() {
   show('');
 
-  // 1. Шапка
   if (!validateHeader()) return;
 
-  // 2. Проверка незанесённой записи
   const roomFilled = roomInput.value.trim() && roomInput.value.trim() !== 'Нет';
   const workFilled = workInput.value.trim();
-  const systemFilled = systemInput.value.trim();
-  const currentFilled = roomFilled || workFilled || systemFilled;
+  const currentFilled = roomFilled || workFilled;
 
   if (currentFilled) {
     const doAdd = confirm('В форме есть незанесённые в журнал данные. Добавить их в журнал перед отправкой?');
@@ -977,7 +863,6 @@ async function sendAll() {
         room: roomInput.value.trim(),
         room_none: floorInput.value === 'Нет',
         work: workInput.value,
-        system: systemInput.value,
         materialValues: Object.assign({}, materialValues)
       };
       journal.push(entry);
@@ -986,26 +871,23 @@ async function sendAll() {
     }
   }
 
-  // 3. Журнал не пуст?
   if (journal.length === 0) {
     show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
     return;
   }
 
-  // 4. Формируем payload
   const records = journal.map(entry => ({
     room: entry.room_none ? 'Нет' : entry.room,
     room_none: entry.room_none,
     work: entry.work,
-    system: entry.system,
-    materials: materialValuesToArray(entry.materialValues, entry.system)
+    materials: materialValuesToArray(entry.materialValues)
   }));
 
   const payload = {
-    object: objectSelect.value.trim(),
-    date: dateInput.value.trim(),
-    name: nameInput.value.trim(),
-    floor: floorInput.value.trim(),
+    object:  objectSelect.value.trim(),
+    date:    dateInput.value.trim(),
+    name:    nameInput.value.trim(),
+    floor:   floorInput.value.trim(),
     records: records
   };
 
@@ -1023,12 +905,10 @@ async function sendAll() {
 
     show('✅ Отчет отправлен! Записей: ' + records.length, 'ok');
 
-    // очистка журнала и текущей записи
     journal.length = 0;
     renderJournal();
     resetCurrentEntry();
 
-    // дата — на сегодня
     setupDateRange();
     dateInput.value = toISODate(new Date());
     updateDateHighlight();
@@ -1045,7 +925,6 @@ async function sendAll() {
 // ============================================
 rebuildFloors();
 updateRoomState();
-updateSystemState();
 renderMaterials();
 renderJournal();
 
