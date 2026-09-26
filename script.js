@@ -507,6 +507,11 @@ function addMaterial() {
   cs.setOptions(MATERIAL_UNITS);
   cs.placeholder = 'ед.';
   cs.updateDisplay();
+
+  removeBtn.addEventListener('click', () => {
+    cs.destroy();   // снимаем document-слушатели
+    row.remove();
+  });
 }
 
 function collectMaterials() {
