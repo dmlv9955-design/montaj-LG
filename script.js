@@ -47,8 +47,6 @@ const WORK_WITH_MATERIALS = ['Монтаж', 'Демонтаж'];
 
 // ============================================
 //  КОНФИГ МАТЕРИАЛОВ
-//  Каждая строка = фиксированное сочетание «вариант + система».
-//  primary: true — вариант выделяется синим.
 // ============================================
 const MATERIALS = [
   {
@@ -96,7 +94,6 @@ const MATERIALS = [
   }
 ];
 
-// materialState = { key: qty-string }
 let materialState = {};
 
 function initMaterialState() {
@@ -109,6 +106,70 @@ function initMaterialState() {
 }
 
 const journal = [];
+
+// ============================================
+//  ФОРМАТИРОВАНИЕ КОЛИЧЕСТВА
+//  - только цифры и запятая
+//  - максимум одна запятая
+//  - целая часть ≤ 4
+//  - дробная часть ≤ 2
+//  - авто-запятая: «0» + цифра → «0,<цифра>»
+// ============================================
+function formatQty(raw) {
+  let s = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
+  s = s.replace(/\./g, ',');
+
+  // только первая запятая
+  const firstComma = s.indexOf(',');
+  if (firstComma !== -1) {
+    s = s.slice(0, firstComma + 1) + s.slice(firstComma + 1).replace(/,/g, '');
+  }
+
+  const parts = s.split(',');
+  let intPart = parts[0] || '';
+  let fracPart = parts.length > 1 ? parts[1] : null;
+
+  // авто-запятая: если целая часть начинается с 0 и есть ещё цифры
+  if (intPart.length > 1 && intPart.charAt(0) === '0') {
+    const extra = intPart.slice(1);
+    intPart = '0';
+    fracPart = extra + (fracPart || '');
+  }
+
+  if (intPart.length > 4) intPart = intPart.slice(0, 4);
+  if (fracPart !== null && fracPart.length > 2) fracPart = fracPart.slice(0, 2);
+
+  if (fracPart !== null) return intPart + ',' + fracPart;
+  return intPart;
+}
+
+// ============================================
+//  КНОПКА ОЧИСТКИ ПОЛЯ
+// ============================================
+function attachClearButton(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input || !btn) return;
+
+  function update() {
+    const show = !!input.value && !input.disabled;
+    btn.style.display = show ? 'inline-flex' : 'none';
+  }
+
+  input.addEventListener('input', update);
+  input.addEventListener('change', update);
+
+  btn.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.focus();
+    update();
+  });
+
+  update();
+  input._updateClearBtn = update;
+}
 
 // ============================================
 //  ДАТА
@@ -394,6 +455,10 @@ const materialsSection = document.getElementById('materials-section');
 const objectSeg        = document.getElementById('object-segmented');
 const workSeg          = document.getElementById('work-segmented');
 
+// привязка кнопок очистки
+attachClearButton('name', 'clear-name');
+attachClearButton('room', 'clear-room');
+
 // ============================================
 //  ВАЛИДНОСТЬ ИМЕНИ
 // ============================================
@@ -585,6 +650,7 @@ function updateRoomState() {
     roomInput.disabled = true;
     roomInput.placeholder = '🔒 Имя';
     updateRoomPrefix();
+    if (roomInput._updateClearBtn) roomInput._updateClearBtn();
     return;
   }
 
@@ -593,6 +659,7 @@ function updateRoomState() {
     roomInput.placeholder = '1234';
     updateFieldState(roomInput);
     updateRoomPrefix();
+    if (roomInput._updateClearBtn) roomInput._updateClearBtn();
     return;
   }
 
@@ -600,6 +667,7 @@ function updateRoomState() {
     roomInput.disabled = true;
     roomInput.placeholder = '🔒 Этаж';
     updateRoomPrefix();
+    if (roomInput._updateClearBtn) roomInput._updateClearBtn();
     return;
   }
 
@@ -608,6 +676,7 @@ function updateRoomState() {
     roomInput.disabled = true;
     roomInput.placeholder = '';
     updateRoomPrefix();
+    if (roomInput._updateClearBtn) roomInput._updateClearBtn();
     return;
   }
 
@@ -615,6 +684,7 @@ function updateRoomState() {
   roomInput.placeholder = '1234';
   updateFieldState(roomInput);
   updateRoomPrefix();
+  if (roomInput._updateClearBtn) roomInput._updateClearBtn();
 }
 
 // ============================================
@@ -633,8 +703,8 @@ function updateMaterialsVisibility() {
 
 // ============================================
 //  РЕНДЕР МАТЕРИАЛОВ
-//  Слева — название материала,
-//  справа — строки: [вариант] [для] [система] [ввод] [единица]
+//  Слева — название, справа строки:
+//  [badge] [для] [система] [ввод] [×] [единица]
 // ============================================
 function renderMaterials() {
   const container = document.getElementById('materials-container');
@@ -684,8 +754,7 @@ function renderMaterials() {
       // поле ввода
       const input = document.createElement('input');
       input.type = 'text';
-      input.inputMode = 'numeric';
-      input.maxLength = 4;
+      input.inputMode = 'decimal';
       input.className = 'variant-input';
       input.dataset.focusId = r.key;
       input.placeholder = '0';
@@ -693,15 +762,34 @@ function renderMaterials() {
       input.value = materialState[r.key] || '';
 
       input.addEventListener('input', () => {
-        let raw = input.value.replace(/[^0-9]/g, '').slice(0, 4);
-        if (input.value !== raw) {
-          input.value = raw;
-          input.setSelectionRange(raw.length, raw.length);
+        const before = input.value;
+        const after = formatQty(before);
+        if (before !== after) {
+          input.value = after;
+          input.setSelectionRange(after.length, after.length);
         }
-        materialState[r.key] = raw;
+        materialState[r.key] = input.value;
+
+        // показать/скрыть крестик
+        clearBtn.style.display = input.value ? 'inline-flex' : 'none';
       });
 
       line.appendChild(input);
+
+      // кнопка очистки
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'variant-clear-btn';
+      clearBtn.textContent = '×';
+      clearBtn.title = 'Очистить';
+      clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        materialState[r.key] = '';
+        clearBtn.style.display = 'none';
+        input.focus();
+      });
+      line.appendChild(clearBtn);
 
       // единица
       const unit = document.createElement('span');
@@ -729,20 +817,22 @@ function renderMaterials() {
 
 // ============================================
 //  МАТЕРИАЛЫ → МАССИВ
+//  В отчёт уходит qty с точкой (5,5 → 5.5)
 // ============================================
 function materialStateToArrayFromState(state) {
   const list = [];
   MATERIALS.forEach(mat => {
     mat.rows.forEach(r => {
-      const qty = (state[r.key] || '').trim();
-      if (qty && parseInt(qty, 10) > 0) {
-        list.push({
-          name: mat.label + ' ' + r.variant,
-          unit: mat.unit,
-          qty: qty,
-          system: r.system
-        });
-      }
+      const raw = (state[r.key] || '').trim();
+      if (!raw) return;
+      const num = parseFloat(raw.replace(',', '.'));
+      if (!isFinite(num) || num <= 0) return;
+      list.push({
+        name: mat.label + ' ' + r.variant,
+        unit: mat.unit,
+        qty: raw.replace(',', '.'),
+        system: r.system
+      });
     });
   });
   return list;
@@ -767,6 +857,7 @@ function resetCurrentEntry() {
     if (el) el.classList.remove('show');
   });
 
+  updateRoomState();
   updateWorkAccessibility();
 }
 
@@ -836,7 +927,7 @@ function renderJournal() {
         const sysLabel = m.system ? ' · ' + escapeHtml(m.system) : '';
         row.innerHTML =
           '<span class="jm-name">' + escapeHtml(m.name) + sysLabel + '</span>' +
-          '<span class="jm-qty">' + escapeHtml(m.qty) + ' ' + escapeHtml(m.unit) + '</span>';
+          '<span class="jm-qty">' + escapeHtml(m.qty.replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
         mats.appendChild(row);
       });
       el.appendChild(mats);
