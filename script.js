@@ -278,6 +278,7 @@ const workInput    = document.getElementById('work');
 const systemInput  = document.getElementById('system');
 const systemSeg    = document.getElementById('system-segmented');
 const systemLabel  = document.getElementById('system-label');
+const systemHint   = systemSeg.querySelector('.segmented-hint');
 
 const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room', 'system'];
 
@@ -363,13 +364,16 @@ function updateSystemState() {
   const star = systemLabel.querySelector('.req-star');
   if (star) star.style.display = 'none';
 
+  // Подсказка: разный текст в зависимости от того, выбран ли тип работ
+  if (systemHint) {
+    systemHint.textContent = workChosen
+      ? 'Не используется'
+      : '🔒 Сначала тип работ';
+  }
+
   // очистить ошибку, если она была
   const err = document.getElementById('err-system');
   if (err) err.classList.remove('show');
-
-  // для случая «тип работ не выбран» — оставим нейтральный вид
-  if (!workChosen) systemSeg.classList.add('segmented-idle');
-  else systemSeg.classList.remove('segmented-idle');
 }
 
 // ============================================
@@ -475,7 +479,6 @@ function updateFieldState(el) {
       wrap.classList.remove('is-empty', 'is-filled');
       return;
     }
-    // не подсвечиваем system, если она заблокирована по типу работ
     if (el.id === 'system' && !isSystemRequired()) {
       wrap.classList.remove('is-empty', 'is-filled');
       return;
@@ -597,7 +600,6 @@ async function send() {
   REQUIRED_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el.disabled) return;
-    // system обязательна только для Монтаж/Демонтаж
     if (id === 'system' && !isSystemRequired()) return;
 
     if (!el.value.trim()) {
@@ -660,15 +662,12 @@ async function send() {
 
     nameInput.value = '';
 
-    // сброс кастомных селектов (этаж, тип работ, единицы материалов)
     Object.values(customSelects).forEach(cs => { cs.value = ''; });
 
-    // сброс объекта
     const objInput = document.getElementById('object');
     objInput.value = '';
     objInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // system очистится и заблокируется автоматически — work теперь пустой
     updateSystemState();
 
     document.getElementById('materials').innerHTML = '';
@@ -695,7 +694,7 @@ async function send() {
 // ============================================
 rebuildFloors();
 updateRoomState();
-updateSystemState();  // сразу заблокирует system (work пустой)
+updateSystemState();
 addMaterial();
 
 window.addMaterial = addMaterial;
