@@ -499,7 +499,6 @@ function addMaterial() {
   removeBtn.type = 'button';
   removeBtn.className = 'btn-remove';
   removeBtn.textContent = '×';
-  removeBtn.addEventListener('click', () => row.remove());
 
   row.append(nameIn, unitWrap, qtyIn, removeBtn);
   wrap.appendChild(row);
