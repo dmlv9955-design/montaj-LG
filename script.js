@@ -72,9 +72,6 @@ const MATERIALS = [
   }
 ];
 
-// ============================================
-//  СОСТОЯНИЕ МАТЕРИАЛОВ
-// ============================================
 let materialState = {};
 
 function initMaterialState() {
@@ -356,13 +353,89 @@ const journalCont      = document.getElementById('journal-container');
 const journalEmpty     = document.getElementById('journal-empty');
 const journalCount     = document.getElementById('journal-count');
 const materialsSection = document.getElementById('materials-section');
+const objectSeg        = document.getElementById('object-segmented');
+const workSeg          = document.getElementById('work-segmented');
+
+// ============================================
+//  ВАЛИДНОСТЬ ИМЕНИ (без вывода ошибок)
+// ============================================
+function isNameValid(value) {
+  const v = value.trim();
+  return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?$/.test(v);
+}
+
+// ============================================
+//  ДОСТУПНОСТЬ ПОЛЕЙ
+//  Цепочка:
+//    Имя → Дата, Объект
+//    Объект → Этаж
+//    Этаж → Помещение
+//    Объект + Этаж + Помещение → Тип работ
+//    Тип работ (Монтаж/Демонтаж) → Материалы
+// ============================================
+
+// Обновить только доступность Типа работ
+function updateWorkAccessibility() {
+  const nameOk  = isNameValid(nameInput.value);
+  const objOk   = !!objectSelect.value;
+  const floorOk = !!floorInput.value;
+  const roomOk  = !!roomInput.value.trim() || floorInput.value === 'Нет';
+  const workOk  = nameOk && objOk && floorOk && roomOk;
+
+  const hint = workSeg.querySelector('.segmented-hint');
+
+  if (!workOk) {
+    workSeg.classList.add('segmented-disabled');
+    if (hint) {
+      hint.textContent = nameOk
+        ? '🔒 Заполните поля выше'
+        : '🔒 Введите имя';
+    }
+  } else {
+    workSeg.classList.remove('segmented-disabled');
+  }
+
+  // материалы показываем только если тип работ выбран и это Монтаж/Демонтаж
+  updateMaterialsVisibility();
+}
+
+// Полное обновление всей цепочки
+function updateFormAccessibility() {
+  const nameOk = isNameValid(nameInput.value);
+
+  // Дата
+  dateInput.disabled = !nameOk;
+
+  // Объект
+  const objHint = objectSeg.querySelector('.segmented-hint');
+  if (!nameOk) {
+    objectSeg.classList.add('segmented-disabled');
+    if (objHint) objHint.textContent = '🔒 Введите имя';
+  } else {
+    objectSeg.classList.remove('segmented-disabled');
+  }
+
+  // Этаж + Помещение
+  rebuildFloors();
+  updateRoomState();
+
+  // Тип работ
+  updateWorkAccessibility();
+}
 
 // ============================================
 //  ЭТАЖИ
 // ============================================
 function rebuildFloors() {
-  const obj = objectSelect.value;
+  const nameOk = isNameValid(nameInput.value);
+  const obj    = objectSelect.value;
   const floors = FLOORS_BY_OBJECT[obj];
+
+  if (!nameOk) {
+    floorCS.placeholder = '🔒 Имя';
+    floorCS.disabled = true;
+    return;
+  }
 
   if (!floors) {
     floorCS.setOptions([]);
@@ -381,12 +454,18 @@ function rebuildFloors() {
 //  ПОМЕЩЕНИЕ
 // ============================================
 function updateRoomState() {
+  const nameOk   = isNameValid(nameInput.value);
   const floorVal = floorInput.value;
 
   roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
 
+  if (!nameOk) {
+    roomInput.disabled = true;
+    roomInput.placeholder = '🔒 Имя';
+    return;
+  }
+
   if (!floorVal) {
-    roomInput.value = '';
     roomInput.disabled = true;
     roomInput.placeholder = '🔒 Этаж';
     return;
@@ -413,7 +492,9 @@ function isWorkWithMaterials() {
 
 function updateMaterialsVisibility() {
   if (!materialsSection) return;
-  materialsSection.style.display = isWorkWithMaterials() ? 'block' : 'none';
+  const workSegDisabled = workSeg.classList.contains('segmented-disabled');
+  materialsSection.style.display =
+    (isWorkWithMaterials() && !workSegDisabled) ? 'block' : 'none';
 }
 
 // ============================================
@@ -428,11 +509,11 @@ function isSystemMissing(variant, row) {
 }
 
 function applySysHighlight(sysCol, variant, row) {
-  const sysWrap = sysCol.querySelector('.sys-toggle');
+  const sysWrap  = sysCol.querySelector('.sys-toggle');
   const sysLabel = sysCol.querySelector('.sys-label');
-  const missing = isSystemMissing(variant, row);
+  const missing  = isSystemMissing(variant, row);
 
-  if (sysWrap) sysWrap.classList.toggle('sys-required', missing);
+  if (sysWrap)  sysWrap.classList.toggle('sys-required', missing);
   if (sysLabel) sysLabel.classList.toggle('sys-required', missing);
 }
 
@@ -468,13 +549,11 @@ function renderMaterials() {
         line.dataset.variantId = v.id;
         line.dataset.rowIdx = rowIdx;
 
-        // badge варианта
         const badge = document.createElement('span');
         badge.className = 'variant-badge' + (v.primary ? ' primary' : '');
         badge.textContent = v.label;
         line.appendChild(badge);
 
-        // колонка с системой: подпись (только если есть выбор) + капсулы
         const sysCol = document.createElement('div');
         sysCol.className = 'sys-col';
 
@@ -529,7 +608,6 @@ function renderMaterials() {
         sysCol.appendChild(sysWrap);
         line.appendChild(sysCol);
 
-        // input количества
         const input = document.createElement('input');
         input.type = 'text';
         input.inputMode = 'decimal';
@@ -546,22 +624,17 @@ function renderMaterials() {
           if (input.value !== raw) input.value = raw;
           row.qty = raw;
 
-          // живая подсветка системы
           applySysHighlight(sysCol, v, row);
-
-          // убираем ошибку валидации
           line.classList.remove('sys-missing');
         });
 
         line.appendChild(input);
 
-        // единица измерения
         const unit = document.createElement('span');
         unit.className = 'variant-unit';
         unit.textContent = mat.unit;
         line.appendChild(unit);
 
-        // кнопка + (для canAddSecond, только для первой строки, когда есть system)
         if (v.canAddSecond && rows.length === 1 && row.system) {
           const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
           const addBtn = document.createElement('button');
@@ -576,7 +649,6 @@ function renderMaterials() {
           line.appendChild(addBtn);
         }
 
-        // кнопка × (для второй строки canAddSecond — удалить)
         if (v.canAddSecond && rowIdx > 0) {
           const delBtn = document.createElement('button');
           delBtn.type = 'button';
@@ -590,7 +662,6 @@ function renderMaterials() {
           line.appendChild(delBtn);
         }
 
-        // начальная подсветка (если уже что-то введено)
         applySysHighlight(sysCol, v, row);
 
         group.appendChild(line);
@@ -683,7 +754,6 @@ function resetCurrentEntry() {
 
   workInput.value = '';
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
-  updateMaterialsVisibility();
 
   roomInput.value = '';
   updateFieldState(roomInput);
@@ -693,6 +763,9 @@ function resetCurrentEntry() {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
+
+  // пересчитать доступность (тип работ вернётся в disabled)
+  updateWorkAccessibility();
 }
 
 // ============================================
@@ -778,7 +851,6 @@ function editJournalEntry(idx) {
 
   workInput.value = entry.work;
   if (workInput._updateSegmentedDisplay) workInput._updateSegmentedDisplay();
-  updateMaterialsVisibility();
 
   materialState = JSON.parse(JSON.stringify(entry.materialState));
   renderMaterials();
@@ -789,6 +861,7 @@ function editJournalEntry(idx) {
   const card = document.getElementById('entry-card');
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  updateWorkAccessibility();
   showToast('Запись загружена для редактирования');
 }
 
@@ -812,8 +885,13 @@ function validateHeader() {
   nameErr.classList.remove('show');
   nameInput.classList.remove('is-invalid');
 
-  if (!dateInput.value.trim()) {
-    if (!firstProblem) firstProblem = dateInput;
+  if (!isNameValid(nameInput.value)) {
+    nameErr.textContent = nameInput.value.trim()
+      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)'
+      : 'Введите Имя и Фамилию — ровно 2 слова';
+    nameErr.classList.add('show');
+    nameInput.classList.add('is-invalid');
+    if (!firstProblem) firstProblem = nameInput;
   }
 
   if (!objectSelect.value.trim()) {
@@ -826,16 +904,6 @@ function validateHeader() {
     const err = document.getElementById('err-floor');
     if (err) err.classList.add('show');
     if (!firstProblem) firstProblem = floorInput;
-  }
-
-  const nameVal = nameInput.value.trim();
-  if (!nameVal || !isNameValid(nameVal)) {
-    nameErr.textContent = nameVal
-      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Иван Иванов)'
-      : 'Введите Имя и Фамилию — ровно 2 слова';
-    nameErr.classList.add('show');
-    nameInput.classList.add('is-invalid');
-    if (!firstProblem) firstProblem = nameInput;
   }
 
   if (firstProblem) {
@@ -892,11 +960,6 @@ function validateCurrentEntry() {
   return true;
 }
 
-function isNameValid(value) {
-  const v = value.trim();
-  return /^[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?\s+[А-ЯЁA-Z][а-яёa-z]+(?:-[А-ЯЁA-Z][а-яёa-z]+)?$/.test(v);
-}
-
 // ============================================
 //  ДОБАВИТЬ В ЖУРНАЛ
 // ============================================
@@ -927,6 +990,7 @@ objectSelect.addEventListener('change', () => {
   rebuildFloors();
   updateRoomState();
   updateFieldState(objectSelect);
+  updateWorkAccessibility();
 });
 
 floorInput.addEventListener('change', () => {
@@ -935,19 +999,13 @@ floorInput.addEventListener('change', () => {
   }
   updateRoomState();
   updateFieldState(floorInput);
+  updateWorkAccessibility();
 });
 
 workInput.addEventListener('change', () => {
   updateFieldState(workInput);
-
-  if (isWorkWithMaterials()) {
-    updateMaterialsVisibility();
-    renderMaterials();
-  } else {
-    initMaterialState();
-    renderMaterials();
-    updateMaterialsVisibility();
-  }
+  updateMaterialsVisibility();
+  renderMaterials();
 });
 
 // ============================================
@@ -971,10 +1029,11 @@ roomInput.addEventListener('input', () => {
     roomInput.setSelectionRange(after.length, after.length);
   }
   updateFieldState(roomInput);
+  updateWorkAccessibility();
 });
 
 // ============================================
-//  ФОРМАТ ИМЕНИ
+//  ФОРМАТ ИМЕНИ + пересчёт доступности полей
 // ============================================
 function formatName(value) {
   let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
@@ -1003,6 +1062,9 @@ nameInput.addEventListener('input', () => {
     nameInput.classList.remove('is-invalid');
   }
   updateFieldState(nameInput);
+
+  // пересчитать доступность всей цепочки
+  updateFormAccessibility();
 });
 
 nameInput.addEventListener('blur', () => {
@@ -1023,7 +1085,7 @@ nameInput.addEventListener('blur', () => {
 function updateFieldState(el) {
   const wrap = el.closest && (el.closest('.cselect') || el.closest('.segmented'));
   if (wrap) {
-    if (el.disabled) {
+    if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled');
       return;
     }
@@ -1140,8 +1202,7 @@ async function sendAll() {
 //  СТАРТ
 // ============================================
 initMaterialState();
-rebuildFloors();
-updateRoomState();
+updateFormAccessibility();   // сразу выставит все блокировки
 updateMaterialsVisibility();
 renderMaterials();
 renderJournal();
