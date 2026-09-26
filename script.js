@@ -85,12 +85,6 @@ function updateDateHighlight() {
   }
 }
 
-// подсветить старую дату (≠ сегодня)
-function updateDateHighlight() {
-  const todayISO = toISODate(new Date());
-  const isOld = dateInput.value && dateInput.value !== todayISO;
-  dateInput.classList.toggle('is-old-date', isOld);
-}
 
 // стартовая настройка
 setupDateRange();
