@@ -65,7 +65,7 @@ function updateDateHighlight() {
   const todayISO = toISODate(today);
 
   const v = dateInput.value;
-  dateInput.classList.remove('is-old-date', 'is-very-old-date');
+  dateInput.classList.remove('is-old-date');
 
   if (!v || v === todayISO) return;
   dateInput.classList.add('is-old-date');
@@ -224,13 +224,12 @@ document.querySelectorAll('[data-cselect]').forEach(rootEl => {
 // ============================================
 //  ЭЛЕМЕНТЫ
 // ============================================
-const objectSelect  = document.getElementById('object');
-const floorInput    = document.getElementById('floor');
-const floorCS       = customSelects.floor;
-const floorHint     = document.getElementById('floor-hint');
-const roomInput     = document.getElementById('room');
-const nameInput     = document.getElementById('name');
-const nameErr       = document.getElementById('err-name');
+const objectSelect = document.getElementById('object');
+const floorInput   = document.getElementById('floor');
+const floorCS      = customSelects.floor;
+const roomInput    = document.getElementById('room');
+const nameInput    = document.getElementById('name');
+const nameErr      = document.getElementById('err-name');
 
 const REQUIRED_IDS = ['date', 'name', 'object', 'floor', 'work', 'room'];
 
@@ -243,17 +242,14 @@ function rebuildFloors() {
 
   if (!floors) {
     floorCS.setOptions([]);
-    floorCS.placeholder = '🔒 Сначала объект';
+    floorCS.placeholder = '🔒 Объект';
     floorCS.disabled = true;
-    floorHint.textContent = '🔒 Сначала выберите объект';
-    floorHint.style.display = 'inline-flex';
     return;
   }
 
   floorCS.setOptions(floors);
   floorCS.placeholder = '— выберите —';
   floorCS.disabled = false;
-  floorHint.style.display = 'none';
   updateFieldState(floorInput);
 }
 
@@ -268,7 +264,7 @@ function updateRoomState() {
   if (!floorVal) {
     roomInput.value = '';
     roomInput.disabled = true;
-    roomInput.placeholder = '🔒 Сначала выберите этаж';
+    roomInput.placeholder = '🔒 Этаж';
     return;
   }
 
