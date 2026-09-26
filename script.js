@@ -31,8 +31,6 @@ const FLOORS_BY_OBJECT = {
   'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
 };
 
-// Переопределение этажей под корпус.
-// «Крыло мастерских» — третий этаж отсутствует.
 const FLOORS_OVERRIDE_BY_BUILDING = {
   'Крыло мастерских': ['1', '2', 'Нет']
 };
@@ -734,6 +732,39 @@ function renderMaterials() {
         sysCol.appendChild(sysWrap);
         line.appendChild(sysCol);
 
+        // контейнер для кнопок + и × — фиксированной ширины, ПЕРЕД input
+        const actions = document.createElement('div');
+        actions.className = 'variant-actions';
+
+        if (v.canAddSecond && rows.length === 1 && row.system) {
+          const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'variant-add-btn';
+          addBtn.textContent = '+';
+          addBtn.title = 'Добавить строку для ' + other;
+          addBtn.addEventListener('click', () => {
+            rows.push({ system: other, qty: '' });
+            renderMaterials();
+          });
+          actions.appendChild(addBtn);
+        }
+
+        if (v.canAddSecond && rowIdx > 0) {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'variant-del-btn';
+          delBtn.textContent = '×';
+          delBtn.title = 'Удалить строку';
+          delBtn.addEventListener('click', () => {
+            rows.splice(rowIdx, 1);
+            renderMaterials();
+          });
+          actions.appendChild(delBtn);
+        }
+
+        line.appendChild(actions);
+
         // input количества — только цифры, максимум 4, прижат вправо
         const input = document.createElement('input');
         input.type = 'text';
@@ -746,11 +777,9 @@ function renderMaterials() {
         input.value = row.qty || '';
 
         input.addEventListener('input', () => {
-          // только цифры, максимум 4
           let raw = input.value.replace(/[^0-9]/g, '').slice(0, 4);
           if (input.value !== raw) {
             input.value = raw;
-            // вернуть курсор в конец
             input.setSelectionRange(raw.length, raw.length);
           }
           row.qty = raw;
@@ -765,33 +794,6 @@ function renderMaterials() {
         unit.className = 'variant-unit';
         unit.textContent = mat.unit;
         line.appendChild(unit);
-
-        if (v.canAddSecond && rows.length === 1 && row.system) {
-          const other = row.system === 'АПС' ? 'СОУЭ' : 'АПС';
-          const addBtn = document.createElement('button');
-          addBtn.type = 'button';
-          addBtn.className = 'variant-add-btn';
-          addBtn.textContent = '+';
-          addBtn.title = 'Добавить строку для ' + other;
-          addBtn.addEventListener('click', () => {
-            rows.push({ system: other, qty: '' });
-            renderMaterials();
-          });
-          line.appendChild(addBtn);
-        }
-
-        if (v.canAddSecond && rowIdx > 0) {
-          const delBtn = document.createElement('button');
-          delBtn.type = 'button';
-          delBtn.className = 'variant-del-btn';
-          delBtn.textContent = '×';
-          delBtn.title = 'Удалить строку';
-          delBtn.addEventListener('click', () => {
-            rows.splice(rowIdx, 1);
-            renderMaterials();
-          });
-          line.appendChild(delBtn);
-        }
 
         applySysHighlight(sysCol, v, row);
 
