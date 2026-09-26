@@ -715,7 +715,7 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
   border-radius: 12px;
   background: var(--input-disabled-bg);
   overflow: hidden;
-  transition: border-color .2s, background .2s;
+  transition: border-color .2s, background .2s, opacity .2s;
 }
 .additional-block.open {
   border-color: var(--border-focus);
@@ -856,6 +856,30 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 }
 .btn-add-mentor:hover { background: var(--hover-bg); }
 .btn-add-mentor:active { transform: scale(.98); }
+
+/* ============================================ */
+/*  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — ЗАБЛОКИРОВАННЫЙ БЛОК */
+/* ============================================ */
+.additional-block.additional-block-disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.additional-block.additional-block-disabled .additional-toggle {
+  cursor: not-allowed;
+  color: var(--text-hint);
+}
+.additional-block.additional-block-disabled .additional-toggle-arrow {
+  color: var(--text-hint);
+}
+.additional-block.additional-block-disabled::after {
+  content: 'Сначала укажите имя и объект';
+  display: block;
+  padding: 0 16px 12px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-hint);
+}
 
 /* КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» */
 .btn-add-journal {
