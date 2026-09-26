@@ -590,8 +590,14 @@ async function send() {
     });
     show('✅ Отчет отправлен!', 'ok');
 
-    ['name', 'object'].forEach(id => document.getElementById(id).value = '');
+    // сброс обычных полей
+    nameInput.value = '';
     roomNone.checked = false;
+
+    // сброс всех кастомных селектов (через сеттер — сразу перерисует display)
+    Object.values(customSelects).forEach(cs => {
+      cs.value = '';
+    });
 
     document.getElementById('materials').innerHTML = '';
     addMaterial();
