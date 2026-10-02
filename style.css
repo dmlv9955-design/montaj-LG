@@ -736,22 +736,41 @@ body.dark .variant-system.variant-system-soue {
 .btn-add-mentor:hover { background: var(--hover-bg); }
 .btn-add-mentor:active { transform: scale(.98); }
 
+/* ============================================ */
+/*  КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» — отдельная карточка */
+/* ============================================ */
 .btn-add-journal {
-  margin-top: 18px;
   width: 100%;
-  padding: 14px;
-  background: var(--input-bg);
-  border: 2px dashed var(--border-focus);
-  color: var(--border-focus);
+  padding: 18px 16px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  border: none;
   border-radius: 12px;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
+  letter-spacing: .3px;
   cursor: pointer;
-  transition: background .15s, transform .1s;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, .35);
+  transition: transform .1s, box-shadow .15s, filter .15s;
 }
-.btn-add-journal:hover { background: var(--hover-bg); }
+.btn-add-journal:hover {
+  box-shadow: 0 6px 20px rgba(34, 197, 94, .5);
+  filter: brightness(1.05);
+}
 .btn-add-journal:active { transform: scale(.98); }
+body.dark .btn-add-journal {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, .45);
+}
+body.dark .btn-add-journal:hover {
+  box-shadow: 0 6px 20px rgba(34, 197, 94, .6);
+}
+
+/* Карточка с кнопкой «Добавить в журнал» */
+#add-journal-card {
+  padding: 14px;
+}
 
 .journal-building-title {
   font-size: 11px;
