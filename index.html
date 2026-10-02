@@ -102,10 +102,6 @@
     <div class="section-subtitle">Основные материалы</div>
     <div id="materials-container"></div>
   </div>
-
-  <button type="button" class="btn-add-journal" onclick="addToJournal()">
-    + Добавить в журнал
-  </button>
 </div>
 
 <!-- ============ КАРТОЧКА 3: ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ ============ -->
@@ -114,7 +110,14 @@
   <div class="additional-fields" id="additional-fields"></div>
 </div>
 
-<!-- ============ КАРТОЧКА 4: ЖУРНАЛ ============ -->
+<!-- ============ КАРТОЧКА 4: ДОБАВИТЬ В ЖУРНАЛ ============ -->
+<div class="card" id="add-journal-card">
+  <button type="button" class="btn-add-journal" onclick="addToJournal()">
+    ➕ Добавить в журнал
+  </button>
+</div>
+
+<!-- ============ КАРТОЧКА 5: ЖУРНАЛ ============ -->
 <div class="card">
   <div class="section-title">
     Журнал записей <span class="journal-count" id="journal-count"></span>
@@ -126,7 +129,7 @@
   </div>
 </div>
 
-<!-- ============ КАРТОЧКА 5: ОТПРАВКА ============ -->
+<!-- ============ КАРТОЧКА 6: ОТПРАВКА ============ -->
 <div class="card">
   <button class="submit" id="btn" onclick="sendAll()" disabled>Отправить отчет</button>
   <div id="msg"></div>
