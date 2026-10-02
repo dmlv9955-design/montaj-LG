@@ -513,10 +513,6 @@ function roomSortKey(room) {
   return m[1] ? 1000000 + n : n;
 }
 
-function roomWeight(room) {
-  return roomSortKey(room);
-}
-
 function compareEntries(a, b) {
   const aLoc = isLocationKind(a.kind);
   const bLoc = isLocationKind(b.kind);
@@ -556,8 +552,8 @@ function compareEntries(a, b) {
   const fb = floorWeight(b.floor);
   if (fa !== fb) return fa - fb;
 
-  const ra = roomWeight(a.room);
-  const rb = roomWeight(b.room);
+  const ra = roomSortKey(a.room);
+  const rb = roomSortKey(b.room);
   if (ra !== rb) return ra - rb;
 
   const ka = a.is_master_wing ? 1 : 0;
@@ -824,126 +820,6 @@ class SegmentedControl {
     });
   }
 }
-
-// ============================================
-//  КАСТОМНЫЙ SELECT (наследие, нигде не используется)
-// ============================================
-class CustomSelect {
-  constructor(rootEl) {
-    this.root = rootEl;
-    this.input = rootEl.querySelector('input[type="hidden"]');
-    this.btn = rootEl.querySelector('.cselect-btn');
-    this.valueEl = rootEl.querySelector('.cselect-value');
-    this.list = rootEl.querySelector('.cselect-list');
-    this._placeholder = this.valueEl.textContent.trim();
-
-    this.btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this.input.disabled) return;
-      this.toggle();
-    });
-
-    this.list.addEventListener('click', (e) => {
-      const li = e.target.closest('.cselect-option');
-      if (!li || li.classList.contains('disabled')) return;
-      this.select(li.dataset.value);
-    });
-
-    this._onDocClick = (e) => {
-      if (!this.root.contains(e.target)) this.close();
-    };
-    this._onDocKey = (e) => {
-      if (e.key === 'Escape') this.close();
-    };
-
-    document.addEventListener('click', this._onDocClick);
-    document.addEventListener('keydown', this._onDocKey);
-
-    this.updateDisplay();
-  }
-
-  destroy() {
-    document.removeEventListener('click', this._onDocClick);
-    document.removeEventListener('keydown', this._onDocKey);
-  }
-
-  get value() { return this.input.value; }
-  set value(v) { this.input.value = v; this.updateDisplay(); }
-  get disabled() { return this.input.disabled; }
-  set disabled(v) {
-    this.input.disabled = v;
-    this.btn.disabled = v;
-    this.root.classList.toggle('cselect-disabled', v);
-  }
-  set placeholder(text) { this._placeholder = text; this.updateDisplay(); }
-
-  select(value) {
-    this.input.value = value;
-    this.input.dispatchEvent(new Event('change', { bubbles: true }));
-    this.updateDisplay();
-    this.close();
-  }
-
-  setOptions(arr) {
-    this.list.innerHTML = '';
-    arr.forEach(opt => {
-      const li = document.createElement('li');
-      li.className = 'cselect-option';
-      if (typeof opt === 'string') {
-        li.dataset.value = opt;
-        li.textContent = opt;
-      } else {
-        li.dataset.value = opt.value;
-        li.textContent = opt.label;
-      }
-      this.list.appendChild(li);
-    });
-    const vals = arr.map(o => typeof o === 'string' ? o : o.value);
-    if (!vals.includes(this.input.value)) this.input.value = '';
-    this.updateDisplay();
-  }
-
-  updateDisplay() {
-    const v = this.input.value;
-    let label = null;
-    let found = false;
-
-    this.list.querySelectorAll('.cselect-option').forEach(li => {
-      const isSel = li.dataset.value === v && v !== '';
-      li.classList.toggle('selected', isSel);
-      if (isSel) {
-        label = li.textContent.replace(/\s*✓\s*$/, '').trim();
-        found = true;
-      }
-    });
-
-    if (found) {
-      this.valueEl.textContent = label;
-      this.valueEl.classList.remove('placeholder');
-    } else {
-      this.valueEl.textContent = this._placeholder;
-      this.valueEl.classList.add('placeholder');
-    }
-  }
-
-  toggle() {
-    const isOpen = this.root.classList.contains('open');
-    document.querySelectorAll('.cselect.open').forEach(el => el.classList.remove('open'));
-    if (!isOpen) {
-      this.root.classList.add('open');
-      const sel = this.list.querySelector('.cselect-option.selected');
-      if (sel) setTimeout(() => sel.scrollIntoView({ block: 'nearest' }), 30);
-    }
-  }
-
-  close() { this.root.classList.remove('open'); }
-}
-
-const customSelects = {};
-document.querySelectorAll('[data-cselect]').forEach(rootEl => {
-  const input = rootEl.querySelector('input[type="hidden"]');
-  if (input) customSelects[input.id] = new CustomSelect(rootEl);
-});
 
 // ============================================
 //  SEGMENTED CONTROL (для статичных: объект/корпус/тип работ)
@@ -1877,8 +1753,6 @@ function renderMentorshipFields(container) {
     updateMinusState(inputH, minusBtn);
     group.appendChild(line);
 
-    // Итоговое состояние: если часы пустые — имя нейтральное;
-    // если заполнены — пересчитываем цвет.
     updateNameVisual(nameIn, inputH);
   });
 
@@ -2208,7 +2082,7 @@ function removeJournalEntry(idx) {
 function validateHeader() {
   let firstProblem = null;
 
-  ['err-date', 'err-object', 'err-floor', 'err-building'].forEach(id => {
+  ['err-object', 'err-floor', 'err-building'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
@@ -2607,7 +2481,7 @@ function updateFieldState(el) {
     return;
   }
 
-  const wrap = el.closest && (el.closest('.cselect') || el.closest('.segmented'));
+  const wrap = el.closest && el.closest('.segmented');
   if (wrap) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled');
