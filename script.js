@@ -67,7 +67,6 @@ const ATTIC = 'Чердак';
 const WORK_ADDITIONAL = 'Другие работы';
 const SECTION_MENTOR = 'Наставничество';
 
-// Порядок основных работ: сверху Демонтаж, снизу Монтаж
 const MAIN_WORKS = [
   { work: 'Демонтаж', suffix: 'demontazh', emoji: '🔨' },
   { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧' }
@@ -141,9 +140,9 @@ const MATERIALS = [
 ];
 
 // ============================================
-//  СОСТОЯНИЕ ДЛЯ КАЖДОГО БЛОКА МОНТАЖ/ДЕМОНТАЖ
+//  СОСТОЯНИЕ ДЛЯ КАЖДОГО БЛОКА
 // ============================================
-const mainState = {}; // key = 'Демонтаж' / 'Монтаж'
+const mainState = {};
 
 function makeEmptyMaterialState() {
   const s = {};
@@ -152,7 +151,7 @@ function makeEmptyMaterialState() {
 }
 
 // ============================================
-//  ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ — состояние формы
+//  ДОП. РАБОТЫ — состояние формы
 // ============================================
 function makeLocationItem() {
   return { building: '', floor: '', room: '', value: '' };
@@ -178,9 +177,6 @@ function initAdditionalState() {
 // ============================================
 const journal = [];
 
-// ============================================
-//  ЧЕРНОВИК ЖУРНАЛА (localStorage)
-// ============================================
 const DRAFT_KEY = 'montaj_journal_draft_v1';
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -224,7 +220,7 @@ function clearDraft() {
 }
 
 // ============================================
-//  АКТИВНОСТЬ КНОПКИ «ОТПРАВИТЬ ОТЧЕТ»
+//  АКТИВНОСТЬ КНОПКИ «ОТПРАВИТЬ»
 // ============================================
 function updateSendButton() {
   const btn = document.getElementById('btn');
@@ -241,9 +237,6 @@ function updateSendButton() {
   }
 }
 
-// ============================================
-//  ЕСТЬ ЛИ АКТИВНЫЕ ДОП. РАБОТЫ
-// ============================================
 function hasActiveAdditional() {
   if (additionalState.mentorship.items.some(m => m.name || m.hours)) return true;
   return LOCATION_WORKS.some(w => {
@@ -253,19 +246,7 @@ function hasActiveAdditional() {
 }
 
 // ============================================
-//  ЭТАЖИ ДЛЯ ДОПОЛНИТЕЛЬНЫХ РАБОТ
-// ============================================
-function getZadelkaFloors(building) {
-  const obj = objectSelect.value;
-  if (!isBuildingRequired()) return FLOORS_BY_OBJECT[obj] || null;
-  if (!building) return null;
-  if (building === 'Чердак') return null;
-  if (FLOORS_OVERRIDE_BY_BUILDING[building]) return FLOORS_OVERRIDE_BY_BUILDING[building];
-  return FLOORS_BY_OBJECT[obj] || null;
-}
-
-// ============================================
-//  ФОРМАТИРОВАНИЕ КОЛИЧЕСТВА
+//  ФОРМАТИРОВАНИЕ
 // ============================================
 function formatQty(raw) {
   let s = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
@@ -309,8 +290,7 @@ function normalizeZadelkaRoom(value) {
     if (!isFinite(n) || n <= 0) return;
     set.add(n);
   });
-  const nums = Array.from(set).sort((a, b) => a - b);
-  return nums.join(', ');
+  return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
 function parseRooms(roomStr) {
@@ -346,25 +326,17 @@ function combineRooms(a, b) {
 function applyPrefixToRoom(room, building) {
   if (!room) return '';
   if (building !== MASTER_WING) return room;
-  return room
-    .split(',')
-    .map(part => {
-      const s = part.trim();
-      if (!s) return '';
-      if (/^[кК]/.test(s)) return s;
-      return MASTER_WING_PREFIX + s;
-    })
-    .filter(Boolean)
-    .join(', ');
+  return room.split(',').map(part => {
+    const s = part.trim();
+    if (!s) return '';
+    if (/^[кК]/.test(s)) return s;
+    return MASTER_WING_PREFIX + s;
+  }).filter(Boolean).join(', ');
 }
 
 function stripPrefixFromRoom(room) {
   if (!room) return '';
-  return room
-    .split(',')
-    .map(part => part.trim().replace(/^[кК]/, ''))
-    .filter(Boolean)
-    .join(', ');
+  return room.split(',').map(part => part.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
 }
 
 function sumMaterialStates(a, b) {
@@ -376,9 +348,8 @@ function sumMaterialStates(a, b) {
     const an = av ? parseFloat(av.replace(',', '.')) : 0;
     const bn = bv ? parseFloat(bv.replace(',', '.')) : 0;
     const sum = (isFinite(an) ? an : 0) + (isFinite(bn) ? bn : 0);
-    if (sum <= 0) {
-      result[key] = '';
-    } else {
+    if (sum <= 0) result[key] = '';
+    else {
       const rounded = Math.round(sum * 100) / 100;
       result[key] = String(rounded).replace('.', ',');
     }
@@ -450,7 +421,6 @@ function compareEntries(a, b) {
     const ka = kindOrder(a.kind);
     const kb = kindOrder(b.kind);
     if (ka !== kb) return ka - kb;
-
     if (aLoc && bLoc) {
       const ba = buildingWeight(a.building);
       const bb = buildingWeight(b.building);
@@ -556,20 +526,6 @@ dateInput.addEventListener('change', () => {
   updateFieldState(dateInput);
 });
 
-let lastKnownDay = toISODate(new Date());
-setInterval(() => {
-  const todayISO = toISODate(new Date());
-  if (todayISO !== lastKnownDay) {
-    lastKnownDay = todayISO;
-    setupDateRange();
-    if (!dateInput.value || dateInput.value < dateInput.min) {
-      dateInput.value = todayISO;
-    }
-    updateDateHighlight();
-    updateFieldState(dateInput);
-  }
-}, 60 * 1000);
-
 // ============================================
 //  УТИЛИТЫ
 // ============================================
@@ -637,9 +593,6 @@ function hideProgress() {
   if (o) o.classList.remove('show');
 }
 
-// ============================================
-//  ЭТАЖИ / ОБЪЕКТ
-// ============================================
 function getFloorsFor(object, building) {
   if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) {
     return FLOORS_OVERRIDE_BY_BUILDING[building];
@@ -650,7 +603,6 @@ function getFloorsFor(object, building) {
 function isBuildingRequired() {
   return !!BUILDINGS_BY_OBJECT[objectSelect.value];
 }
-
 function isMasterWingBuilding(b) { return b === MASTER_WING; }
 function isAtticBuilding(b)      { return b === ATTIC; }
 
@@ -790,7 +742,7 @@ function updateNameVisual(el, gateInput) {
 }
 
 // ============================================
-//  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
+//  ДОСТУПНОСТЬ ДОП. РАБОТ
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalCard) return;
@@ -811,15 +763,13 @@ function updateAdditionalAccessibility() {
 }
 
 // ============================================
-//  ЕДИНЫЙ ПЕРЕСЧЁТ «ВОРОТ» ПО ИМЕНИ
+//  ЕДИНЫЙ ПЕРЕСЧЁТ ПО ИМЕНИ
 // ============================================
 function refreshNameGates() {
   const nameOk = isNameValid(nameInput.value);
 
-  // Дата
   dateInput.disabled = !nameOk;
 
-  // Объект
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
@@ -832,17 +782,15 @@ function refreshNameGates() {
     objectSeg.classList.remove('segmented-disabled');
   }
 
-  // Подсветка полей
   updateFieldState(dateInput);
   updateFieldState(objectSelect);
 
-  // Нижележащие секции
   updateAllMainBlocks();
   updateAdditionalAccessibility();
 }
 
 // ============================================
-//  СОЗДАНИЕ БЛОКОВ МОНТАЖ/ДЕМОНТАЖ
+//  HTML-ШАБЛОН БЛОКА
 // ============================================
 function createMainBlockHTML(work, suffix, emoji) {
   const actionWord = (work === 'Демонтаж') ? 'демонтаж' : 'монтаж';
@@ -853,7 +801,6 @@ function createMainBlockHTML(work, suffix, emoji) {
       <span class="acc-arrow">▼</span>
     </button>
     <div class="accordion-body">
-
       <div data-building-row>
         <label class="req">Корпус <span class="req-star">*</span></label>
         <div class="segmented segmented-disabled" data-building-seg>
@@ -862,7 +809,6 @@ function createMainBlockHTML(work, suffix, emoji) {
         </div>
         <div class="field-error" data-err-building>Заполните это поле</div>
       </div>
-
       <div class="row">
         <div class="col-1">
           <label class="req">Этаж <span class="req-star">*</span></label>
@@ -883,12 +829,10 @@ function createMainBlockHTML(work, suffix, emoji) {
           <div class="field-error" data-err-room>Заполните это поле</div>
         </div>
       </div>
-
       <div data-materials-section>
         <div class="section-subtitle">Основные материалы</div>
         <div data-materials></div>
       </div>
-
       <button type="button" class="btn-save-work btn-save-work-${suffix}" data-save>
         ➕ Добавить ${actionWord} в журнал
       </button>
@@ -896,9 +840,15 @@ function createMainBlockHTML(work, suffix, emoji) {
   `;
 }
 
+// ============================================
+//  ИНИЦИАЛИЗАЦИЯ БЛОКОВ
+// ============================================
 function initMainWorks() {
   const container = document.getElementById('main-works-container');
-  if (!container) return;
+  if (!container) {
+    console.warn('Нет #main-works-container в HTML — блоки Монтаж/Демонтаж не будут созданы');
+    return;
+  }
   container.innerHTML = '';
 
   MAIN_WORKS.forEach(({ work, suffix, emoji }) => {
@@ -944,7 +894,6 @@ function initMainWorks() {
       toggleMainAccordion(work);
     });
 
-    // Смена корпуса → сбросить этаж и помещение, пересчитать
     st.elements.buildingInput.addEventListener('change', () => {
       st.elements.floorInput.value = '';
       if (st.floorSeg) st.floorSeg.value = '';
@@ -1110,7 +1059,6 @@ function updateFieldStateForBlock(work) {
   if (!st || !st.elements) return;
   const els = st.elements;
 
-  // Корпус
   const bWrap = els.buildingInput.closest('.segmented');
   if (bWrap) {
     bWrap.classList.remove('is-empty', 'is-filled');
@@ -1123,7 +1071,6 @@ function updateFieldStateForBlock(work) {
     }
   }
 
-  // Этаж
   const fWrap = els.floorInput.closest('.segmented');
   if (fWrap) {
     fWrap.classList.remove('is-empty', 'is-filled');
@@ -1134,7 +1081,6 @@ function updateFieldStateForBlock(work) {
     }
   }
 
-  // Помещение
   els.roomInput.classList.remove('is-empty', 'is-filled');
   if (!els.roomInput.disabled) {
     const isEmpty = !els.roomInput.value.trim();
@@ -1148,9 +1094,6 @@ function updateAllMainBlocks() {
     updateHeaderEnabledState(work);
     if (mainState[work] && mainState[work].expanded) {
       updateMainBlock(work);
-    } else if (mainState[work] && mainState[work].elements) {
-      // дать возможность пересчитаться при открытии
-      // (настройки корпуса/этажей обновятся при toggleMainAccordion)
     }
   });
 }
@@ -1290,10 +1233,8 @@ function renderMaterialsForBlock(work) {
 // ============================================
 function saveMainBlock(work) {
   if (!validateHeader()) return;
-
   const st = mainState[work];
   if (!st) return;
-
   if (!validateMainFieldsForBlock(work)) return;
 
   const els = st.elements;
@@ -1325,7 +1266,6 @@ function saveMainBlock(work) {
 
   renderJournal();
   resetMainBlock(work);
-
   showToast(merged ? 'Позиции объединены с существующей записью' : 'Запись добавлена в журнал');
 }
 
@@ -1374,7 +1314,7 @@ function validateMainFieldsForBlock(work) {
 }
 
 // ============================================
-//  ВАЛИДАЦИЯ ВЕРХНЕЙ ЧАСТИ
+//  ВАЛИДАЦИЯ ШАПКИ
 // ============================================
 function validateHeader() {
   let firstProblem = null;
@@ -1412,7 +1352,7 @@ function validateHeader() {
 }
 
 // ============================================
-//  ДОБАВЛЕНИЕ ДОП. РАБОТ И НАСТАВНИЧЕСТВА
+//  ДОБАВЛЕНИЕ ДОП. РАБОТ / НАСТАВНИЧЕСТВА
 // ============================================
 function addAdditionalToJournal() {
   if (!validateHeader()) return false;
@@ -1514,7 +1454,6 @@ function addAdditionalToJournal() {
   renderJournal();
   initAdditionalState();
   renderAdditionalFields();
-
   showToast(added ? 'Доп. работы добавлены в журнал' : 'Позиции объединены');
   return true;
 }
@@ -1604,7 +1543,7 @@ function renderLocationFields(workKey, container) {
     }
 
     if (showFloor) {
-      const floorList = getZadelkaFloors(building);
+      const floorList = getFloorsFor(objectSelect.value, building);
       if (floorList) {
         const fLabel = document.createElement('label');
         fLabel.className = 'req';
@@ -1959,7 +1898,7 @@ function bumpQty(input, setter, delta, clearBtn, minusBtn) {
 }
 
 // ============================================
-//  ЖУРНАЛ — РЕНДЕР
+//  ЖУРНАЛ
 // ============================================
 function renderJournalEntryElement(entry) {
   const realIdx = journal.indexOf(entry);
@@ -2121,9 +2060,6 @@ function findMergeIndex(newEntry) {
   );
 }
 
-// ============================================
-//  РЕДАКТИРОВАНИЕ ИЗ ЖУРНАЛА
-// ============================================
 function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
@@ -2137,15 +2073,12 @@ function editJournalEntry(idx) {
 
     st.materialState = Object.assign({}, entry.materialState || {});
 
-    // Раскрываем блок
     if (!st.expanded) toggleMainAccordion(entry.work);
 
-    // Восстанавливаем корпус
     st.elements.buildingInput.value = entry.building || '';
     updateMainBlock(entry.work);
     if (st.buildingSeg) st.buildingSeg.value = entry.building || '';
 
-    // Обновим этажи под этот корпус
     updateMainBlock(entry.work);
     st.elements.floorInput.value = entry.floor || '';
     if (st.floorSeg) st.floorSeg.value = entry.floor || '';
@@ -2194,7 +2127,7 @@ function removeJournalEntry(idx) {
 }
 
 // ============================================
-//  ФОРМАТ ИМЕНИ / ПОМЕЩЕНИЯ
+//  ФОРМАТ
 // ============================================
 function formatRoom(value) {
   return value.replace(/[^0-9]/g, '').slice(0, 4);
@@ -2213,7 +2146,7 @@ function formatName(value) {
 }
 
 // ============================================
-//  ПОДСВЕТКА ПОЛЕЙ ВЕРХА
+//  ПОДСВЕТКА ПОЛЕЙ
 // ============================================
 function updateFieldState(el) {
   if (el.id === 'name') { updateNameVisual(el); return; }
@@ -2263,7 +2196,7 @@ function updateFieldState(el) {
 });
 
 // ============================================
-//  ОБРАБОТЧИКИ ВЕРХНИХ ПОЛЕЙ
+//  ОБРАБОТЧИКИ ШАПКИ
 // ============================================
 objectSelect.addEventListener('change', () => {
   updateFieldState(objectSelect);
@@ -2458,6 +2391,10 @@ async function sendAll() {
 // ============================================
 //  СТАРТ
 // ============================================
+console.log('[Отчет монтажника] Стартуем...');
+console.log('[Отчет монтажника] Контейнер main-works-container:',
+  document.getElementById('main-works-container'));
+
 initMainWorks();
 initAdditionalState();
 renderAdditionalFields();
