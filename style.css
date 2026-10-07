@@ -88,6 +88,7 @@ body {
   min-height: 100vh;
   transition: background .3s, color .3s;
 }
+body.modal-open { overflow: hidden; }
 
 .theme-toggle {
   position: fixed;
@@ -322,9 +323,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .segmented.segmented-disabled .segmented-hint { display: block; }
 .segmented.segmented-disabled .segmented-btn  { display: none; }
 
-/* ============================================ */
-/*  ЭТАЖИ — КАПСУЛЫ СНИЗУ ВВЕРХ                  */
-/* ============================================ */
 .segmented.segmented-floors {
   flex-direction: column-reverse;
   align-items: stretch;
@@ -737,7 +735,53 @@ body.dark .variant-system.variant-system-soue {
 .btn-add-mentor:active { transform: scale(.98); }
 
 /* ============================================ */
-/*  КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» — отдельная карточка */
+/*  КНОПКИ «МОНТАЖ» / «ДЕМОНТАЖ»                 */
+/* ============================================ */
+.main-work-btn {
+  width: 100%;
+  padding: 20px 16px;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: transform .1s, box-shadow .15s, filter .15s;
+}
+.main-work-btn:last-child { margin-bottom: 0; }
+.main-work-btn:active:not(:disabled) { transform: scale(.98); }
+.main-work-btn:disabled {
+  background: #94a3b8;
+  color: #fff;
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.main-work-btn-montazh {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, .35);
+}
+.main-work-btn-montazh:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(37, 99, 235, .5);
+  filter: brightness(1.05);
+}
+
+.main-work-btn-demontazh {
+  background: linear-gradient(135deg, #ea580c, #c2410c);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, .35);
+}
+.main-work-btn-demontazh:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(234, 88, 12, .5);
+  filter: brightness(1.05);
+}
+
+/* ============================================ */
+/*  КНОПКА «ДОБАВИТЬ ДОП. РАБОТЫ В ЖУРНАЛ»       */
 /* ============================================ */
 .btn-add-journal {
   width: 100%;
@@ -767,11 +811,122 @@ body.dark .btn-add-journal:hover {
   box-shadow: 0 6px 20px rgba(34, 197, 94, .6);
 }
 
-/* Карточка с кнопкой «Добавить в журнал» */
 #add-journal-card {
   padding: 14px;
 }
 
+/* ============================================ */
+/*  МОДАЛЬНОЕ ОКНО                              */
+/* ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, .6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 400;
+  padding: 12px;
+}
+.modal-overlay.show { display: flex; }
+
+.modal-window {
+  background: var(--card-bg);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+  animation: modalIn .2s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(.96) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.modal-title.modal-title-montazh   { color: #2563eb; }
+.modal-title.modal-title-demontazh { color: #ea580c; }
+body.dark .modal-title.modal-title-montazh   { color: #60a5fa; }
+body.dark .modal-title.modal-title-demontazh { color: #fb923c; }
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--input-disabled-bg);
+  color: var(--text-label);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+}
+.modal-close:hover { background: var(--red-bg); color: var(--red-border); }
+
+.modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-btn {
+  flex: 1 1 0;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .1s, filter .15s, background .15s;
+}
+.modal-btn:active { transform: scale(.98); }
+
+.modal-btn-cancel {
+  background: var(--input-disabled-bg);
+  color: var(--text-label);
+  border: 1.5px solid var(--border);
+}
+.modal-btn-cancel:hover { background: var(--hover-bg); }
+
+.modal-btn-save {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, .35);
+}
+.modal-btn-save:hover { filter: brightness(1.05); }
+
+/* ============================================ */
+/*  ЖУРНАЛ                                      */
+/* ============================================ */
 .journal-building-title {
   font-size: 11px;
   font-weight: 700;
