@@ -638,7 +638,7 @@ function hideProgress() {
 }
 
 // ============================================
-//  ЭТАЖИ
+//  ЭТАЖИ / ОБЪЕКТ
 // ============================================
 function getFloorsFor(object, building) {
   if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) {
@@ -646,6 +646,13 @@ function getFloorsFor(object, building) {
   }
   return FLOORS_BY_OBJECT[object] || null;
 }
+
+function isBuildingRequired() {
+  return !!BUILDINGS_BY_OBJECT[objectSelect.value];
+}
+
+function isMasterWingBuilding(b) { return b === MASTER_WING; }
+function isAtticBuilding(b)      { return b === ATTIC; }
 
 // ============================================
 //  SEGMENTED CONTROL
@@ -720,16 +727,12 @@ function initSegmented(rootId, inputId, opts) {
   input._updateSegmentedDisplay = updateDisplay;
 }
 
-initSegmented('object-segmented',   'object',   { allowDeselect: false });
-initSegmented('building-segmented', 'building', { allowDeselect: false });
+initSegmented('object-segmented', 'object', { allowDeselect: false });
 
 // ============================================
 //  ВЕРХНИЕ ЭЛЕМЕНТЫ
 // ============================================
 const objectSelect     = document.getElementById('object');
-const buildingInput    = document.getElementById('building');
-const buildingSeg      = document.getElementById('building-segmented');
-const buildingSection  = document.getElementById('building-section');
 const nameInput        = document.getElementById('name');
 const nameErr          = document.getElementById('err-name');
 const journalCont      = document.getElementById('journal-container');
@@ -787,53 +790,6 @@ function updateNameVisual(el, gateInput) {
 }
 
 // ============================================
-//  КОРПУС
-// ============================================
-function isBuildingRequired() {
-  return !!BUILDINGS_BY_OBJECT[objectSelect.value];
-}
-function isMasterWing() {
-  return buildingInput.value === MASTER_WING;
-}
-function isAttic() {
-  return buildingInput.value === ATTIC;
-}
-
-function updateBuildingAccessibility() {
-  const obj    = objectSelect.value;
-  const nameOk = isNameValid(nameInput.value);
-  const seg    = buildingSeg;
-  const hint   = seg.querySelector('.segmented-hint');
-
-  if (!obj) {
-    seg.classList.add('segmented-disabled');
-    if (hint) hint.textContent = '🔒 Сначала объект';
-    resetBuildingValue();
-    return;
-  }
-  if (!nameOk) {
-    seg.classList.add('segmented-disabled');
-    if (hint) hint.textContent = '🔒 Введите имя';
-    resetBuildingValue();
-    return;
-  }
-  if (!isBuildingRequired()) {
-    seg.classList.add('segmented-disabled');
-    if (hint) hint.textContent = 'Для «' + obj + '» корпус не используется';
-    resetBuildingValue();
-    return;
-  }
-  seg.classList.remove('segmented-disabled');
-}
-
-function resetBuildingValue() {
-  if (buildingInput.value) {
-    buildingInput.value = '';
-    if (buildingInput._updateSegmentedDisplay) buildingInput._updateSegmentedDisplay();
-  }
-}
-
-// ============================================
 //  ДОСТУПНОСТЬ ДОПОЛНИТЕЛЬНЫХ РАБОТ
 // ============================================
 function updateAdditionalAccessibility() {
@@ -868,23 +824,19 @@ function refreshNameGates() {
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
     if (objHint) objHint.textContent = '🔒 Введите имя';
-    // Сбросить выбор объекта, если его успели выбрать
     if (objectSelect.value) {
       objectSelect.value = '';
       if (objectSelect._updateSegmentedDisplay) objectSelect._updateSegmentedDisplay();
-      resetBuildingValue();
     }
   } else {
     objectSeg.classList.remove('segmented-disabled');
   }
 
-  // Подсветка полей (объект станет красным, если пусто)
+  // Подсветка полей
   updateFieldState(dateInput);
   updateFieldState(objectSelect);
 
   // Нижележащие секции
-  updateBuildingAccessibility();
-  updateFieldState(buildingInput);
   updateAllMainBlocks();
   updateAdditionalAccessibility();
 }
@@ -901,12 +853,22 @@ function createMainBlockHTML(work, suffix, emoji) {
       <span class="acc-arrow">▼</span>
     </button>
     <div class="accordion-body">
+
+      <div data-building-row>
+        <label class="req">Корпус <span class="req-star">*</span></label>
+        <div class="segmented segmented-disabled" data-building-seg>
+          <input type="hidden" class="req-field" data-building value="">
+          <span class="segmented-hint">🔒 Выберите объект</span>
+        </div>
+        <div class="field-error" data-err-building>Заполните это поле</div>
+      </div>
+
       <div class="row">
         <div class="col-1">
           <label class="req">Этаж <span class="req-star">*</span></label>
           <div class="segmented segmented-floors segmented-disabled" data-floor-seg>
             <input type="hidden" class="req-field" data-floor value="">
-            <span class="segmented-hint">🔒 Имя</span>
+            <span class="segmented-hint">🔒 Корпус</span>
           </div>
           <div class="field-error" data-err-floor>Заполните это поле</div>
         </div>
@@ -915,16 +877,18 @@ function createMainBlockHTML(work, suffix, emoji) {
           <div class="room-wrap">
             <span class="room-prefix" data-room-prefix style="display: none;">к</span>
             <input type="text" class="req-field" data-room
-                   placeholder="🔒 Имя" inputmode="numeric" maxlength="4" disabled>
+                   placeholder="🔒 Этаж" inputmode="numeric" maxlength="4" disabled>
           </div>
           <div class="hint-small">Если помещения нет — введите 0</div>
           <div class="field-error" data-err-room>Заполните это поле</div>
         </div>
       </div>
+
       <div data-materials-section>
         <div class="section-subtitle">Основные материалы</div>
         <div data-materials></div>
       </div>
+
       <button type="button" class="btn-save-work btn-save-work-${suffix}" data-save>
         ➕ Добавить ${actionWord} в журнал
       </button>
@@ -953,13 +917,18 @@ function initMainWorks() {
       materialState: makeEmptyMaterialState(),
       expanded: false,
       floorSeg: null,
+      buildingSeg: null,
       elements: {
         header: wrapper.querySelector('.accordion-header'),
         body: wrapper.querySelector('.accordion-body'),
+        buildingRow: wrapper.querySelector('[data-building-row]'),
+        buildingSegRoot: wrapper.querySelector('[data-building-seg]'),
+        buildingInput: wrapper.querySelector('[data-building]'),
         floorSegRoot: wrapper.querySelector('[data-floor-seg]'),
         floorInput: wrapper.querySelector('[data-floor]'),
         roomInput: wrapper.querySelector('[data-room]'),
         roomPrefix: wrapper.querySelector('[data-room-prefix]'),
+        errBuilding: wrapper.querySelector('[data-err-building]'),
         errFloor: wrapper.querySelector('[data-err-floor]'),
         errRoom: wrapper.querySelector('[data-err-room]'),
         materialsCont: wrapper.querySelector('[data-materials]'),
@@ -967,11 +936,20 @@ function initMainWorks() {
       }
     };
     st.floorSeg = new SegmentedControl(st.elements.floorSegRoot);
+    st.buildingSeg = new SegmentedControl(st.elements.buildingSegRoot);
     mainState[work] = st;
 
     st.elements.header.addEventListener('click', () => {
       if (st.elements.header.disabled) return;
       toggleMainAccordion(work);
+    });
+
+    // Смена корпуса → сбросить этаж и помещение, пересчитать
+    st.elements.buildingInput.addEventListener('change', () => {
+      st.elements.floorInput.value = '';
+      if (st.floorSeg) st.floorSeg.value = '';
+      st.elements.roomInput.value = '';
+      updateMainBlock(work);
     });
 
     st.elements.floorInput.addEventListener('change', () => {
@@ -1015,11 +993,38 @@ function updateMainBlock(work) {
   const els = st.elements;
   const nameOk = isNameValid(nameInput.value);
   const obj = objectSelect.value;
-  const build = buildingInput.value;
+  const needBuild = isBuildingRequired();
+
+  // === Корпус ===
+  if (!needBuild) {
+    els.buildingRow.style.display = 'none';
+    els.buildingInput.value = '';
+    st.buildingSeg.setOptions([]);
+    st.buildingSeg.disabled = true;
+  } else {
+    els.buildingRow.style.display = 'block';
+    const buildingsList = BUILDINGS_BY_OBJECT[obj] || [];
+
+    if (!nameOk) {
+      st.buildingSeg.setOptions([]);
+      st.buildingSeg.setHint('🔒 Имя');
+      st.buildingSeg.disabled = true;
+    } else if (!obj || buildingsList.length === 0) {
+      st.buildingSeg.setOptions([]);
+      st.buildingSeg.setHint('🔒 Объект');
+      st.buildingSeg.disabled = true;
+    } else {
+      st.buildingSeg.setOptions(buildingsList);
+      st.buildingSeg.disabled = false;
+    }
+  }
+
+  // === Этажи ===
+  const build = els.buildingInput.value;
   const floors = getFloorsFor(obj, build);
   const fSeg = st.floorSeg;
 
-  if (isAttic()) {
+  if (isAtticBuilding(build)) {
     fSeg.setOptions([]);
     fSeg.disabled = true;
     els.floorInput.value = ATTIC;
@@ -1031,7 +1036,7 @@ function updateMainBlock(work) {
     fSeg.setOptions([]);
     fSeg.setHint('🔒 Объект');
     fSeg.disabled = true;
-  } else if (isBuildingRequired() && !build) {
+  } else if (needBuild && !build) {
     fSeg.setOptions([]);
     fSeg.setHint('🔒 Корпус');
     fSeg.disabled = true;
@@ -1049,8 +1054,7 @@ function updateHeaderEnabledState(work) {
   if (!st || !st.elements) return;
   const nameOk = isNameValid(nameInput.value);
   const objOk = !!objectSelect.value;
-  const buildOk = !isBuildingRequired() || !!buildingInput.value;
-  st.elements.header.disabled = !(nameOk && objOk && buildOk);
+  st.elements.header.disabled = !(nameOk && objOk);
 }
 
 function updateRoomStateForBlock(work) {
@@ -1068,7 +1072,7 @@ function updateRoomStateForBlock(work) {
     updateRoomPrefixForBlock(work);
     return;
   }
-  if (isAttic()) {
+  if (isAtticBuilding(els.buildingInput.value)) {
     els.roomInput.disabled = false;
     els.roomInput.placeholder = '1234';
     updateRoomPrefixForBlock(work);
@@ -1095,7 +1099,9 @@ function updateRoomStateForBlock(work) {
 function updateRoomPrefixForBlock(work) {
   const st = mainState[work];
   if (!st || !st.elements) return;
-  const active = isMasterWing() && st.elements.floorInput.value && st.elements.floorInput.value !== 'Нет';
+  const active = isMasterWingBuilding(st.elements.buildingInput.value)
+              && st.elements.floorInput.value
+              && st.elements.floorInput.value !== 'Нет';
   st.elements.roomPrefix.style.display = active ? 'inline-flex' : 'none';
 }
 
@@ -1104,16 +1110,31 @@ function updateFieldStateForBlock(work) {
   if (!st || !st.elements) return;
   const els = st.elements;
 
-  const floorWrap = els.floorInput.closest('.segmented');
-  if (floorWrap) {
-    floorWrap.classList.remove('is-empty', 'is-filled');
-    if (!els.floorInput.disabled && !floorWrap.classList.contains('segmented-disabled')) {
-      const isEmpty = !els.floorInput.value;
-      floorWrap.classList.toggle('is-empty', isEmpty);
-      floorWrap.classList.toggle('is-filled', !isEmpty);
+  // Корпус
+  const bWrap = els.buildingInput.closest('.segmented');
+  if (bWrap) {
+    bWrap.classList.remove('is-empty', 'is-filled');
+    if (els.buildingRow.style.display !== 'none'
+        && !els.buildingInput.disabled
+        && !bWrap.classList.contains('segmented-disabled')) {
+      const isEmpty = !els.buildingInput.value;
+      bWrap.classList.toggle('is-empty', isEmpty);
+      bWrap.classList.toggle('is-filled', !isEmpty);
     }
   }
 
+  // Этаж
+  const fWrap = els.floorInput.closest('.segmented');
+  if (fWrap) {
+    fWrap.classList.remove('is-empty', 'is-filled');
+    if (!els.floorInput.disabled && !fWrap.classList.contains('segmented-disabled')) {
+      const isEmpty = !els.floorInput.value;
+      fWrap.classList.toggle('is-empty', isEmpty);
+      fWrap.classList.toggle('is-filled', !isEmpty);
+    }
+  }
+
+  // Помещение
   els.roomInput.classList.remove('is-empty', 'is-filled');
   if (!els.roomInput.disabled) {
     const isEmpty = !els.roomInput.value.trim();
@@ -1127,6 +1148,9 @@ function updateAllMainBlocks() {
     updateHeaderEnabledState(work);
     if (mainState[work] && mainState[work].expanded) {
       updateMainBlock(work);
+    } else if (mainState[work] && mainState[work].elements) {
+      // дать возможность пересчитаться при открытии
+      // (настройки корпуса/этажей обновятся при toggleMainAccordion)
     }
   });
 }
@@ -1267,28 +1291,21 @@ function renderMaterialsForBlock(work) {
 function saveMainBlock(work) {
   if (!validateHeader()) return;
 
-  if (isBuildingRequired() && !buildingInput.value.trim()) {
-    const err = document.getElementById('err-building');
-    if (err) err.classList.add('show');
-    show('⚠️ Выберите корпус', 'err');
-    if (buildingInput.scrollIntoView) {
-      buildingInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    return;
-  }
-
   const st = mainState[work];
   if (!st) return;
 
   if (!validateMainFieldsForBlock(work)) return;
 
   const els = st.elements;
+  const building = els.buildingInput.value.trim();
+  const isMaster = isMasterWingBuilding(building);
+
   const mainEntry = {
     kind: 'main',
     room: els.roomInput.value.trim(),
     room_none: els.floorInput.value === 'Нет',
-    is_master_wing: isMasterWing(),
-    building: buildingInput.value.trim(),
+    is_master_wing: isMaster,
+    building: building,
     floor: els.floorInput.value.trim(),
     work: work,
     materialState: Object.assign({}, st.materialState)
@@ -1316,9 +1333,11 @@ function resetMainBlock(work) {
   const st = mainState[work];
   if (!st) return;
   st.materialState = makeEmptyMaterialState();
-  st.elements.roomInput.value = '';
+  st.elements.buildingInput.value = '';
+  if (st.buildingSeg) st.buildingSeg.value = '';
   st.elements.floorInput.value = '';
   if (st.floorSeg) st.floorSeg.value = '';
+  st.elements.roomInput.value = '';
   renderMaterialsForBlock(work);
   updateMainBlock(work);
 }
@@ -1327,20 +1346,30 @@ function validateMainFieldsForBlock(work) {
   const st = mainState[work];
   if (!st) return false;
   const els = st.elements;
+  els.errBuilding.classList.remove('show');
   els.errFloor.classList.remove('show');
   els.errRoom.classList.remove('show');
   let ok = true;
 
-  if (!isAttic() && !els.floorInput.value.trim()) {
+  const needBuild = isBuildingRequired();
+  if (needBuild && !els.buildingInput.value.trim()) {
+    els.errBuilding.classList.add('show');
+    ok = false;
+  }
+
+  const isAttic = isAtticBuilding(els.buildingInput.value);
+  if (!isAttic && !els.floorInput.value.trim()) {
     els.errFloor.classList.add('show');
     ok = false;
   }
+
   if (els.floorInput.value !== 'Нет' && !els.roomInput.value.trim()) {
     els.roomInput.classList.add('shake');
     setTimeout(() => els.roomInput.classList.remove('shake'), 500);
     els.errRoom.classList.add('show');
     ok = false;
   }
+
   return ok;
 }
 
@@ -1349,7 +1378,7 @@ function validateMainFieldsForBlock(work) {
 // ============================================
 function validateHeader() {
   let firstProblem = null;
-  ['err-object', 'err-building'].forEach(id => {
+  ['err-object'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
@@ -2107,18 +2136,25 @@ function editJournalEntry(idx) {
     renderJournal();
 
     st.materialState = Object.assign({}, entry.materialState || {});
+
+    // Раскрываем блок
+    if (!st.expanded) toggleMainAccordion(entry.work);
+
+    // Восстанавливаем корпус
+    st.elements.buildingInput.value = entry.building || '';
+    updateMainBlock(entry.work);
+    if (st.buildingSeg) st.buildingSeg.value = entry.building || '';
+
+    // Обновим этажи под этот корпус
+    updateMainBlock(entry.work);
     st.elements.floorInput.value = entry.floor || '';
-    if (st.floorSeg) {
-      updateMainBlock(entry.work);
-      st.floorSeg.value = entry.floor || '';
-    }
+    if (st.floorSeg) st.floorSeg.value = entry.floor || '';
+
     st.elements.roomInput.value = entry.room || '';
 
     renderMaterialsForBlock(entry.work);
     updateRoomStateForBlock(entry.work);
     updateFieldStateForBlock(entry.work);
-
-    if (!st.expanded) toggleMainAccordion(entry.work);
 
     const card = document.getElementById('entry-card');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2212,7 +2248,7 @@ function updateFieldState(el) {
   el.classList.toggle('is-filled', !isEmpty);
 }
 
-['date', 'name', 'object', 'building'].forEach(id => {
+['date', 'name', 'object'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   updateFieldState(el);
@@ -2230,7 +2266,6 @@ function updateFieldState(el) {
 //  ОБРАБОТЧИКИ ВЕРХНИХ ПОЛЕЙ
 // ============================================
 objectSelect.addEventListener('change', () => {
-  updateBuildingAccessibility();
   updateFieldState(objectSelect);
   updateAllMainBlocks();
   updateAdditionalAccessibility();
@@ -2241,12 +2276,6 @@ objectSelect.addEventListener('change', () => {
     }
   });
   renderAdditionalFields();
-});
-
-buildingInput.addEventListener('change', () => {
-  updateFieldState(buildingInput);
-  updateAllMainBlocks();
-  updateAdditionalAccessibility();
 });
 
 nameInput.addEventListener('input', () => {
@@ -2432,8 +2461,6 @@ async function sendAll() {
 initMainWorks();
 initAdditionalState();
 renderAdditionalFields();
-
-// Сразу закрываем объект, корпус, дату, доп. работы, кнопки Монтаж/Демонтаж
 refreshNameGates();
 
 const _restoredDraft = loadDraft();
