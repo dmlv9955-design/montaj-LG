@@ -707,6 +707,7 @@ function initSegmented(rootId, inputId, opts) {
   root.querySelectorAll('.segmented-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
+      if (root.classList.contains('segmented-disabled')) return;
       const isActive = btn.classList.contains('active');
       if (allowDeselect && isActive) input.value = '';
       else input.value = btn.dataset.value;
@@ -851,6 +852,41 @@ function updateAdditionalAccessibility() {
     additionalState = makeAdditionalState();
     renderAdditionalFields();
   }
+}
+
+// ============================================
+//  ЕДИНЫЙ ПЕРЕСЧЁТ «ВОРОТ» ПО ИМЕНИ
+// ============================================
+function refreshNameGates() {
+  const nameOk = isNameValid(nameInput.value);
+
+  // Дата
+  dateInput.disabled = !nameOk;
+
+  // Объект
+  const objHint = objectSeg.querySelector('.segmented-hint');
+  if (!nameOk) {
+    objectSeg.classList.add('segmented-disabled');
+    if (objHint) objHint.textContent = '🔒 Введите имя';
+    // Сбросить выбор объекта, если его успели выбрать
+    if (objectSelect.value) {
+      objectSelect.value = '';
+      if (objectSelect._updateSegmentedDisplay) objectSelect._updateSegmentedDisplay();
+      resetBuildingValue();
+    }
+  } else {
+    objectSeg.classList.remove('segmented-disabled');
+  }
+
+  // Подсветка полей (объект станет красным, если пусто)
+  updateFieldState(dateInput);
+  updateFieldState(objectSelect);
+
+  // Нижележащие секции
+  updateBuildingAccessibility();
+  updateFieldState(buildingInput);
+  updateAllMainBlocks();
+  updateAdditionalAccessibility();
 }
 
 // ============================================
@@ -2070,11 +2106,9 @@ function editJournalEntry(idx) {
     journal.splice(idx, 1);
     renderJournal();
 
-    // Заполняем блок
     st.materialState = Object.assign({}, entry.materialState || {});
     st.elements.floorInput.value = entry.floor || '';
     if (st.floorSeg) {
-      // Обновим options
       updateMainBlock(entry.work);
       st.floorSeg.value = entry.floor || '';
     }
@@ -2084,7 +2118,6 @@ function editJournalEntry(idx) {
     updateRoomStateForBlock(entry.work);
     updateFieldStateForBlock(entry.work);
 
-    // Раскрываем блок
     if (!st.expanded) toggleMainAccordion(entry.work);
 
     const card = document.getElementById('entry-card');
@@ -2228,21 +2261,7 @@ nameInput.addEventListener('input', () => {
   }
   if (isNameValid(nameInput.value)) nameErr.classList.remove('show');
   updateFieldState(nameInput);
-
-  const nameOk = isNameValid(nameInput.value);
-  dateInput.disabled = !nameOk;
-
-  const objHint = objectSeg.querySelector('.segmented-hint');
-  if (!nameOk) {
-    objectSeg.classList.add('segmented-disabled');
-    if (objHint) objHint.textContent = '🔒 Введите имя';
-  } else {
-    objectSeg.classList.remove('segmented-disabled');
-  }
-
-  updateBuildingAccessibility();
-  updateAllMainBlocks();
-  updateAdditionalAccessibility();
+  refreshNameGates();
 });
 
 nameInput.addEventListener('blur', () => {
@@ -2254,6 +2273,7 @@ nameInput.addEventListener('blur', () => {
   } else {
     nameErr.classList.remove('show');
   }
+  refreshNameGates();
 });
 
 // ============================================
@@ -2387,7 +2407,6 @@ async function sendAll() {
       clearDraft();
       renderJournal();
 
-      // сбросить блоки
       MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
       initAdditionalState();
       renderAdditionalFields();
@@ -2413,7 +2432,9 @@ async function sendAll() {
 initMainWorks();
 initAdditionalState();
 renderAdditionalFields();
-updateAdditionalAccessibility();
+
+// Сразу закрываем объект, корпус, дату, доп. работы, кнопки Монтаж/Демонтаж
+refreshNameGates();
 
 const _restoredDraft = loadDraft();
 if (_restoredDraft && _restoredDraft.length > 0) {
