@@ -61,19 +61,11 @@
   </div>
 </div>
 
-<!-- ============ КАРТОЧКА 2: ОСНОВНЫЕ РАБОТЫ ============ -->
+<!-- ============ КАРТОЧКА 2: ОСНОВНЫЕ РАБОТЫ (аккордеон) ============ -->
 <div class="card" id="entry-card">
   <div class="section-title">Основные работы</div>
-  <p class="hint-small" style="margin:0 0 12px">Нажмите на кнопку — откроется окно для заполнения.</p>
-
-  <button type="button" class="main-work-btn main-work-btn-montazh"
-          id="btn-open-montazh" disabled>
-    🔧 Добавить монтаж
-  </button>
-  <button type="button" class="main-work-btn main-work-btn-demontazh"
-          id="btn-open-demontazh" disabled>
-    🔨 Добавить демонтаж
-  </button>
+  <p class="hint-small" style="margin:0 0 12px">Нажмите на строку — раскроется форма.</p>
+  <div id="main-works-container"></div>
 </div>
 
 <!-- ============ КАРТОЧКА 3: ДОПОЛНИТЕЛЬНЫЕ РАБОТЫ ============ -->
@@ -117,54 +109,6 @@
   <div class="progress-title">Ждите</div>
   <div class="progress-counter" id="progress-counter">0 из 0</div>
 </div>
-
-<!-- ============ МОДАЛЬНОЕ ОКНО: МОНТАЖ / ДЕМОНТАЖ ============ -->
-<div class="modal-overlay" id="main-modal">
-  <div class="modal-window">
-    <div class="modal-header">
-      <div class="modal-title" id="main-modal-title">Монтаж</div>
-      <button type="button" class="modal-close" id="main-modal-close" title="Закрыть">×</button>
-    </div>
-
-    <div class="modal-body">
-      <div class="row">
-        <div class="col-1" id="floor-col">
-          <label class="req">Этаж <span class="req-star">*</span></label>
-          <div class="segmented segmented-floors segmented-disabled" id="floor-segmented">
-            <input type="hidden" id="floor" class="req-field" value="">
-            <span class="segmented-hint">🔒 Имя</span>
-          </div>
-          <div class="field-error" id="err-floor">Заполните это поле</div>
-        </div>
-        <div class="col-2">
-          <label class="req">Помещение <span class="req-star">*</span></label>
-          <div class="room-wrap">
-            <span class="room-prefix" id="room-prefix" style="display: none;">к</span>
-            <input type="text" id="room" class="req-field"
-                   placeholder="🔒 Имя"
-                   inputmode="numeric"
-                   maxlength="4" disabled>
-            <button type="button" class="field-clear" id="clear-room" title="Очистить">×</button>
-          </div>
-          <div class="hint-small">Если помещения нет — введите 0</div>
-          <div class="field-error" id="err-room">Заполните это поле</div>
-        </div>
-      </div>
-
-      <div id="materials-section">
-        <div class="section-subtitle">Основные материалы</div>
-        <div id="materials-container"></div>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button type="button" class="modal-btn modal-btn-cancel" id="main-modal-cancel">Отмена</button>
-      <button type="button" class="modal-btn modal-btn-save" id="main-modal-save">Добавить в журнал</button>
-    </div>
-  </div>
-</div>
-
-<input type="hidden" id="work" value="">
 
 <div class="toast" id="toast"></div>
 
