@@ -306,18 +306,23 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .segmented.segmented-disabled .segmented-hint { display: block; }
 .segmented.segmented-disabled .segmented-btn  { display: none; }
 
+/* ============================================ */
+/*  ЭТАЖИ — КАПСУЛЫ В ОДНУ СТРОКУ                */
+/* ============================================ */
 .segmented.segmented-floors {
-  flex-direction: column-reverse;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 4px;
 }
 .segmented.segmented-floors .segmented-btn {
-  flex: 0 0 auto;
-  width: 100%;
-  padding: 10px 8px;
+  flex: 1 1 auto;
+  min-width: 48px;
+  padding: 10px 6px;
+  font-size: 13px;
 }
 .segmented.segmented-floors .segmented-hint {
-  flex: 0 0 auto;
+  flex: 1 1 100%;
 }
 
 @keyframes shake {
