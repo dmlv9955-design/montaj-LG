@@ -94,15 +94,23 @@ function locationWorkByLabel(label) {
   return LOCATION_WORKS.find(w => w.label === label) || null;
 }
 
+// ============================================
+//  МАТЕРИАЛЫ
+//  label / variant — то, что видит монтажник в форме
+//  tableName — то, что уходит в Google Таблицу
+// ============================================
 const MATERIALS = [
   {
     id: 'cable',
     label: 'Кабель КПСЭнг(A)FRHF 1x2x',
     unit: 'м',
     rows: [
-      { key: 'cable_075_aps',  variant: 'х0,75', system: 'АПС' },
-      { key: 'cable_075_soue', variant: 'х0,75', system: 'СОУЭ' },
-      { key: 'cable_1_soue',   variant: 'х1',    system: 'СОУЭ' }
+      { key: 'cable_075_aps',  variant: 'х0,75', system: 'АПС',
+        tableName: 'Кабель КПСЭнг(A)FRHF 1x2x0,75' },
+      { key: 'cable_075_soue', variant: 'х0,75', system: 'СОУЭ',
+        tableName: 'Кабель КПСЭнг(A)FRHF 1x2x0,75' },
+      { key: 'cable_1_soue',   variant: 'х1',    system: 'СОУЭ',
+        tableName: 'Кабель КПСЭнг(A)FRHF 1x2x1' }
     ]
   },
   {
@@ -110,10 +118,14 @@ const MATERIALS = [
     label: 'Кабель-канал',
     unit: 'м',
     rows: [
-      { key: 'channel_40x25_aps',  variant: '40х25', system: 'АПС',  primary: true },
-      { key: 'channel_40x25_soue', variant: '40х25', system: 'СОУЭ', primary: true },
-      { key: 'channel_25x16_aps',  variant: '25х16', system: 'АПС' },
-      { key: 'channel_25x16_soue', variant: '25х16', system: 'СОУЭ' }
+      { key: 'channel_40x25_aps',  variant: '40х25', system: 'АПС',  primary: true,
+        tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
+      { key: 'channel_40x25_soue', variant: '40х25', system: 'СОУЭ', primary: true,
+        tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
+      { key: 'channel_25x16_aps',  variant: '25х16', system: 'АПС',
+        tableName: 'Кабель-канал ECOLINE 25х16 IEK' },
+      { key: 'channel_25x16_soue', variant: '25х16', system: 'СОУЭ',
+        tableName: 'Кабель-канал ECOLINE 25х16 IEK' }
     ]
   },
   {
@@ -121,10 +133,14 @@ const MATERIALS = [
     label: 'Труба гофрированная d=',
     unit: 'м',
     rows: [
-      { key: 'corrugated_20_aps',  variant: '20 мм', system: 'АПС',  primary: true },
-      { key: 'corrugated_20_soue', variant: '20 мм', system: 'СОУЭ', primary: true },
-      { key: 'corrugated_16_aps',  variant: '16 мм', system: 'АПС' },
-      { key: 'corrugated_16_soue', variant: '16 мм', system: 'СОУЭ' }
+      { key: 'corrugated_20_aps',  variant: '20 мм', system: 'АПС',  primary: true,
+        tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
+      { key: 'corrugated_20_soue', variant: '20 мм', system: 'СОУЭ', primary: true,
+        tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
+      { key: 'corrugated_16_aps',  variant: '16 мм', system: 'АПС',
+        tableName: 'Труба гофрированная ПВХ, d=16 мм, серая' },
+      { key: 'corrugated_16_soue', variant: '16 мм', system: 'СОУЭ',
+        tableName: 'Труба гофрированная ПВХ, d=16 мм, серая' }
     ]
   },
   {
@@ -132,9 +148,12 @@ const MATERIALS = [
     label: 'Труба стальная ВГП ДУ d=',
     unit: 'м',
     rows: [
-      { key: 'steel_15_aps',  variant: '15 мм', system: 'АПС',  primary: true },
-      { key: 'steel_15_soue', variant: '15 мм', system: 'СОУЭ', primary: true },
-      { key: 'steel_20_soue', variant: '20 мм', system: 'СОУЭ' }
+      { key: 'steel_15_aps',  variant: '15 мм', system: 'АПС',  primary: true,
+        tableName: 'Труба стальная ВГП ДУ 15×2,8 мм. ГОСТ 3262-75' },
+      { key: 'steel_15_soue', variant: '15 мм', system: 'СОУЭ', primary: true,
+        tableName: 'Труба стальная ВГП ДУ 15×2,8 мм. ГОСТ 3262-75' },
+      { key: 'steel_20_soue', variant: '20 мм', system: 'СОУЭ',
+        tableName: 'Труба стальная ВГП ДУ 20×2,8 мм. ГОСТ 3262-75' }
     ]
   }
 ];
@@ -944,7 +963,6 @@ function updateMainBlock(work) {
   const obj = objectSelect.value;
   const needBuild = isBuildingRequired();
 
-  // === Корпус ===
   if (!needBuild) {
     els.buildingRow.style.display = 'none';
     els.buildingInput.value = '';
@@ -968,7 +986,6 @@ function updateMainBlock(work) {
     }
   }
 
-  // === Этажи ===
   const build = els.buildingInput.value;
   const floors = getFloorsFor(obj, build);
   const fSeg = st.floorSeg;
@@ -1853,7 +1870,8 @@ function renderAdditionalFields() {
 }
 
 // ============================================
-//  МАТЕРИАЛЫ → МАССИВ
+//  МАТЕРИАЛЫ → МАССИВ ДЛЯ ОТПРАВКИ
+//  Использует r.tableName — полное имя для таблицы
 // ============================================
 function materialStateToArrayFromState(state) {
   const list = [];
@@ -1864,7 +1882,7 @@ function materialStateToArrayFromState(state) {
       const num = parseFloat(raw.replace(',', '.'));
       if (!isFinite(num) || num <= 0) return;
       list.push({
-        name: mat.label + ' ' + r.variant,
+        name: r.tableName || (mat.label + ' ' + r.variant),
         unit: mat.unit,
         qty: raw.replace(',', '.'),
         system: r.system
