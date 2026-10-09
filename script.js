@@ -98,6 +98,8 @@ function locationWorkByLabel(label) {
 //  МАТЕРИАЛЫ
 //  label / variant — то, что видит монтажник в форме
 //  tableName — то, что уходит в Google Таблицу
+//
+//  Кабель х0,75 — только для АПС (СОУЭ убран).
 // ============================================
 const MATERIALS = [
   {
@@ -105,11 +107,9 @@ const MATERIALS = [
     label: 'Кабель КПСЭнг(A)FRHF 1x2x',
     unit: 'м',
     rows: [
-      { key: 'cable_075_aps',  variant: 'х0,75', system: 'АПС',
+      { key: 'cable_075_aps', variant: 'х0,75', system: 'АПС',
         tableName: 'Кабель КПСЭнг(A)FRHF 1x2x0,75' },
-      { key: 'cable_075_soue', variant: 'х0,75', system: 'СОУЭ',
-        tableName: 'Кабель КПСЭнг(A)FRHF 1x2x0,75' },
-      { key: 'cable_1_soue',   variant: 'х1',    system: 'СОУЭ',
+      { key: 'cable_1_soue',  variant: 'х1',    system: 'СОУЭ',
         tableName: 'Кабель КПСЭнг(A)FRHF 1x2x1' }
     ]
   },
