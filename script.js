@@ -86,9 +86,9 @@ const MATERIALS = [
     { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true, tableName: 'Кабель-канал белый ECOLINE IEK 40x25' },
     { key: 'channel_25x16', variant: '25х16', system: 'АПС/СОУЭ', tableName: 'Кабель-канал белый ECOLINE IEK 25x16' }
   ]},
-  { id: 'corrugated', label: 'Труба гофрированная d=', unit: 'м', rows: [
-    { key: 'corrugated_20', variant: '20 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
-    { key: 'corrugated_16', variant: '16 мм', system: 'АПС/СОУЭ', tableName: 'Труба гофрированная ПВХ, d=16 мм, серая' }
+  { id: 'corrugated', label: 'Труба гофрированная ПВХ, серая', unit: 'м', rows: [
+    { key: 'corrugated_20', variant: '20 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба гофрированная ПВХ, серая d=20мм' },
+    { key: 'corrugated_16', variant: '16 мм', system: 'АПС/СОУЭ', tableName: 'Труба гофрированная ПВХ, серая d=16мм' }
   ]},
   { id: 'steel', label: 'Труба стальная ВГП ДУ d=', unit: 'м', rows: [
     { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба стальная ВГП ДУ 15×2,8 мм. ГОСТ 3262-75' },
