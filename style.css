@@ -440,15 +440,14 @@ input.req-field.is-partial,
   color: var(--text-hint); user-select: none; white-space: nowrap; line-height: 1;
 }
 
-.variant-hint {
+.variant-prefix {
   flex: 0 0 auto;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-hint);
   user-select: none;
   white-space: nowrap;
   line-height: 1;
-  margin-left: -2px;
 }
 
 .variant-system {
@@ -1064,7 +1063,7 @@ body.dark .toast { background: #22c55e; color: #052e16; }
 }
 .mat-head-right .variant-badge,
 .mat-head-right .variant-system,
-.mat-head-right .variant-hint {
+.mat-head-right .variant-prefix {
   flex: 0 0 auto;
 }
 
