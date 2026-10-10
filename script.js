@@ -98,8 +98,10 @@ function locationWorkByLabel(label) {
 //  МАТЕРИАЛЫ
 //  label / variant — то, что видит монтажник в форме
 //  tableName — то, что уходит в Google Таблицу
+//  system — АПС, СОУЭ или АПС/СОУЭ (для общих позиций)
 //
-//  Кабель х0,75 — только для АПС (СОУЭ убран).
+//  Кабель х0,75 — только АПС (СОУЭ убран).
+//  Кабель-канал, гофра, сталь — общие для АПС/СОУЭ.
 // ============================================
 const MATERIALS = [
   {
@@ -118,13 +120,9 @@ const MATERIALS = [
     label: 'Кабель-канал',
     unit: 'м',
     rows: [
-      { key: 'channel_40x25_aps',  variant: '40х25', system: 'АПС',  primary: true,
+      { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true,
         tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
-      { key: 'channel_40x25_soue', variant: '40х25', system: 'СОУЭ', primary: true,
-        tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
-      { key: 'channel_25x16_aps',  variant: '25х16', system: 'АПС',
-        tableName: 'Кабель-канал ECOLINE 25х16 IEK' },
-      { key: 'channel_25x16_soue', variant: '25х16', system: 'СОУЭ',
+      { key: 'channel_25x16', variant: '25х16', system: 'АПС/СОУЭ',
         tableName: 'Кабель-канал ECOLINE 25х16 IEK' }
     ]
   },
@@ -133,13 +131,9 @@ const MATERIALS = [
     label: 'Труба гофрированная d=',
     unit: 'м',
     rows: [
-      { key: 'corrugated_20_aps',  variant: '20 мм', system: 'АПС',  primary: true,
+      { key: 'corrugated_20', variant: '20 мм', system: 'АПС/СОУЭ', primary: true,
         tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
-      { key: 'corrugated_20_soue', variant: '20 мм', system: 'СОУЭ', primary: true,
-        tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
-      { key: 'corrugated_16_aps',  variant: '16 мм', system: 'АПС',
-        tableName: 'Труба гофрированная ПВХ, d=16 мм, серая' },
-      { key: 'corrugated_16_soue', variant: '16 мм', system: 'СОУЭ',
+      { key: 'corrugated_16', variant: '16 мм', system: 'АПС/СОУЭ',
         tableName: 'Труба гофрированная ПВХ, d=16 мм, серая' }
     ]
   },
@@ -148,11 +142,9 @@ const MATERIALS = [
     label: 'Труба стальная ВГП ДУ d=',
     unit: 'м',
     rows: [
-      { key: 'steel_15_aps',  variant: '15 мм', system: 'АПС',  primary: true,
+      { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', primary: true,
         tableName: 'Труба стальная ВГП ДУ 15×2,8 мм. ГОСТ 3262-75' },
-      { key: 'steel_15_soue', variant: '15 мм', system: 'СОУЭ', primary: true,
-        tableName: 'Труба стальная ВГП ДУ 15×2,8 мм. ГОСТ 3262-75' },
-      { key: 'steel_20_soue', variant: '20 мм', system: 'СОУЭ',
+      { key: 'steel_20', variant: '20 мм', system: 'АПС/СОУЭ',
         tableName: 'Труба стальная ВГП ДУ 20×2,8 мм. ГОСТ 3262-75' }
     ]
   }
@@ -624,6 +616,17 @@ function isBuildingRequired() {
 }
 function isMasterWingBuilding(b) { return b === MASTER_WING; }
 function isAtticBuilding(b)      { return b === ATTIC; }
+
+// ============================================
+//  КЛАСС БЕЙДЖА СИСТЕМЫ
+// ============================================
+function systemClass(sys) {
+  if (!sys) return 'variant-system';
+  if (sys === 'АПС')      return 'variant-system variant-system-aps';
+  if (sys === 'СОУЭ')     return 'variant-system variant-system-soue';
+  if (sys === 'АПС/СОУЭ') return 'variant-system variant-system-both';
+  return 'variant-system';
+}
 
 // ============================================
 //  SEGMENTED CONTROL
@@ -1160,10 +1163,7 @@ function renderMaterialsForBlock(work) {
       line.appendChild(forEl);
 
       const sysEl = document.createElement('span');
-      let sysClass = 'variant-system';
-      if (r.system === 'АПС')       sysClass += ' variant-system-aps';
-      else if (r.system === 'СОУЭ') sysClass += ' variant-system-soue';
-      sysEl.className = sysClass;
+      sysEl.className = systemClass(r.system);
       sysEl.textContent = r.system;
       line.appendChild(sysEl);
 
