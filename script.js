@@ -82,9 +82,9 @@ const MATERIALS = [
     { key: 'cable_075_aps', variant: 'х0,75', system: 'АПС', tableName: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x0,75' },
     { key: 'cable_1_soue',  variant: 'х1',    system: 'СОУЭ', tableName: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x1' }
   ]},
-  { id: 'channel', label: 'Кабель-канал', unit: 'м', rows: [
-    { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true, tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
-    { key: 'channel_25x16', variant: '25х16', system: 'АПС/СОУЭ', tableName: 'Кабель-канал ECOLINE 25х16 IEK' }
+  { id: 'channel', label: 'Кабель-канал белый ECOLINE IEK', unit: 'м', rows: [
+    { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true, tableName: 'Кабель-канал белый ECOLINE IEK 40x25' },
+    { key: 'channel_25x16', variant: '25х16', system: 'АПС/СОУЭ', tableName: 'Кабель-канал белый ECOLINE IEK 25x16' }
   ]},
   { id: 'corrugated', label: 'Труба гофрированная d=', unit: 'м', rows: [
     { key: 'corrugated_20', variant: '20 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба гофрированная ПВХ, d=20 мм, серая' },
