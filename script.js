@@ -93,117 +93,6 @@ function locationWorkByKey(key) { return LOCATION_WORKS.find(w => w.key === key)
 function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label === label) || null; }
 
 // ============================================
-//  КООРДИНАТЫ ПОМЕЩЕНИЙ
-// ============================================
-const ROOM_COORDS = {
-  'Ларинская гимназия': {
-    'Чердак': {
-      '1': 'В-Е/1-5',
-      '2': 'Ш-Е/5-7',
-      '3': 'В-Ш/5-7',
-      '4': 'Г-Ш/7-8',
-      '5': 'А-В/1-3',
-      '6': 'А-Б/3-6',
-      '7': 'А-Б/6-9'
-    },
-    'Основное здание': {
-      '1': {
-        '1': 'И-К/2-4',  '2': 'И-Л/2-4',  '3': 'И-К/1-2',  '4': 'К-М/1-2',
-        '5': 'М-Н/1-2',  '6': 'Н-П/1-2',  '7': 'П-Р/1-2',  '8': 'Р-С/1-2',
-        '9': 'М-С/2-3',  '10': 'М-Р/3-8', '11': 'Р-С/3-4', '12': 'П-С/2-3',
-        '13': 'Р-С/3-4', '14': 'Р-С/3-4', '15': 'Р-С/3-5', '16': 'Р-С/5-6',
-        '17': 'Р-С/5-6', '18': 'Р-С/6-7', '19': 'Р-С/6-7', '20': 'П-С/8-9',
-        '21': 'П-С/9-10','22': 'П-С/10-11','23': 'Р-С/11-13','24': 'П-Р/11-13',
-        '25': 'О-Р/10-11','26': 'К-Н/10-13','27': 'М-Н/13-17','28': 'М-Н/13-17',
-        '29': 'И-К/10-13','30': 'Ж-И/10-13','31': 'И-М/13-17','32': 'З-И/13-17',
-        '33': 'Ж-З/13-17','34': 'З-И/13-17','35': 'Ж-И/13-17','36': 'Е-Ж/13-17',
-        '37': 'Е-Ж/13-17','38': 'Д-Е/12-13','39': 'Д-Е/12-13','40': 'В-Д/11-13',
-        '41': 'Г-Д/12-13','42': 'Е-Ж/10-13','43': 'Г-Ж/8-10', '44': 'Е-Ж/7-9',
-        '45': 'Г-Е/7-9', '46': 'Г-Ж/5-7', '47': 'Е-Ж/4-5', '48': 'Г-Е/3-5',
-        '49': 'Г-Е/3-4', '50': 'Е-Ж/3-4', '51': 'З-И/2-3', '52': 'З-И/3-4',
-        '53': 'Е-З/2-4', '54': 'Ж-И/1-2', '55': 'Е-З/2-3', '56': 'Е-Ж/2-3',
-        '57': 'Е-Ж/1-2', '58': 'Д-Е/2-3', '59': 'Д-Е/1-3', '60': 'Г-Д/1-3',
-        '61': 'Г-Е/1-2', '62': 'Г-Е/1-2', '63': 'А-Г/1-2', '64': 'В-Г/2-4',
-        '65': 'Б-Г/2-4', '66': 'А-Б/2-3'
-      },
-      '2': {
-        '1': 'И-М/1-2',  '2': 'Ж-И/1-2',  '3': 'Ж-З/1-2',  '4': 'Д-Ж/1-2',
-        '5': 'В-Д/1-2',  '6': 'Б-В/1-2',  '7': 'А-Б/1-2',  '8': 'А-Б/2-3',
-        '9': 'А-Б/2-3',  '10': 'А-Б/3-4', '11': 'В-Д/2-5', '12': 'Б-В/3-5',
-        '13': 'Б-В/5-6', '14': 'Б-В/6-7', '15': 'Б-Г/5-9', '16': 'А-Б/8-9',
-        '17': 'А-Б/8-9', '18': 'Б-Г/9-10','19': 'Г-Д/8-9', '20': 'Г-Д/7-9',
-        '21': 'Д-Ж/7-9', '22': 'Д-Ж/8-9', '23': 'Д-Ж/10-12','24': 'Г-З/9-10',
-        '25': 'Ж-З/7-9', '26': 'З-К/7-8', '27': 'И-К/9-10','28': 'К-М/8-9',
-        '29': 'К-М/6-8', '30': 'К-М/5-6', '31': 'Л-М/4-5', '32': 'К-Л/4-5',
-        '33': 'Л-М/3-4', '34': 'Л-М/2-4', '35': 'Л-М/2-3', '36': 'Е-Л/2-4',
-        '37': 'Д-Е/2-4'
-      },
-      '3': {
-        '1': 'И-К/1-2',  '2': 'И-К/2-3',  '3': 'И-К/2-4',  '4': 'И-К/4-5',
-        '5': 'З-К/2-4',  '6': 'И-К/4-5',  '7': 'Ж-З/2-4',  '8': 'Е-К/2-3',
-        '9': 'З-К/1-2',  '10': 'Ж-З/1-2', '11': 'Е-Ж/1-2', '12': 'Е-Ж/2-4',
-        '13': 'Д-Е/1-2', '14': 'Г-Е/1-2', '15': 'В-Д/1-2', '16': 'Б-Д/2-3',
-        '17': 'Г-Д/2-4', '18': 'Б-Г/2-4', '19': 'Б-Г/1-2', '20': 'А-Б/1-2',
-        '21': 'А-В/3-5'
-      }
-    },
-    'Крыло мастерских': {
-      '1': {
-        '1': 'А-В/15-16','2': 'А-В/14-15','3': 'А-В/13-14','4': 'А-В/12-13',
-        '5': 'Б-В/12-14','6': 'В-Г/1-2',  '7': 'А-В/1-2',  '8': 'Б-В/2-3',
-        '9': 'Б-В/3-4',  '10': 'А-Б/3-5', '11': 'Б-В/4-6', '12': 'А-Б/4-5',
-        '13': 'А-Б/4-6', '14': 'Б-В/6-8', '15': 'А-В/4-10','16': 'Б-В/8-9',
-        '17': 'Б-В/9-10','18': 'Б-В/9-10','19': 'Б-В/9-10','20': 'А-Б/9-10',
-        '21': 'Б-В/10-11','22': 'Б-В/11-12','23': 'Б-В/11-12','24': 'Б-В/11-12',
-        '25': 'А-В/11-12','26': 'А-В/11-12','27': 'А-Б/11-12'
-      },
-      '2': {
-        '1': 'Б-В/7-8',  '2': 'А-Б/7-8',  '3': 'А-В/6-7',  '4': 'А-В/6-7',
-        '5': 'В-Г/2-3',  '6': 'В-Г/2-3',  '7': 'В-Г/1-2',  '8': 'Б-Г/1-2',
-        '9': 'А-В/1-2',  '10': 'А-Б/2-3', '11': 'Б-В/2-4', '12': 'А-Б/2-4',
-        '13': 'А-В/3-5', '14': 'А-В/4-5', '15': 'А-Б/5-6'
-      }
-    }
-  }
-};
-
-function lookupRoomCoords(object, building, floor, num) {
-  if (object !== 'Ларинская гимназия') return null;
-  const objData = ROOM_COORDS[object];
-  if (!objData) return '';
-  const buildData = objData[building];
-  if (!buildData) return '';
-  if (building === ATTIC) {
-    return buildData[String(num)] || '';
-  }
-  const floorData = buildData[String(floor)];
-  if (!floorData) return '';
-  return floorData[String(num)] || '';
-}
-
-function applyCoordsToRoomString(roomStr, object, building, floor) {
-  if (!roomStr) return roomStr || '';
-  if (object !== 'Ларинская гимназия') return roomStr;
-
-  const parts = String(roomStr).split(',').map(p => p.trim()).filter(Boolean);
-  const out = [];
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i];
-    const m = part.match(/^([кК]?)(\d+)$/);
-    if (!m) { out.push(part); continue; }
-    const prefix = m[1] || '';
-    const n = m[2];
-    const coords = lookupRoomCoords(object, building, floor, n);
-    if (coords === null || coords === '') {
-      out.push(prefix + n + '(?)');
-    } else {
-      out.push(prefix + n + '(' + coords + ')');
-    }
-  }
-  return out.join(', ');
-}
-
-// ============================================
 //  МАТЕРИАЛЫ
 // ============================================
 const MATERIALS = [
@@ -2778,9 +2667,6 @@ function updateFieldState(el) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled'); return;
     }
-    // Обрабатываем только шапку «Объект».
-    // «Объект» подсвечивается красным, только если имя уже валидное
-    // и объект не выбран.
     if (el.id === 'object') {
       wrap.classList.remove('is-empty', 'is-filled');
       const nameOk = isNameValid(nameInput.value);
@@ -2849,7 +2735,6 @@ nameInput.addEventListener('input', () => {
   if (isNameValid(nameInput.value)) nameErr.classList.remove('show');
   updateFieldState(nameInput);
   refreshNameGates();
-  // Обновляем подсветку «Объекта» — она зависит от валидности имени
   updateFieldState(objectSelect);
 });
 
@@ -3081,7 +2966,7 @@ async function doActualSend() {
     sortedJournal.forEach(entry => {
       if (entry.kind === 'main') {
         records.push({
-          room: applyCoordsToRoomString(entry.room || '', objectSelect.value.trim(), entry.building, entry.floor),
+          room: entry.room || '',
           room_none: false,
           floor: entry.floor || '',
           work: entry.work,
@@ -3092,8 +2977,7 @@ async function doActualSend() {
         const z = parseFloat(String(entry.qty).replace(',', '.'));
         if (!isFinite(z) || z <= 0) return;
         records.push({
-          room: applyCoordsToRoomString(entry.room || '', objectSelect.value.trim(), entry.building, entry.floor),
-          room_none: false, floor: entry.floor || '',
+          room: entry.room || '', room_none: false, floor: entry.floor || '',
           work: getSheetWorkForLocation(entry.kind),
           materials: [{ name: w.label, unit: w.unit, qty: String(z), system: getSheetSystemForLocation(entry.kind) }]
         });
