@@ -245,27 +245,20 @@ function formatQty(raw) {
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
 // ============================================
-
-// Мягкая очистка — оставляет только цифры и пробелы (для зaделки)
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').replace(/^\s+/, '');
   return s;
 }
 
-// Живое форматирование ввода помещений:
-// любой нецифровой символ → ", "
-// Если последний символ — разделитель, оставляем его как ", " в конце.
+// Живое форматирование: любой нецифровой символ → ", "
 function liveFormatRooms(raw) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
   const trailingDelim = /[^0-9]$/.test(s);
 
-  // Всё, что не цифра → ", "
   s = s.replace(/[^0-9]+/g, ', ');
-  // Убираем ведущие разделители
   s = s.replace(/^(?:,\s*)+/, '');
-  // Нормализуем ", "
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
 
@@ -276,8 +269,7 @@ function liveFormatRooms(raw) {
   return s;
 }
 
-// Итоговое значение помещений:
-// числа по возрастанию, без повторов, через ", "
+// Итоговое: числа по возрастанию, без повторов, через ", "
 function finalizeRooms(raw) {
   const nums = String(raw == null ? '' : raw)
     .split(',')
@@ -289,7 +281,6 @@ function finalizeRooms(raw) {
   return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
-// Нормализация — как finalizeRooms, но ещё используется для доп. работ
 function normalizeZadelkaRoom(value) {
   const nums = String(value == null ? '' : value)
     .split(/[^0-9]+/)
@@ -906,11 +897,13 @@ function renderMaterialsForBlock(work) {
         }
 
         // === Этаж ===
+        // Этаж показывается только когда корпус выбран (если он вообще нужен).
         const isAtticRow = isAtticBuilding(row.building);
         const floors = getFloorsFor(objectSelect.value, row.building);
-        const canChooseFloor = buildingRequired ? !!row.building : true;
+        const buildingChosen = !buildingRequired || !!row.building;
+        const canChooseFloor = buildingChosen && !isAtticRow && floors && floors.length > 0;
 
-        if (!isAtticRow && floors && floors.length > 0 && canChooseFloor) {
+        if (canChooseFloor) {
           const floorLine = document.createElement('div');
           floorLine.className = 'mat-line';
           const flbl = document.createElement('span');
@@ -939,8 +932,11 @@ function renderMaterialsForBlock(work) {
         }
 
         // === Помещения + количество ===
+        // Помещение доступно только после выбора этажа
+        // (или сразу для корпуса «Чердак», где этаж не используется).
+        const floorChosen = !!row.floor || isAtticRow;
         const floorIsNo = row.floor === 'Нет';
-        const showRoom = !floorIsNo;
+        const showRoom = floorChosen && !floorIsNo;
 
         const mainLine = document.createElement('div');
         mainLine.className = 'mat-line';
@@ -971,7 +967,6 @@ function renderMaterialsForBlock(work) {
           rInput.dataset.focusKey = r.key + '_room_' + idx;
           if (!row.room) rInput.classList.add('is-empty');
 
-          // При вводе — сразу расставляем ", " вместо любых разделителей
           rInput.addEventListener('input', () => {
             const formatted = liveFormatRooms(rInput.value);
             if (formatted !== rInput.value) {
@@ -983,7 +978,6 @@ function renderMaterialsForBlock(work) {
             updateAddFloorButton(card, r.key, work);
           });
 
-          // При потере фокуса — сортировка по возрастанию, без дублей
           rInput.addEventListener('blur', () => {
             const finalVal = finalizeRooms(rInput.value);
             if (rInput.value !== finalVal) rInput.value = finalVal;
