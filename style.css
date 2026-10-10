@@ -1769,3 +1769,11 @@ body.app-blocked {
 
 /* В «add-item» без .zadelka-remove-btn оставляем больше места сверху */
 .add-item { position: relative; }
+
+/* Подсветка пустого поля количества */
+.variant-input.is-empty {
+  border-color: var(--red-border);
+  background: var(--red-bg);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--red-shadow);
+}
