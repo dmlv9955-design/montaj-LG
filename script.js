@@ -86,13 +86,13 @@ const MATERIALS = [
     { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true, tableName: 'Кабель-канал белый ECOLINE IEK 40x25' },
     { key: 'channel_25x16', variant: '25х16', system: 'АПС/СОУЭ', tableName: 'Кабель-канал белый ECOLINE IEK 25x16' }
   ]},
-  { id: 'corrugated', label: 'Труба гофрированная ПВХ, серая', unit: 'м', rows: [
+  { id: 'corrugated', label: 'Труба гофрированная ПВХ, серая', unit: 'м', prefix: 'd=', rows: [
     { key: 'corrugated_20', variant: '20 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба гофрированная ПВХ, серая d=20мм' },
     { key: 'corrugated_16', variant: '16 мм', system: 'АПС/СОУЭ', tableName: 'Труба гофрированная ПВХ, серая d=16мм' }
   ]},
-  { id: 'steel', label: 'Труба стальная ВГП ДУ ГОСТ 3262-75', unit: 'м', rows: [
-    { key: 'steel_15', variant: '15', unitHint: 'мм.', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
-    { key: 'steel_20', variant: '20', unitHint: 'мм.', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
+  { id: 'steel', label: 'Труба стальная ВГП ДУ ГОСТ 3262-75', unit: 'м', prefix: 'd=', rows: [
+    { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
+    { key: 'steel_20', variant: '20 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
   ]}
 ];
 
@@ -814,7 +814,7 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // === Шапка: название слева, [вид] для [система] справа ===
+      // === Шапка: название слева, [d=] [вид] для [система] справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
 
@@ -826,19 +826,19 @@ function renderMaterialsForBlock(work) {
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
 
+      // 0) Префикс перед капсулой (например, «d=»)
+      if (mat.prefix) {
+        const prefixEl = document.createElement('span');
+        prefixEl.className = 'variant-prefix';
+        prefixEl.textContent = mat.prefix;
+        headRight.appendChild(prefixEl);
+      }
+
       // 1) Вид
       const badge = document.createElement('span');
       badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
       badge.textContent = r.variant;
       headRight.appendChild(badge);
-
-      // 1а) Мелкая подпись после бейджа (например, «мм.»)
-      if (r.unitHint) {
-        const hintEl = document.createElement('span');
-        hintEl.className = 'variant-hint';
-        hintEl.textContent = r.unitHint;
-        headRight.appendChild(hintEl);
-      }
 
       // 2) «для»
       const forEl = document.createElement('span');
