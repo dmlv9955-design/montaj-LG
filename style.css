@@ -1184,3 +1184,4 @@ body.dark .toast { background: #22c55e; color: #052e16; }
 .mat-add-floor:active { transform: scale(.98); }
 
 .mat-add-floor.hidden { display: none; }
+
