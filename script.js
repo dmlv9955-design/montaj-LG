@@ -91,8 +91,8 @@ const MATERIALS = [
     { key: 'corrugated_16', variant: '16 мм', system: 'АПС/СОУЭ', tableName: 'Труба гофрированная ПВХ, серая d=16мм' }
   ]},
   { id: 'steel', label: 'Труба стальная ВГП ДУ ГОСТ 3262-75', unit: 'м', rows: [
-    { key: 'steel_15', variant: '15', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
-    { key: 'steel_20', variant: '20', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
+    { key: 'steel_15', variant: '15', unitHint: 'мм.', system: 'АПС/СОУЭ', primary: true, tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
+    { key: 'steel_20', variant: '20', unitHint: 'мм.', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
   ]}
 ];
 
@@ -831,6 +831,14 @@ function renderMaterialsForBlock(work) {
       badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
       badge.textContent = r.variant;
       headRight.appendChild(badge);
+
+      // 1а) Мелкая подпись после бейджа (например, «мм.»)
+      if (r.unitHint) {
+        const hintEl = document.createElement('span');
+        hintEl.className = 'variant-hint';
+        hintEl.textContent = r.unitHint;
+        headRight.appendChild(hintEl);
+      }
 
       // 2) «для»
       const forEl = document.createElement('span');
