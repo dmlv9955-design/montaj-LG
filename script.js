@@ -67,7 +67,8 @@ const LOCATION_WORKS = [
   { key: 'vata',         label: 'Вата',                   unit: 'шт'  },
   { key: 'germetik',     label: 'Герметик',               unit: 'шт'  },
   { key: 'birki',        label: 'Бирки',                  unit: 'шт'  },
-  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  }
+  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  },
+  { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру', unit: 'м'   }
 ];
 
 function isLocationKind(kind) { return LOCATION_WORKS.some(w => w.key === kind); }
@@ -254,7 +255,6 @@ function formatQty(raw) {
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
-//  Любой нецифровой символ → «, ».
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
@@ -819,11 +819,9 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // === Шапка: [название для [система]] слева, [d=] [вид] справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
 
-      // Левая часть: название + «для» + система
       const headLeft = document.createElement('span');
       headLeft.className = 'mat-head-left';
 
@@ -844,7 +842,6 @@ function renderMaterialsForBlock(work) {
 
       head.appendChild(headLeft);
 
-      // Правая часть: [d=] + капсула
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
 
@@ -892,7 +889,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
-        // === Корпус ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -923,7 +919,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
-        // === Этаж ===
         const isAtticRow = isAtticBuilding(row.building);
         const floors = getFloorsFor(objectSelect.value, row.building);
         const buildingChosen = !buildingRequired || !!row.building;
@@ -955,7 +950,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
-        // === Помещения + количество ===
         const floorChosen = !!row.floor || isAtticRow;
         const showRoom = floorChosen;
 
