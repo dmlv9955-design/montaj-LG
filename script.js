@@ -739,7 +739,7 @@ function systemClass(sys) {
 }
 
 // ============================================
-//  МОДАЛКА УВЕДОМЛЕНИЯ (о неполных полях)
+//  МОДАЛКА УВЕДОМЛЕНИЯ
 // ============================================
 function ensureAlertOverlay() {
   let overlay = document.getElementById('alert-overlay');
@@ -794,7 +794,6 @@ function showAlert(title, message, opts) {
   overlay.classList.add('show');
 }
 
-// Анимация тряски у всех невалидных полей
 function shakeAllInvalidFields() {
   MAIN_WORKS.forEach(({ work }) => {
     const st = mainState[work];
@@ -808,8 +807,8 @@ function shakeAllInvalidFields() {
       if (!card) continue;
       const rowEls = card.querySelectorAll('.mat-row');
       data.rows.forEach((row, idx) => {
-        const qtyNum = parseFloat(String(row.qty || '').replace(',', '.'));
-        if (!isFinite(qtyNum) || qtyNum <= 0) return;
+        const hasAny = !!(row.building || row.floor || row.room || row.qty);
+        if (!hasAny) return;
         const rowEl = rowEls[idx];
         if (!rowEl) return;
         if (buildingRequired && !row.building) {
@@ -832,6 +831,14 @@ function shakeAllInvalidFields() {
             setTimeout(() => inp.classList.remove('shake'), 700);
           }
         }
+        const qtyNum = parseFloat(String(row.qty || '').replace(',', '.'));
+        if (!isFinite(qtyNum) || qtyNum <= 0) {
+          const inp = rowEl.querySelector('.variant-input');
+          if (inp) {
+            inp.classList.add('shake');
+            setTimeout(() => inp.classList.remove('shake'), 700);
+          }
+        }
       });
     }
   });
@@ -842,8 +849,8 @@ function shakeAllInvalidFields() {
     const group = additionalFields.querySelector('.add-group[data-work-key="' + w.key + '"]');
     if (!group) return;
     items.forEach((it, idx) => {
-      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
-      if (isEmptyRow) return;
+      const hasAny = !!(it.building || it.floor || it.room || it.value);
+      if (!hasAny) return;
       const itemEl = group.querySelector('.add-item[data-item-idx="' + idx + '"]');
       if (!itemEl) return;
       const needB = isBuildingRequired();
@@ -1302,6 +1309,23 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(numEl);
         }
 
+        // Кнопка «Сбросить место» — очищает корпус/этаж/помещение/кол-во
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'mat-row-reset';
+        resetBtn.title = 'Сбросить место';
+        resetBtn.textContent = '↺';
+        resetBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!(row.building || row.floor || row.room || row.qty)) return;
+          row.building = '';
+          row.floor = '';
+          row.room = '';
+          row.qty = '';
+          renderMaterialsForBlock(work);
+        });
+        rowEl.appendChild(resetBtn);
+
         if (idx > 0) {
           const del = document.createElement('button');
           del.type = 'button';
@@ -1575,6 +1599,7 @@ function fixMainField(work, matKey, rowIdx, fieldType) {
     if (fieldType === 'corp') el = rowEl.querySelector('.mat-line-corp .loc-floor-btn');
     else if (fieldType === 'floor') el = rowEl.querySelector('.mat-line-floors .loc-floor-btn');
     else if (fieldType === 'room') el = rowEl.querySelector('.loc-room-input');
+    else if (fieldType === 'qty')  el = rowEl.querySelector('.variant-input');
     if (!el) return;
     try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
     el.classList.add('pulse-attention');
@@ -1629,7 +1654,7 @@ function fixMentorField(itemIdx, fieldType) {
 
 // ============================================
 //  ВАЛИДАЦИЯ БЛОКА
-//  Возвращает null либо { message, fix }
+//  Строку валидируем полностью, если тронуто хотя бы одно поле.
 // ============================================
 function validateMainFieldsForBlock(work) {
   const st = mainState[work];
@@ -1643,8 +1668,8 @@ function validateMainFieldsForBlock(work) {
 
     for (let i = 0; i < data.rows.length; i++) {
       const row = data.rows[i];
-      const qtyNum = parseFloat(String(row.qty || '').replace(',', '.'));
-      if (!isFinite(qtyNum) || qtyNum <= 0) continue;
+      const hasAny = !!(row.building || row.floor || row.room || row.qty);
+      if (!hasAny) continue;
 
       if (buildingRequired && !row.building) {
         return {
@@ -1663,6 +1688,13 @@ function validateMainFieldsForBlock(work) {
         return {
           message: label + ', место ' + (i + 1) + ': укажите помещения',
           fix: () => fixMainField(work, k, i, 'room')
+        };
+      }
+      const qtyNum = parseFloat(String(row.qty || '').replace(',', '.'));
+      if (!isFinite(qtyNum) || qtyNum <= 0) {
+        return {
+          message: label + ', место ' + (i + 1) + ': укажите количество',
+          fix: () => fixMainField(work, k, i, 'qty')
         };
       }
     }
@@ -1719,7 +1751,7 @@ function validateHeader() {
 
 // ============================================
 //  ВАЛИДАЦИЯ ДОП. РАБОТ
-//  Возвращает null либо { message, fix }
+//  Строку валидируем полностью, если тронуто хотя бы одно поле.
 // ============================================
 function validateAdditionalOnly() {
   for (let wi = 0; wi < LOCATION_WORKS.length; wi++) {
@@ -1727,8 +1759,9 @@ function validateAdditionalOnly() {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
-      if (isEmptyRow) continue;
+      const hasAny = !!(it.building || it.floor || it.room || it.value);
+      if (!hasAny) continue;
+
       const needB = isBuildingRequired();
       if (needB && !it.building) {
         return {
@@ -1916,7 +1949,6 @@ function addAllToJournal() {
       return false;
     }
 
-    // Провалидируем все pending блоки. Первую ошибку показываем модалкой.
     for (let pi = 0; pi < pendingMainWorks.length; pi++) {
       const work = pendingMainWorks[pi];
       const err = validateMainFieldsForBlock(work);
@@ -2026,6 +2058,23 @@ function renderLocationFields(workKey, container) {
     const itemEl = document.createElement('div');
     itemEl.className = 'add-item';
     itemEl.dataset.itemIdx = String(idx);
+
+    // Кнопка «Сбросить место»
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'add-item-reset';
+    resetBtn.title = 'Сбросить место';
+    resetBtn.textContent = '↺';
+    resetBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!(item.building || item.floor || item.room || item.value)) return;
+      item.building = '';
+      item.floor = '';
+      item.room = '';
+      item.value = '';
+      renderAdditionalFields();
+    });
+    itemEl.appendChild(resetBtn);
 
     if (items.length > 1) {
       const sep = document.createElement('div');
