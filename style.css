@@ -1729,3 +1729,43 @@ body.app-blocked {
 }
 .add-item:last-child { border-bottom: none; padding-bottom: 0; }
 .add-item .zadelka-separator:first-child { margin-top: 0; }
+
+/* ============================================ */
+/*  КНОПКА «СБРОСИТЬ МЕСТО»                       */
+/* ============================================ */
+.mat-row-reset,
+.add-item-reset {
+  position: absolute;
+  top: 6px;
+  right: 36px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-hint);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s, transform .1s;
+}
+.mat-row-reset:hover,
+.add-item-reset:hover {
+  background: var(--input-disabled-bg);
+  color: var(--text-main);
+}
+.mat-row-reset:active,
+.add-item-reset:active { transform: scale(.9); }
+
+/* Кнопка сброса для доп. работ, когда «место» — единственное */
+.add-item-reset {
+  top: 4px;
+  right: 4px;
+}
+
+/* В «add-item» без .zadelka-remove-btn оставляем больше места сверху */
+.add-item { position: relative; }
