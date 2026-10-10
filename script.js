@@ -60,10 +60,9 @@ const MAIN_WORKS = [
   { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧', alwaysOpen: true  }
 ];
 
+// Осталось только то, что НЕ является материалом:
+// тура, бурение, расключение, крышки, затяжка, штукатурка, страховка
 const LOCATION_WORKS = [
-  { key: 'vata',         label: 'Вата минеральная',                  unit: 'шт'  },
-  { key: 'germetik',     label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт'  },
-  { key: 'birki',        label: 'Бирки кабельные У-136, 55×62 мм',   unit: 'шт'  },
   { key: 'burenie',      label: 'Бурение проходок',                  unit: 'шт'  },
   { key: 'raskluchenie', label: 'Расключение',                       unit: 'шт'  },
   { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   },
@@ -73,12 +72,14 @@ const LOCATION_WORKS = [
   { key: 'strahovka',    label: 'Страховка лестницы',                unit: 'ч'   }
 ];
 
+// Какие доп. работы уходят в таблицу как «Монтаж» (вместо «Другие работы»)
 const SHEET_WORK_MONTAGE = [
-  'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie', 'kryshki'
+  'zadelka', 'burenie', 'raskluchenie', 'kryshki'
 ];
 
+// Каким доп. работам в таблицу проставляем систему «АПС/СОУЭ»
 const SHEET_SYSTEM_APS_SOUE = [
-  'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'vata', 'germetik', 'birki', 'kryshki'
+  'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'kryshki'
 ];
 
 function getSheetWorkForLocation(kind) {
@@ -97,6 +98,8 @@ function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label ==
 
 // ============================================
 //  МАТЕРИАЛЫ
+//  + три новых «простых» материала без варианта:
+//    вата, герметик, бирки (system = АПС/СОУЭ)
 // ============================================
 const MATERIALS = [
   { id: 'cable', label: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x', unit: 'м', rows: [
@@ -114,6 +117,16 @@ const MATERIALS = [
   { id: 'steel', label: 'Труба стальная ВГП ДУ ГОСТ 3262-75', unit: 'м', prefix: 'd=', rows: [
     { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
     { key: 'steel_20', variant: '20 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
+  ]},
+  // ↓↓↓ Перенесены из доп. работ
+  { id: 'vata', label: 'Вата минеральная', unit: 'шт', rows: [
+    { key: 'vata', variant: '', system: 'АПС/СОУЭ', tableName: 'Вата минеральная' }
+  ]},
+  { id: 'germetik', label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт', rows: [
+    { key: 'germetik', variant: '', system: 'АПС/СОУЭ', tableName: 'Герметик огнезащитный "ОГНЕЗА-ГТ"' }
+  ]},
+  { id: 'birki', label: 'Бирки кабельные У-136, 55×62 мм', unit: 'шт', rows: [
+    { key: 'birki', variant: '', system: 'АПС/СОУЭ', tableName: 'Бирки кабельные У-136, 55×62 мм' }
   ]}
 ];
 
@@ -969,28 +982,37 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
+      // «Простой» материал: один вариант, без названия варианта
+      // (вата, герметик, бирки) — не рисуем «Вариант для АПС/СОУЭ»,
+      // оставляем только бейдж системы (или ничего, если системы нет).
+      const isSimple = !r.variant && mat.rows.length === 1;
+
       const head = document.createElement('div');
       head.className = 'mat-head';
 
       const headLeft = document.createElement('span');
       headLeft.className = 'mat-head-left';
 
-      const nameEl = document.createElement('span');
-      nameEl.className = 'mat-head-name';
-      nameEl.textContent = 'Вариант';
-      headLeft.appendChild(nameEl);
+      if (!isSimple) {
+        const nameEl = document.createElement('span');
+        nameEl.className = 'mat-head-name';
+        nameEl.textContent = 'Вариант';
+        headLeft.appendChild(nameEl);
 
-      const forEl = document.createElement('span');
-      forEl.className = 'variant-for';
-      forEl.textContent = 'для';
-      headLeft.appendChild(forEl);
+        const forEl = document.createElement('span');
+        forEl.className = 'variant-for';
+        forEl.textContent = 'для';
+        headLeft.appendChild(forEl);
+      }
 
-      const sysEl = document.createElement('span');
-      sysEl.className = systemClass(r.system);
-      sysEl.textContent = r.system;
-      headLeft.appendChild(sysEl);
+      if (r.system) {
+        const sysEl = document.createElement('span');
+        sysEl.className = systemClass(r.system);
+        sysEl.textContent = r.system;
+        headLeft.appendChild(sysEl);
+      }
 
-      head.appendChild(headLeft);
+      if (headLeft.children.length > 0) head.appendChild(headLeft);
 
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
@@ -1002,13 +1024,16 @@ function renderMaterialsForBlock(work) {
         headRight.appendChild(prefixEl);
       }
 
-      const badge = document.createElement('span');
-      badge.className = 'variant-badge';
-      badge.textContent = r.variant;
-      headRight.appendChild(badge);
+      if (r.variant) {
+        const badge = document.createElement('span');
+        badge.className = 'variant-badge';
+        badge.textContent = r.variant;
+        headRight.appendChild(badge);
+      }
 
-      head.appendChild(headRight);
-      card.appendChild(head);
+      if (headRight.children.length > 0) head.appendChild(headRight);
+
+      if (head.children.length > 0) card.appendChild(head);
 
       const rowsWrap = document.createElement('div');
       rowsWrap.className = 'mat-rows';
@@ -1286,7 +1311,7 @@ function validateMainFieldsForBlock(work) {
   for (const k in st.materials) {
     const data = st.materials[k];
     const info = MATERIAL_BY_KEY[k];
-    const label = info ? (info.mat.label + ' ' + info.row.variant) : k;
+    const label = info ? (info.mat.label + (info.row.variant ? ' ' + info.row.variant : '')) : k;
 
     for (let i = 0; i < data.rows.length; i++) {
       const row = data.rows[i];
@@ -1987,7 +2012,7 @@ function materialsMapToArray(map) {
       const num = parseFloat(raw.replace(',', '.'));
       if (!isFinite(num) || num <= 0) return;
       list.push({
-        name: r.tableName || (mat.label + ' ' + r.variant),
+        name: r.tableName || (mat.label + (r.variant ? ' ' + r.variant : '')),
         unit: mat.unit,
         qty: raw.replace(',', '.'),
         system: r.system
