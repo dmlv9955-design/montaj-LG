@@ -72,12 +72,10 @@ const LOCATION_WORKS = [
   { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   }
 ];
 
-// Какие доп. работы уходят в таблицу как «Монтаж» (вместо «Другие работы»)
 const SHEET_WORK_MONTAGE = [
   'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie', 'kryshki'
 ];
 
-// Каким доп. работам в таблицу проставляем систему «АПС/СОУЭ»
 const SHEET_SYSTEM_APS_SOUE = [
   'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'vata', 'germetik', 'birki', 'kryshki'
 ];
@@ -277,6 +275,8 @@ function formatQty(raw) {
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
 //  Любой нецифровой символ → «, ».
+//  isDeleting = true (пользователь стирает) — НЕ дописываем ", "
+//  в конце, иначе последнюю цифру невозможно удалить.
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
@@ -284,7 +284,7 @@ function sanitizeZadelkaRoomInput(value) {
   return s;
 }
 
-function liveFormatRooms(raw) {
+function liveFormatRooms(raw, isDeleting) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
 
@@ -295,7 +295,9 @@ function liveFormatRooms(raw) {
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
 
-  if (trailingDelim && s) s += ' ';
+  // Автопробел после «,» только когда пользователь ВВОДИТ,
+  // но не когда стирает — иначе получается «залипание» на «12, ».
+  if (trailingDelim && s && !isDeleting) s += ' ';
   return s;
 }
 
@@ -353,6 +355,38 @@ function applyPrefixToRoom(room, building) {
 function stripPrefixFromRoom(room) {
   if (!room) return '';
   return room.split(',').map(p => p.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
+}
+
+// ============================================
+//  ХЕЛПЕР ДЛЯ ПОЛЕЙ ПОМЕЩЕНИЙ
+//  Форматирует ввод на лету, но:
+//  • не дописывает «, » при удалении;
+//  • не прыгает курсором в конец при правке в середине.
+// ============================================
+function setupRoomInput(input, onValueChanged) {
+  input.addEventListener('input', () => {
+    const raw = input.value;
+    const posBefore = (typeof input.selectionStart === 'number') ? input.selectionStart : raw.length;
+    const wasAtEnd = posBefore === raw.length;
+    const prevLen = typeof input._prevLen === 'number' ? input._prevLen : raw.length;
+    const isDeleting = raw.length < prevLen;
+    input._prevLen = raw.length;
+
+    const formatted = liveFormatRooms(raw, isDeleting);
+
+    if (formatted !== raw) {
+      input.value = formatted;
+      let newPos;
+      if (wasAtEnd) newPos = formatted.length;
+      else {
+        const delta = formatted.length - raw.length;
+        newPos = Math.max(0, Math.min(formatted.length, posBefore + delta));
+      }
+      try { input.setSelectionRange(newPos, newPos); } catch (_) {}
+    }
+
+    if (typeof onValueChanged === 'function') onValueChanged(input.value);
+  });
 }
 
 // ============================================
@@ -434,13 +468,6 @@ function compareEntries(a, b) {
   return workWeight(a.work) - workWeight(b.work);
 }
 
-/**
- * Сортировка для отправки в Google-таблицу.
- * Сквозная: сначала по этажу (Подвал → 1 → 2 → 3 → … → Чердак → без этажа),
- * потом по номеру помещения (по возрастанию),
- * потом по типу работы внутри помещения.
- * Наставничество уходит в самый конец.
- */
 function compareForSheet(a, b) {
   const aMent = a.kind === 'mentorship';
   const bMent = b.kind === 'mentorship';
@@ -1031,14 +1058,11 @@ function renderMaterialsForBlock(work) {
           rInput.dataset.focusKey = r.key + '_room_' + idx;
           if (!row.room) rInput.classList.add('is-empty');
 
-          rInput.addEventListener('input', () => {
-            const formatted = liveFormatRooms(rInput.value);
-            if (formatted !== rInput.value) {
-              rInput.value = formatted;
-              try { rInput.setSelectionRange(formatted.length, formatted.length); } catch (_) {}
-            }
-            row.room = rInput.value;
-            rInput.classList.toggle('is-empty', !rInput.value);
+          // Единый обработчик: форматирование с сохранением курсора,
+          // без «дописывания» пробела при удалении.
+          setupRoomInput(rInput, (val) => {
+            row.room = val;
+            rInput.classList.toggle('is-empty', !val);
             updateAddFloorButton(card, r.key, work);
           });
 
@@ -1603,15 +1627,13 @@ function renderLocationFields(workKey, container) {
       rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
       rInp.value = item.room || '';
       rInp.dataset.focusId = workKey + '_room_' + idx;
-      rInp.addEventListener('input', () => {
-        const before = rInp.value;
-        const after = liveFormatRooms(before);
-        if (before !== after) {
-          rInp.value = after;
-          try { rInp.setSelectionRange(after.length, after.length); } catch (_) {}
-        }
-        item.room = rInp.value;
+
+      // Единый обработчик: форматирование с сохранением курсора,
+      // без «дописывания» пробела при удалении.
+      setupRoomInput(rInp, (val) => {
+        item.room = val;
       });
+
       rInp.addEventListener('blur', () => {
         const n = finalizeRooms(rInp.value);
         if (rInp.value !== n) rInp.value = n;
