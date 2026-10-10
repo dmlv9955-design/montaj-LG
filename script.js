@@ -367,18 +367,6 @@ function isMainBlockEmpty(work) {
   return true;
 }
 
-function isMatRowLocationComplete(row, buildingRequired) {
-  if (buildingRequired && !row.building) return false;
-  if (isAtticBuilding(row.building)) return true;
-  if (!row.floor) return false;
-  if (!row.room) return false;
-  return true;
-}
-
-function isMatRowReadyForMore(row, buildingRequired) {
-  return isMatRowLocationComplete(row, buildingRequired);
-}
-
 // ============================================
 //  ФОРМАТИРОВАНИЕ ЧИСЕЛ
 // ============================================
@@ -740,26 +728,31 @@ function systemClass(sys) {
 
 // ============================================
 //  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
-//  Правило: если строка тронута (заполнено хотя бы одно поле) —
-//  все остальные незаполненные поля этой строки подсвечиваются.
-//  Если строка полностью пустая — ничего не подсвечиваем.
 // ============================================
 function refreshMatRowHighlight(rowEl, row, buildingRequired) {
   if (!rowEl || !rowEl.isConnected) return;
   const hasAny = !!(row.building || row.floor || row.room || row.qty);
 
   // Корпус
-  rowEl.querySelectorAll('.mat-line-corp .loc-floor-btn').forEach(btn => {
-    if (buildingRequired && hasAny && !row.building) btn.classList.add('is-empty');
-    else btn.classList.remove('is-empty');
-  });
+  const corpWrap = rowEl.querySelector('.mat-line-corp');
+  if (corpWrap) {
+    const isEmpty = hasAny && buildingRequired && !row.building;
+    corpWrap.classList.toggle('is-empty', isEmpty);
+    corpWrap.querySelectorAll('.loc-floor-btn').forEach(btn => {
+      btn.classList.toggle('is-empty', isEmpty);
+    });
+  }
 
-  // Этаж (если поле есть)
+  // Этаж
   const isAtticRow = isAtticBuilding(row.building);
-  rowEl.querySelectorAll('.mat-line-floors .loc-floor-btn').forEach(btn => {
-    if (hasAny && !isAtticRow && !row.floor) btn.classList.add('is-empty');
-    else btn.classList.remove('is-empty');
-  });
+  const floorsWrap = rowEl.querySelector('.mat-line-floors');
+  if (floorsWrap) {
+    const isEmpty = hasAny && !isAtticRow && !row.floor;
+    floorsWrap.classList.toggle('is-empty', isEmpty);
+    floorsWrap.querySelectorAll('.loc-floor-btn').forEach(btn => {
+      btn.classList.toggle('is-empty', isEmpty);
+    });
+  }
 
   // Помещения
   const roomInp = rowEl.querySelector('.loc-room-input');
@@ -1363,7 +1356,6 @@ function renderMaterialsForBlock(work) {
       }
 
       if (headRight.children.length > 0) head.appendChild(headRight);
-
       if (head.children.length > 0) card.appendChild(head);
 
       const rowsWrap = document.createElement('div');
@@ -1412,6 +1404,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
+        // === КОРПУС ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -1441,12 +1434,9 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
+        // === ЭТАЖ (всегда, если не Чердак) ===
         const isAtticRow = isAtticBuilding(row.building);
-        const floors = getFloorsFor(objectSelect.value, row.building);
-        const buildingChosen = !buildingRequired || !!row.building;
-        const canChooseFloor = buildingChosen && !isAtticRow && floors && floors.length > 0;
-
-        if (canChooseFloor) {
+        if (!isAtticRow) {
           const floorLine = document.createElement('div');
           floorLine.className = 'mat-line';
           const flbl = document.createElement('span');
@@ -1456,68 +1446,71 @@ function renderMaterialsForBlock(work) {
 
           const fWrap = document.createElement('div');
           fWrap.className = 'mat-line-floors';
+
+          const floors = getFloorsFor(objectSelect.value, row.building) || [];
+          const buildingChosen = !buildingRequired || !!row.building;
+
           floors.forEach(f => {
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'loc-floor-btn' + (row.floor === f ? ' active' : '');
             b.textContent = f;
+            if (!buildingChosen) b.disabled = true;
             b.addEventListener('click', () => {
+              if (b.disabled) return;
               row.floor = f;
               renderMaterialsForBlock(work);
             });
             fWrap.appendChild(b);
           });
+
           floorLine.appendChild(fWrap);
           rowEl.appendChild(floorLine);
         }
 
-        const floorChosen = !!row.floor || isAtticRow;
-        const showRoom = floorChosen;
-
+        // === ПОМЕЩЕНИЯ + КОЛИЧЕСТВО (всегда) ===
         const mainLine = document.createElement('div');
         mainLine.className = 'mat-line';
 
-        if (showRoom) {
-          const rlbl = document.createElement('span');
-          rlbl.className = 'mat-line-label';
-          rlbl.textContent = 'Помещения:';
-          mainLine.appendChild(rlbl);
+        const rlbl = document.createElement('span');
+        rlbl.className = 'mat-line-label';
+        rlbl.textContent = 'Помещения:';
+        mainLine.appendChild(rlbl);
 
-          const rWrap = document.createElement('div');
-          rWrap.className = 'mat-line-room';
+        const rWrap = document.createElement('div');
+        rWrap.className = 'mat-line-room';
 
-          if (isMasterWingBuilding(row.building)) {
-            const p = document.createElement('span');
-            p.className = 'room-prefix';
-            p.textContent = MASTER_WING_PREFIX;
-            rWrap.appendChild(p);
-          }
-
-          const rInput = document.createElement('input');
-          rInput.type = 'text';
-          rInput.className = 'loc-room-input';
-          rInput.inputMode = 'text';
-          rInput.autocomplete = 'off';
-          rInput.placeholder = '12, 15, 20';
-          rInput.value = row.room || '';
-          rInput.dataset.focusKey = r.key + '_room_' + idx;
-
-          setupRoomInput(rInput, (val) => {
-            row.room = val;
-            updateAddFloorButton(card, r.key, work);
-            refreshMatRowHighlight(rowEl, row, buildingRequired);
-          });
-
-          rInput.addEventListener('blur', () => {
-            const finalVal = finalizeRooms(rInput.value);
-            if (rInput.value !== finalVal) rInput.value = finalVal;
-            row.room = finalVal;
-            refreshMatRowHighlight(rowEl, row, buildingRequired);
-          });
-
-          rWrap.appendChild(rInput);
-          mainLine.appendChild(rWrap);
+        if (isMasterWingBuilding(row.building)) {
+          const p = document.createElement('span');
+          p.className = 'room-prefix';
+          p.textContent = MASTER_WING_PREFIX;
+          rWrap.appendChild(p);
         }
+
+        const rInput = document.createElement('input');
+        rInput.type = 'text';
+        rInput.className = 'loc-room-input';
+        rInput.inputMode = 'text';
+        rInput.autocomplete = 'off';
+        rInput.placeholder = '12, 15, 20';
+        rInput.value = row.room || '';
+        rInput.dataset.focusKey = r.key + '_room_' + idx;
+
+        setupRoomInput(rInput, (val) => {
+          row.room = val;
+          updateAddFloorButton(card, r.key, work);
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
+        });
+
+        rInput.addEventListener('blur', () => {
+          const finalVal = finalizeRooms(rInput.value);
+          if (rInput.value !== finalVal) rInput.value = finalVal;
+          row.room = finalVal;
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
+        });
+
+        rWrap.appendChild(rInput);
+        mainLine.appendChild(rWrap);
 
         const qWrap = document.createElement('div');
         qWrap.className = 'mat-line-qty';
@@ -1600,8 +1593,6 @@ function renderMaterialsForBlock(work) {
         rowEl.appendChild(mainLine);
 
         rowsWrap.appendChild(rowEl);
-
-        // Первичная подсветка для строки
         refreshMatRowHighlight(rowEl, row, buildingRequired);
       });
 
@@ -1648,7 +1639,7 @@ function updateAddFloorButton(card, matKey, work) {
   if (!lastRow) { btn.classList.add('hidden'); return; }
 
   const buildingRequired = isBuildingRequired();
-  const ready = isMatRowReadyForMore(lastRow, buildingRequired);
+  const ready = lastRow.qty && lastRow.room && (isAtticBuilding(lastRow.building) || lastRow.floor) && (!buildingRequired || lastRow.building);
   btn.classList.toggle('hidden', !ready);
 }
 
@@ -2168,6 +2159,7 @@ function renderLocationFields(workKey, container) {
       itemEl.appendChild(del);
     }
 
+    // === КОРПУС ===
     const bLabel = document.createElement('label');
     bLabel.className = 'req';
     bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
@@ -2200,85 +2192,80 @@ function renderLocationFields(workKey, container) {
     }
     itemEl.appendChild(bSeg);
 
+    // === ЭТАЖ (всегда, если не Чердак) ===
     const building = item.building;
-    let showFloor = true;
-    if (isBuildingRequired()) {
-      if (!building) showFloor = false;
-      else if (building === 'Чердак') showFloor = false;
-    }
-
-    if (showFloor) {
-      const floorList = getFloorsFor(objectSelect.value, building);
-      if (floorList) {
-        const fLabel = document.createElement('label');
-        fLabel.className = 'req';
-        fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
-        itemEl.appendChild(fLabel);
-
-        const fWrap = document.createElement('div');
-        fWrap.className = 'segmented segmented-floors';
-        fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
-          '<span class="segmented-hint">— выберите —</span>';
-        itemEl.appendChild(fWrap);
-
-        const fSeg = new SegmentedControl(fWrap);
-        fSeg.setOptions(floorList);
-        if (item.floor) fSeg.value = item.floor;
-        fSeg.input.addEventListener('change', () => {
-          item.floor = fSeg.value;
-          renderAdditionalFields();
-        });
-      }
-    }
-
-    const floor = item.floor;
     const isAtticZ = (building === 'Чердак');
-    const showRoom = (!!floor || isAtticZ);
 
-    if (showRoom) {
-      const rLabel = document.createElement('label');
-      rLabel.className = 'req';
-      rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
-      itemEl.appendChild(rLabel);
+    if (!isAtticZ) {
+      const fLabel = document.createElement('label');
+      fLabel.className = 'req';
+      fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
+      itemEl.appendChild(fLabel);
 
-      const rWrap = document.createElement('div');
-      rWrap.className = 'room-wrap';
-      if (building === MASTER_WING) {
-        const prefix = document.createElement('span');
-        prefix.className = 'room-prefix';
-        prefix.textContent = MASTER_WING_PREFIX;
-        rWrap.appendChild(prefix);
-      }
+      const fWrap = document.createElement('div');
+      fWrap.className = 'segmented segmented-floors';
+      fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
+        '<span class="segmented-hint">— выберите —</span>';
+      itemEl.appendChild(fWrap);
 
-      const rInp = document.createElement('input');
-      rInp.type = 'text'; rInp.className = 'req-field';
-      rInp.placeholder = '12, 15, 20';
-      rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
-      rInp.value = item.room || '';
-      rInp.dataset.focusId = workKey + '_room_' + idx;
+      const floorList = getFloorsFor(objectSelect.value, building) || [];
+      const buildingChosen = !isBuildingRequired() || !!building;
 
-      setupRoomInput(rInp, (val) => {
-        item.room = val;
-        refreshAddItemHighlight(itemEl, item);
+      const fSeg = new SegmentedControl(fWrap);
+      fSeg.setOptions(floorList);
+      if (item.floor) fSeg.value = item.floor;
+      fSeg.input.addEventListener('change', () => {
+        item.floor = fSeg.value;
+        renderAdditionalFields();
       });
 
-      rInp.addEventListener('blur', () => {
-        const n = finalizeRooms(rInp.value);
-        if (rInp.value !== n) rInp.value = n;
-        item.room = n;
-        refreshAddItemHighlight(itemEl, item);
-      });
-      rWrap.appendChild(rInp);
-      itemEl.appendChild(rWrap);
-
-      const hintEl = document.createElement('div');
-      hintEl.className = 'hint-small';
-      hintEl.textContent = building === MASTER_WING
-        ? 'Номера через запятую. Все сохранятся с префиксом «к».'
-        : 'Номера через запятую. Сохранятся по возрастанию.';
-      itemEl.appendChild(hintEl);
+      if (!buildingChosen) fSeg.disabled = true;
     }
 
+    // === ПОМЕЩЕНИЯ ===
+    const rLabel = document.createElement('label');
+    rLabel.className = 'req';
+    rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
+    itemEl.appendChild(rLabel);
+
+    const rWrap = document.createElement('div');
+    rWrap.className = 'room-wrap';
+    if (building === MASTER_WING) {
+      const prefix = document.createElement('span');
+      prefix.className = 'room-prefix';
+      prefix.textContent = MASTER_WING_PREFIX;
+      rWrap.appendChild(prefix);
+    }
+
+    const rInp = document.createElement('input');
+    rInp.type = 'text'; rInp.className = 'req-field';
+    rInp.placeholder = '12, 15, 20';
+    rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
+    rInp.value = item.room || '';
+    rInp.dataset.focusId = workKey + '_room_' + idx;
+
+    setupRoomInput(rInp, (val) => {
+      item.room = val;
+      refreshAddItemHighlight(itemEl, item);
+    });
+
+    rInp.addEventListener('blur', () => {
+      const n = finalizeRooms(rInp.value);
+      if (rInp.value !== n) rInp.value = n;
+      item.room = n;
+      refreshAddItemHighlight(itemEl, item);
+    });
+    rWrap.appendChild(rInp);
+    itemEl.appendChild(rWrap);
+
+    const hintEl = document.createElement('div');
+    hintEl.className = 'hint-small';
+    hintEl.textContent = building === MASTER_WING
+      ? 'Номера через запятую. Все сохранятся с префиксом «к».'
+      : 'Номера через запятую. Сохранятся по возрастанию.';
+    itemEl.appendChild(hintEl);
+
+    // === КОЛИЧЕСТВО ===
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
 
@@ -2338,8 +2325,6 @@ function renderLocationFields(workKey, container) {
     itemEl.appendChild(qLine);
 
     bodyEl.appendChild(itemEl);
-
-    // Первичная подсветка
     refreshAddItemHighlight(itemEl, item);
   });
 
@@ -2784,7 +2769,7 @@ function formatName(value) {
 }
 
 // ============================================
-//  ПОДСВЕТКА ПОЛЕЙ
+//  ПОДСВЕТКА ПОЛЕЙ ШАПКИ
 // ============================================
 function updateFieldState(el) {
   if (el.id === 'name') { updateNameVisual(el); return; }
@@ -2793,14 +2778,20 @@ function updateFieldState(el) {
     const hoursEl = document.querySelector('[data-focus-id="mentor_hours_' + idx + '"]');
     updateNameVisual(el, hoursEl); return;
   }
+  // Шапка и доп. работы обрабатываются отдельно
   const wrap = el.closest && el.closest('.segmented');
   if (wrap) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled'); return;
     }
-    // НЕ трогаем is-empty у сегментов внутри доп. работ — этим занимается
-    // refreshAddItemHighlight (учитывает "тронута ли строка").
-    wrap.classList.remove('is-filled');
+    // is-empty подсветку внутри доп. работ ведёт refreshAddItemHighlight
+    // Здесь обрабатываем только шапку «Объект»
+    if (el.id === 'object') {
+      wrap.classList.remove('is-empty', 'is-filled');
+      const isEmpty = !el.value || !el.value.trim();
+      wrap.classList.toggle('is-empty', isEmpty);
+      wrap.classList.toggle('is-filled', !isEmpty);
+    }
     return;
   }
   if (!el.classList.contains('req-field')) return;
