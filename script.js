@@ -223,7 +223,7 @@ function isMatRowReadyForMore(row, buildingRequired) {
 }
 
 // ============================================
-//  ФОРМАТИРОВАНИЕ
+//  ФОРМАТИРОВАНИЕ ЧИСЕЛ
 // ============================================
 function formatQty(raw) {
   let s = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
@@ -242,18 +242,60 @@ function formatQty(raw) {
   return intPart;
 }
 
+// ============================================
+//  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
+// ============================================
+
+// Мягкая очистка — оставляет только цифры и пробелы (для зaделки)
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').replace(/^\s+/, '');
   return s;
 }
 
+// Живое форматирование ввода помещений:
+// любой нецифровой символ → ", "
+// Если последний символ — разделитель, оставляем его как ", " в конце.
+function liveFormatRooms(raw) {
+  let s = String(raw == null ? '' : raw);
+  if (!s) return '';
+  const trailingDelim = /[^0-9]$/.test(s);
+
+  // Всё, что не цифра → ", "
+  s = s.replace(/[^0-9]+/g, ', ');
+  // Убираем ведущие разделители
+  s = s.replace(/^(?:,\s*)+/, '');
+  // Нормализуем ", "
+  s = s.replace(/,\s*/g, ', ');
+  s = s.trim();
+
+  if (trailingDelim) {
+    if (!s) s = '';
+    else s += ', ';
+  }
+  return s;
+}
+
+// Итоговое значение помещений:
+// числа по возрастанию, без повторов, через ", "
+function finalizeRooms(raw) {
+  const nums = String(raw == null ? '' : raw)
+    .split(',')
+    .map(p => p.replace(/[^0-9]/g, ''))
+    .filter(p => p !== '')
+    .map(p => parseInt(p, 10))
+    .filter(n => isFinite(n) && n > 0);
+  const set = new Set(nums);
+  return Array.from(set).sort((a, b) => a - b).join(', ');
+}
+
+// Нормализация — как finalizeRooms, но ещё используется для доп. работ
 function normalizeZadelkaRoom(value) {
-  let s = String(value == null ? '' : value);
-  s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-  const parts = s.split(' ').filter(p => p !== '');
-  const set = new Set();
-  parts.forEach(p => { const n = parseInt(p, 10); if (isFinite(n) && n > 0) set.add(n); });
+  const nums = String(value == null ? '' : value)
+    .split(/[^0-9]+/)
+    .map(p => parseInt(p, 10))
+    .filter(n => isFinite(n) && n > 0);
+  const set = new Set(nums);
   return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
@@ -293,6 +335,9 @@ function stripPrefixFromRoom(room) {
   return room.split(',').map(p => p.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
 }
 
+// ============================================
+//  СОРТИРОВКА
+// ============================================
 function workWeight(work) {
   if (work === 'Демонтаж') return 0;
   if (work === 'Монтаж')   return 1;
@@ -893,7 +938,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
-        // === Помещение + количество ===
+        // === Помещения + количество ===
         const floorIsNo = row.floor === 'Нет';
         const showRoom = !floorIsNo;
 
@@ -903,7 +948,7 @@ function renderMaterialsForBlock(work) {
         if (showRoom) {
           const rlbl = document.createElement('span');
           rlbl.className = 'mat-line-label';
-          rlbl.textContent = 'Пом.:';
+          rlbl.textContent = 'Помещения:';
           mainLine.appendChild(rlbl);
 
           const rWrap = document.createElement('div');
@@ -919,19 +964,31 @@ function renderMaterialsForBlock(work) {
           const rInput = document.createElement('input');
           rInput.type = 'text';
           rInput.className = 'loc-room-input';
-          rInput.inputMode = 'numeric';
-          rInput.maxLength = 4;
+          rInput.inputMode = 'text';
           rInput.autocomplete = 'off';
+          rInput.placeholder = '12, 15, 20';
           rInput.value = row.room === 'Нет' ? '' : (row.room || '');
           rInput.dataset.focusKey = r.key + '_room_' + idx;
           if (!row.room) rInput.classList.add('is-empty');
 
+          // При вводе — сразу расставляем ", " вместо любых разделителей
           rInput.addEventListener('input', () => {
-            let v = rInput.value.replace(/[^0-9]/g, '').slice(0, 4);
-            if (rInput.value !== v) rInput.value = v;
-            row.room = v;
-            rInput.classList.toggle('is-empty', !v);
+            const formatted = liveFormatRooms(rInput.value);
+            if (formatted !== rInput.value) {
+              rInput.value = formatted;
+              try { rInput.setSelectionRange(formatted.length, formatted.length); } catch (_) {}
+            }
+            row.room = rInput.value;
+            rInput.classList.toggle('is-empty', !rInput.value);
             updateAddFloorButton(card, r.key, work);
+          });
+
+          // При потере фокуса — сортировка по возрастанию, без дублей
+          rInput.addEventListener('blur', () => {
+            const finalVal = finalizeRooms(rInput.value);
+            if (rInput.value !== finalVal) rInput.value = finalVal;
+            row.room = finalVal;
+            rInput.classList.toggle('is-empty', !finalVal);
           });
 
           rWrap.appendChild(rInput);
@@ -1090,7 +1147,7 @@ function validateMainFieldsForBlock(work) {
         return false;
       }
       if (row.floor !== 'Нет' && !isAtticRow && !row.room) {
-        show('⚠️ ' + label + ', этаж ' + (i + 1) + ': укажите помещение', 'err');
+        show('⚠️ ' + label + ', этаж ' + (i + 1) + ': укажите помещения', 'err');
         return false;
       }
     }
@@ -1158,7 +1215,7 @@ function validateAdditionalOnly() {
       if (!isAtticZ && !it.floor) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err'); return false; }
       const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
-      if (!isAtticZ && !floorIsNo && !r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещение', 'err'); return false; }
+      if (!isAtticZ && !floorIsNo && !r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещения', 'err'); return false; }
       const v = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(v) || v <= 0) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err'); return false; }
     }
@@ -1254,7 +1311,8 @@ function applyMainBlockToJournal(work) {
       const building = row.building || '';
       const floor = isAtticBuilding(building) ? ATTIC : (row.floor || '');
       const roomNone = (row.floor === 'Нет');
-      const room = roomNone ? 'Нет' : applyPrefixToRoom(normalizeZadelkaRoom(row.room || ''), building);
+      const normalizedRoom = finalizeRooms(row.room || '');
+      const room = roomNone ? 'Нет' : applyPrefixToRoom(normalizedRoom, building);
 
       const newEntry = {
         kind: 'main',
@@ -1474,7 +1532,7 @@ function renderLocationFields(workKey, container) {
     if (showRoom) {
       const rLabel = document.createElement('label');
       rLabel.className = 'req';
-      rLabel.innerHTML = 'Помещение <span class="req-star">*</span>';
+      rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
       group.appendChild(rLabel);
 
       const rWrap = document.createElement('div');
@@ -1488,18 +1546,21 @@ function renderLocationFields(workKey, container) {
 
       const rInp = document.createElement('input');
       rInp.type = 'text'; rInp.className = 'req-field';
-      rInp.placeholder = '12 15 20';
+      rInp.placeholder = '12, 15, 20';
       rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
       rInp.value = item.room || '';
       rInp.dataset.focusId = workKey + '_room_' + idx;
       rInp.addEventListener('input', () => {
         const before = rInp.value;
-        const after = sanitizeZadelkaRoomInput(before);
-        if (before !== after) { rInp.value = after; rInp.setSelectionRange(after.length, after.length); }
+        const after = liveFormatRooms(before);
+        if (before !== after) {
+          rInp.value = after;
+          try { rInp.setSelectionRange(after.length, after.length); } catch (_) {}
+        }
         item.room = rInp.value;
       });
       rInp.addEventListener('blur', () => {
-        const n = normalizeZadelkaRoom(rInp.value);
+        const n = finalizeRooms(rInp.value);
         if (rInp.value !== n) rInp.value = n;
         item.room = n;
       });
@@ -1509,8 +1570,8 @@ function renderLocationFields(workKey, container) {
       const hint = document.createElement('div');
       hint.className = 'hint-small';
       hint.textContent = building === MASTER_WING
-        ? 'Номера через пробел. Все сохранятся с префиксом «к».'
-        : 'Номера через пробел. Сохранятся через запятую по возрастанию.';
+        ? 'Номера через запятую. Все сохранятся с префиксом «к».'
+        : 'Номера через запятую. Сохранятся по возрастанию.';
       group.appendChild(hint);
     }
 
@@ -1945,7 +2006,7 @@ function removeJournalEntry(idx) {
 }
 
 // ============================================
-//  ФОРМАТ
+//  ФОРМАТ ИМЕНИ
 // ============================================
 function formatName(value) {
   let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
@@ -2000,18 +2061,15 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОБРАБОТЧИКИ ШАПКИ
-//  При смене объекта — сброс данных блоков и ПЕРЕСЧЁТ их блокировки
 // ============================================
 objectSelect.addEventListener('change', () => {
   updateFieldState(objectSelect);
 
-  // Сбрасываем данные всех блоков
   MAIN_WORKS.forEach(({ work }) => {
     const st = mainState[work];
     if (st) st.materials = makeEmptyMaterialState();
   });
 
-  // Пересчитываем блокировку и рендерим — здесь ключевое!
   updateAllMainBlocks();
   updateAdditionalAccessibility();
 
