@@ -413,6 +413,33 @@ function compareEntries(a, b) {
   return workWeight(a.work) - workWeight(b.work);
 }
 
+/**
+ * Сортировка для отправки в Google-таблицу.
+ * Сквозная: сначала по этажу (Подвал → 1 → 2 → 3 → … → Чердак → без этажа),
+ * потом по номеру помещения (по возрастанию),
+ * потом по типу работы внутри помещения.
+ * Наставничество уходит в самый конец.
+ */
+function compareForSheet(a, b) {
+  const aMent = a.kind === 'mentorship';
+  const bMent = b.kind === 'mentorship';
+  if (aMent !== bMent) return aMent ? 1 : -1;
+
+  const fa = floorWeight(a.floor || '');
+  const fb = floorWeight(b.floor || '');
+  if (fa !== fb) return fa - fb;
+
+  const ra = roomSortKey(a.room || '');
+  const rb = roomSortKey(b.room || '');
+  if (ra !== rb) return ra - rb;
+
+  const sa = String(a.room || '');
+  const sb = String(b.room || '');
+  if (sa !== sb) return sa.localeCompare(sb);
+
+  return workWeight(a.work) - workWeight(b.work);
+}
+
 function formatFloorLabel(floor) {
   if (!floor) return '';
   if (floor === 'Подвал') return 'Подвал';
@@ -820,7 +847,6 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // === Шапка: [название для [система]] слева, [d=] [вид] справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
 
@@ -2160,7 +2186,8 @@ async function sendAll() {
       if (!proceed) { show('⚠️ Отправка отменена.', 'err'); return; }
     }
 
-    const sortedJournal = journal.slice().sort(compareEntries);
+    // Сортировка для таблицы: сквозная по этажу, потом по помещению
+    const sortedJournal = journal.slice().sort(compareForSheet);
     const records = [];
 
     sortedJournal.forEach(entry => {
