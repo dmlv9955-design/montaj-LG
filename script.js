@@ -69,7 +69,8 @@ const LOCATION_WORKS = [
   { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   },
   { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру',            unit: 'м'   },
   { key: 'zadelka',      label: 'Штукатурка',                        unit: 'шт'  },
-  { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' }
+  { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' },
+  { key: 'strahovka',    label: 'Страховка лестницы',                unit: 'ч'   }
 ];
 
 const SHEET_WORK_MONTAGE = [
