@@ -306,9 +306,6 @@ body.dark .segmented.is-empty .segmented-btn:not(.active) { color: #fca5a5; }
 .segmented.segmented-disabled .segmented-hint { display: block; }
 .segmented.segmented-disabled .segmented-btn  { display: none; }
 
-/* ============================================ */
-/*  ЭТАЖИ — КАПСУЛЫ В ОДНУ СТРОКУ                */
-/* ============================================ */
 .segmented.segmented-floors {
   flex-direction: row;
   flex-wrap: wrap;
@@ -463,7 +460,6 @@ body.dark .variant-system.variant-system-aps { background: #3a1d1f; border-color
 .variant-system.variant-system-soue { background: #e6f1fb; border-color: #bcd8f0; color: #2a6ba0; }
 body.dark .variant-system.variant-system-soue { background: #18293a; border-color: #3a5f80; color: #92c0e6; }
 
-/* АПС/СОУЭ — общая система (фиолетовый бейдж) */
 .variant-system.variant-system-both {
   background: #ede9fe;
   border-color: #c4b5fd;
@@ -583,9 +579,6 @@ body.dark .variant-system.variant-system-both {
 .btn-add-mentor:hover { background: var(--hover-bg); }
 .btn-add-mentor:active { transform: scale(.98); }
 
-/* ============================================ */
-/*  АККОРДЕОН ОСНОВНЫХ РАБОТ                    */
-/* ============================================ */
 .accordion-item {
   margin-bottom: 10px;
   border-radius: 12px;
@@ -689,9 +682,6 @@ body.dark .accordion-header-montazh {
 }
 .btn-save-work-montazh:hover { filter: brightness(1.05); }
 
-/* ============================================ */
-/*  КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» (общая)           */
-/* ============================================ */
 .btn-add-journal {
   width: 100%;
   padding: 18px 16px;
@@ -724,9 +714,6 @@ body.dark .btn-add-journal:hover:not(:disabled) {
 
 #add-journal-card { padding: 14px; }
 
-/* ============================================ */
-/*  ЖУРНАЛ                                      */
-/* ============================================ */
 .journal-building-title {
   font-size: 11px; font-weight: 700; letter-spacing: .8px;
   text-transform: uppercase; color: var(--border-focus);
@@ -884,9 +871,6 @@ body.dark .toast { background: #22c55e; color: #052e16; }
 .zadelka-remove-btn:hover { background: rgba(239, 68, 68, .18); }
 .zadelka-remove-btn:active { transform: scale(.97); }
 
-/* ============================================ */
-/*  ЛОКАЦИЯ ПОД КАЖДЫМ МАТЕРИАЛОМ                */
-/* ============================================ */
 .material-row {
   padding: 10px 0 8px;
   border-bottom: 1px dashed var(--border);
@@ -1006,9 +990,6 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
 }
 
-/* ============================================ */
-/*  БЛОК МОНТАЖ/ДЕМОНТАЖ — ЗАБЛОКИРОВАН           */
-/* ============================================ */
 .accordion-item.main-block-locked .accordion-body {
   pointer-events: none;
   opacity: .5;
@@ -1030,6 +1011,8 @@ body.dark .toast { background: #22c55e; color: #052e16; }
 
 /* ============================================ */
 /*  МАТЕРИАЛ С НЕСКОЛЬКИМИ ЭТАЖАМИ                */
+/*  (обновлено: название и «для X» — слева,      */
+/*   d= и вид — справа)                          */
 /* ============================================ */
 .mat-card {
   padding: 12px 0 14px;
@@ -1045,14 +1028,26 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.mat-head-name {
+.mat-head-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  order: 1;
+}
+.mat-head-left .mat-head-name {
   font-size: 12px;
   font-weight: 700;
   color: var(--text-label);
   line-height: 1.3;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  order: 1;
+}
+.mat-head-left .variant-for,
+.mat-head-left .variant-system {
+  flex: 0 0 auto;
 }
 .mat-head-right {
   display: flex;
@@ -1063,7 +1058,6 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   order: 2;
 }
 .mat-head-right .variant-badge,
-.mat-head-right .variant-system,
 .mat-head-right .variant-prefix {
   flex: 0 0 auto;
 }
