@@ -130,7 +130,6 @@ const MATERIALS = [
   }
 ];
 
-// Плоская карта materialKey → { mat, row }
 const MATERIAL_BY_KEY = (() => {
   const m = {};
   MATERIALS.forEach(mat => mat.rows.forEach(r => { m[r.key] = { mat, row: r }; }));
@@ -142,12 +141,8 @@ const MATERIAL_BY_KEY = (() => {
 // ============================================
 const mainState = {};
 
-// Пустое состояние одного материала в блоке
-function makeEmptyMaterialEntry() {
-  return { qty: '', floor: '', room: '' };
-}
+function makeEmptyMaterialEntry() { return { qty: '', floor: '', room: '' }; }
 
-// Полный набор материалов блока
 function makeEmptyMaterialState() {
   const s = {};
   MATERIALS.forEach(mat => mat.rows.forEach(r => { s[r.key] = makeEmptyMaterialEntry(); }));
@@ -171,7 +166,6 @@ function initAdditionalState() { additionalState = makeAdditionalState(); }
 
 // ============================================
 //  ЖУРНАЛ
-//  kind=main запись: { kind, building, work, floor, room, room_none, is_master_wing, materials: {key: qty} }
 // ============================================
 const journal = [];
 
@@ -235,7 +229,6 @@ function hasActiveAdditional() {
   });
 }
 
-// Есть ли хоть один заполненный материал в блоке
 function isMainBlockEmpty(work) {
   const st = mainState[work];
   if (!st) return true;
@@ -692,7 +685,6 @@ function refreshNameGates() {
 
 // ============================================
 //  HTML-ШАБЛОН БЛОКА
-//  Корпус оставляем на блоке, этаж/помещение теперь в каждой строке материала.
 // ============================================
 function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
   const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
@@ -743,6 +735,7 @@ function initMainWorks() {
       building: '',
       materials: makeEmptyMaterialState(),
       expanded: !!alwaysOpen,
+      wrapper: wrapper,
       buildingSeg: null,
       elements: {
         header: wrapper.querySelector('.accordion-header'),
@@ -770,7 +763,6 @@ function initMainWorks() {
 
     st.elements.buildingInput.addEventListener('change', () => {
       st.building = st.elements.buildingInput.value;
-      // Сбрасываем локации материалов, если корпус изменился (кроме Чердака — там свой room)
       for (const k in st.materials) {
         st.materials[k].floor = '';
         st.materials[k].room = '';
@@ -818,18 +810,22 @@ function updateMainBlock(work) {
     }
   }
 
-  // Если корпус сменился вне этого вызова — подхватим
   st.building = els.buildingInput.value;
-
   renderMaterialsForBlock(work);
 }
 
+// Заголовок + весь блок целиком: активен только если имя+объект валидны
 function updateHeaderEnabledState(work) {
   const st = mainState[work];
   if (!st || !st.elements) return;
   const nameOk = isNameValid(nameInput.value);
   const objOk = !!objectSelect.value;
-  st.elements.header.disabled = !(nameOk && objOk);
+  const enabled = nameOk && objOk;
+
+  st.elements.header.disabled = !enabled;
+  if (st.wrapper) {
+    st.wrapper.classList.toggle('main-block-locked', !enabled);
+  }
 }
 
 function updateAllMainBlocks() {
@@ -848,7 +844,6 @@ function renderMaterialsForBlock(work) {
   const container = st.elements.materialsCont;
   if (!container) return;
 
-  // Сохраняем фокус, если он внутри этого контейнера
   const active = document.activeElement;
   const inThis = active && container.contains(active);
   const focusId = inThis && active.dataset ? active.dataset.focusId : null;
@@ -857,11 +852,6 @@ function renderMaterialsForBlock(work) {
   container.innerHTML = '';
   const state = st.materials;
   const building = st.building || st.elements.buildingInput.value;
-  const needBuild = isBuildingRequired();
-  const floors = getFloorsFor(objectSelect.value, building);
-  const isAttic = isAtticBuilding(building);
-  const isMasterWing = isMasterWingBuilding(building);
-  const canChooseFloor = !isAttic && floors && floors.length > 0;
 
   MATERIALS.forEach(mat => {
     const group = document.createElement('div');
@@ -882,7 +872,6 @@ function renderMaterialsForBlock(work) {
       const rowEl = document.createElement('div');
       rowEl.className = 'material-row';
 
-      // === Строка количества ===
       const line = document.createElement('div');
       line.className = 'variant-line';
 
@@ -946,16 +935,12 @@ function renderMaterialsForBlock(work) {
         clearBtn.style.display = qInput.value ? 'inline-flex' : 'none';
         updateMinusState(qInput, minusBtn);
 
-        // Показываем / прячем локацию
         const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
         const hasLoc = me.floor || me.room;
         const shouldShow = hasQty || hasLoc;
         const locEl = rowEl.querySelector('.material-loc');
-        if (shouldShow && !locEl) {
-          renderMaterialLocation(rowEl, work, r, me);
-        } else if (!shouldShow && locEl) {
-          locEl.remove();
-        }
+        if (shouldShow && !locEl) renderMaterialLocation(rowEl, work, r, me);
+        else if (!shouldShow && locEl) locEl.remove();
       });
 
       minusBtn.addEventListener('click', () => {
@@ -991,12 +976,9 @@ function renderMaterialsForBlock(work) {
       updateMinusState(qInput, minusBtn);
       rowEl.appendChild(line);
 
-      // === Локация (если qty или локация заполнены) ===
       const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
       const hasLoc = me.floor || me.room;
-      if (hasQty || hasLoc) {
-        renderMaterialLocation(rowEl, work, r, me);
-      }
+      if (hasQty || hasLoc) renderMaterialLocation(rowEl, work, r, me);
 
       variantsWrap.appendChild(rowEl);
     });
@@ -1004,7 +986,6 @@ function renderMaterialsForBlock(work) {
     container.appendChild(group);
   });
 
-  // Восстанавливаем фокус
   if (focusId) {
     const el = container.querySelector('[data-focus-id="' + focusId + '"]');
     if (el) {
@@ -1017,7 +998,6 @@ function renderMaterialsForBlock(work) {
   }
 }
 
-// Рендер блока «Этаж + Помещение» под строкой материала
 function renderMaterialLocation(rowEl, work, r, me) {
   const st = mainState[work];
   const building = st.building || st.elements.buildingInput.value;
@@ -1055,7 +1035,6 @@ function renderMaterialLocation(rowEl, work, r, me) {
     loc.appendChild(fWrap);
   }
 
-  // Помещение — только если не Чердак и не "Нет"
   const showRoom = !floorIsNo;
   if (showRoom) {
     const rlbl = document.createElement('span');
@@ -1277,7 +1256,6 @@ function applyAdditionalToJournal() {
 
 // ============================================
 //  ПРИМЕНЕНИЕ ОСНОВНОГО БЛОКА
-//  Группируем материалы по (floor, room), каждая группа = одна journal-запись
 // ============================================
 function applyMainBlockToJournal(work) {
   const st = mainState[work];
@@ -1285,7 +1263,6 @@ function applyMainBlockToJournal(work) {
   const building = st.building;
   const isMasterWing = isMasterWingBuilding(building);
 
-  // Группируем: ключ = floor + '|' + room
   const groups = {};
   for (const k in st.materials) {
     const me = st.materials[k];
@@ -1326,7 +1303,6 @@ function applyMainBlockToJournal(work) {
     );
 
     if (idx !== -1) {
-      // Сливаем материалы
       const target = journal[idx].materials || {};
       Object.keys(newEntry.materials).forEach(k => {
         const oldQ = parseFloat(String(target[k] || '').replace(',', '.')) || 0;
@@ -1346,7 +1322,7 @@ function applyMainBlockToJournal(work) {
 }
 
 // ============================================
-//  ОБЩАЯ КНОПКА: «ДОБАВИТЬ ВСЁ В ЖУРНАЛ»
+//  ОБЩАЯ КНОПКА
 // ============================================
 function addAllToJournal() {
   if (_addingToJournal) return false;
@@ -1959,7 +1935,6 @@ function editJournalEntry(idx) {
     updateMainBlock(entry.work);
     if (st.buildingSeg) st.buildingSeg.value = st.building;
 
-    // Восстанавливаем материалы в строки блока
     st.materials = makeEmptyMaterialState();
     Object.keys(entry.materials || {}).forEach(k => {
       if (st.materials[k]) {
