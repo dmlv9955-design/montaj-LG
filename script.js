@@ -197,7 +197,6 @@ function hasActiveAdditional() {
   });
 }
 
-// Есть ли что-то в блоке Монтаж/Демонтаж
 function isMainBlockEmpty(work) {
   const st = mainState[work];
   if (!st) return true;
@@ -210,20 +209,15 @@ function isMainBlockEmpty(work) {
   return true;
 }
 
-// Строка материала заполнена полностью (корпус если нужен + этаж + кабинет)
 function isMatRowLocationComplete(row, buildingRequired) {
   if (buildingRequired && !row.building) return false;
-  if (isAtticBuilding(row.building)) {
-    // Чердак: этаж не нужен, только кабинет
-    return true;
-  }
+  if (isAtticBuilding(row.building)) return true;
   if (!row.floor) return false;
   if (row.floor === 'Нет') return true;
   if (!row.room) return false;
   return true;
 }
 
-// Строка «готова» — есть кабинет/этаж/корпус (можно добавлять следующую)
 function isMatRowReadyForMore(row, buildingRequired) {
   return isMatRowLocationComplete(row, buildingRequired);
 }
@@ -661,7 +655,7 @@ function refreshNameGates() {
 }
 
 // ============================================
-//  HTML-ШАБЛОН БЛОКА (без корпуса — он теперь внутри строк материала)
+//  HTML-ШАБЛОН БЛОКА
 // ============================================
 function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
   const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
@@ -781,7 +775,6 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // Заголовок карточки
       const head = document.createElement('div');
       head.className = 'mat-head';
 
@@ -807,7 +800,6 @@ function renderMaterialsForBlock(work) {
 
       card.appendChild(head);
 
-      // Строки
       const rowsWrap = document.createElement('div');
       rowsWrap.className = 'mat-rows';
       card.appendChild(rowsWrap);
@@ -816,7 +808,6 @@ function renderMaterialsForBlock(work) {
         const rowEl = document.createElement('div');
         rowEl.className = 'mat-row';
 
-        // Номер строки
         if (data.rows.length > 1) {
           const numEl = document.createElement('div');
           numEl.className = 'mat-row-num';
@@ -824,7 +815,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(numEl);
         }
 
-        // Кнопка удалить (кроме первой строки)
         if (idx > 0) {
           const del = document.createElement('button');
           del.type = 'button';
@@ -948,7 +938,6 @@ function renderMaterialsForBlock(work) {
           mainLine.appendChild(rWrap);
         }
 
-        // Количество
         const qWrap = document.createElement('div');
         qWrap.className = 'mat-line-qty';
 
@@ -1028,7 +1017,6 @@ function renderMaterialsForBlock(work) {
         rowsWrap.appendChild(rowEl);
       });
 
-      // Кнопка «Добавить этаж» — показывается, если последняя строка готова
       const addFloorBtn = document.createElement('button');
       addFloorBtn.type = 'button';
       addFloorBtn.className = 'mat-add-floor';
@@ -1042,12 +1030,10 @@ function renderMaterialsForBlock(work) {
 
       container.appendChild(card);
 
-      // Обновить видимость кнопки
       updateAddFloorButton(card, r.key, work);
     });
   });
 
-  // Восстановить фокус
   if (focusKey) {
     const el = container.querySelector('[data-focus-key="' + focusKey + '"]');
     if (el) {
@@ -1060,7 +1046,6 @@ function renderMaterialsForBlock(work) {
   }
 }
 
-// Показать/скрыть кнопку «Добавить этаж» у карточки материала
 function updateAddFloorButton(card, matKey, work) {
   const st = mainState[work];
   if (!st) return;
@@ -1249,7 +1234,6 @@ function applyAdditionalToJournal() {
 
 // ============================================
 //  ПРИМЕНЕНИЕ ОСНОВНОГО БЛОКА
-//  Каждая строка материала — это отдельная позиция (корпус+этаж+кабинет)
 // ============================================
 function applyMainBlockToJournal(work) {
   const st = mainState[work];
@@ -1379,7 +1363,7 @@ function addAllToJournal() {
 }
 
 // ============================================
-//  РЕНДЕР ДОП. РАБОТ (как было)
+//  РЕНДЕР ДОП. РАБОТ
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -1765,7 +1749,7 @@ function bumpQty(input, setter, delta, clearBtn, minusBtn) {
 }
 
 // ============================================
-//  ЖУРНАЛ — РЕНДЕР
+//  ЖУРНАЛ
 // ============================================
 function renderJournalEntryElement(entry) {
   const realIdx = journal.indexOf(entry);
@@ -1913,11 +1897,9 @@ function editJournalEntry(idx) {
     renderJournal();
     if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(entry.work);
 
-    // Восстанавливаем строку в соответствующий материал
     const matKey = Object.keys(entry.materials || {})[0];
     if (matKey && st.materials[matKey]) {
       const data = st.materials[matKey];
-      // Ищем существующую пустую строку или добавляем
       let targetRow = data.rows.find(r => !r.qty && !r.building && !r.floor && !r.room);
       if (!targetRow) { targetRow = makeEmptyMatRow(); data.rows.push(targetRow); }
       targetRow.building = entry.building || '';
@@ -2018,15 +2000,21 @@ function updateFieldState(el) {
 
 // ============================================
 //  ОБРАБОТЧИКИ ШАПКИ
+//  При смене объекта — сброс данных блоков и ПЕРЕСЧЁТ их блокировки
 // ============================================
 objectSelect.addEventListener('change', () => {
   updateFieldState(objectSelect);
-  // При смене объекта сбрасываем данные блоков
+
+  // Сбрасываем данные всех блоков
   MAIN_WORKS.forEach(({ work }) => {
     const st = mainState[work];
-    if (st) { st.materials = makeEmptyMaterialState(); renderMaterialsForBlock(work); }
+    if (st) st.materials = makeEmptyMaterialState();
   });
+
+  // Пересчитываем блокировку и рендерим — здесь ключевое!
+  updateAllMainBlocks();
   updateAdditionalAccessibility();
+
   LOCATION_WORKS.forEach(w => {
     if (additionalState[w.key]) additionalState[w.key].items = [makeLocationItem()];
   });
