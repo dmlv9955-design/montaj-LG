@@ -453,6 +453,18 @@ body.dark .variant-system.variant-system-aps { background: #3a1d1f; border-color
 .variant-system.variant-system-soue { background: #e6f1fb; border-color: #bcd8f0; color: #2a6ba0; }
 body.dark .variant-system.variant-system-soue { background: #18293a; border-color: #3a5f80; color: #92c0e6; }
 
+/* АПС/СОУЭ — общая система (фиолетовый бейдж) */
+.variant-system.variant-system-both {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #5b21b6;
+}
+body.dark .variant-system.variant-system-both {
+  background: #2e1a47;
+  border-color: #5b3a80;
+  color: #c4b5fd;
+}
+
 .qty-btn {
   flex: 0 0 26px; width: 26px; height: 30px; padding: 0;
   border: 1.5px solid var(--border); border-radius: 8px;
