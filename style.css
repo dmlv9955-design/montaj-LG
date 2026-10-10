@@ -1622,3 +1622,110 @@ body.app-blocked {
   color: var(--text-hint);
   font-style: italic;
 }
+
+/* ============================================ */
+/*  МОДАЛКА УВЕДОМЛЕНИЯ О НЕПОЛНЫХ ПОЛЯХ         */
+/* ============================================ */
+.alert-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 25, 20, .72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 700;
+  padding: 20px;
+}
+.alert-overlay.show { display: flex; }
+
+.alert-modal {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 24px 22px 18px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  animation: alertPop .28s cubic-bezier(.3, 1.3, .6, 1);
+}
+
+@keyframes alertPop {
+  from { opacity: 0; transform: scale(.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.alert-icon {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.alert-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.alert-text {
+  font-size: 14px;
+  color: var(--text-label);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.alert-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+.alert-btn {
+  flex: 1 1 0;
+  padding: 12px 10px;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .1s, filter .15s;
+}
+.alert-btn:active { transform: scale(.97); }
+.alert-btn-ok {
+  background: var(--input-disabled-bg);
+  color: var(--text-main);
+  border: 1.5px solid var(--border);
+}
+.alert-btn-ok:hover { background: var(--hover-bg); }
+.alert-btn-fix {
+  background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+  color: #fff;
+  box-shadow: 0 4px 12px var(--btn-shadow);
+}
+.alert-btn-fix:hover { filter: brightness(1.05); }
+
+/* Мигающая подсветка на проблемном поле */
+.pulse-attention {
+  animation: pulseAttention 0.6s ease-in-out 3;
+  box-shadow: 0 0 0 4px rgba(217, 115, 104, .55) !important;
+  border-color: #d97368 !important;
+  border-radius: 10px;
+}
+
+@keyframes pulseAttention {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(217, 115, 104, .25); }
+  50%      { box-shadow: 0 0 0 8px rgba(217, 115, 104, .65); }
+}
+
+/* Пункт внутри группы доп. работ */
+.add-item {
+  padding: 4px 0 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.add-item:last-child { border-bottom: none; padding-bottom: 0; }
+.add-item .zadelka-separator:first-child { margin-top: 0; }
