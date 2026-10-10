@@ -78,9 +78,9 @@ function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label ==
 //  МАТЕРИАЛЫ
 // ============================================
 const MATERIALS = [
-  { id: 'cable', label: 'Кабель КПСЭнг(A)FRHF 1x2x', unit: 'м', rows: [
-    { key: 'cable_075_aps', variant: 'х0,75', system: 'АПС', tableName: 'Кабель КПСЭнг(A)FRHF 1x2x0,75' },
-    { key: 'cable_1_soue',  variant: 'х1',    system: 'СОУЭ', tableName: 'Кабель КПСЭнг(A)FRHF 1x2x1' }
+  { id: 'cable', label: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x', unit: 'м', rows: [
+    { key: 'cable_075_aps', variant: 'х0,75', system: 'АПС', tableName: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x0,75' },
+    { key: 'cable_1_soue',  variant: 'х1',    system: 'СОУЭ', tableName: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x1' }
   ]},
   { id: 'channel', label: 'Кабель-канал', unit: 'м', rows: [
     { key: 'channel_40x25', variant: '40х25', system: 'АПС/СОУЭ', primary: true, tableName: 'Кабель-канал ECOLINE 40х25 IEK' },
