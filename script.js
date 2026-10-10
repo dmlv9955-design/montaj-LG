@@ -128,6 +128,10 @@ const MATERIAL_BY_KEY = (() => {
 const mainState = {};
 const _mainBlockStatus = {};
 
+// Карты раскрытия сворачиваемых групп
+const _matGroupExpanded = {};   // 'work|matId' → bool
+const _addGroupExpanded = {};   // 'add|workKey' → bool
+
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
 
 function makeEmptyMaterialState() {
@@ -136,6 +140,10 @@ function makeEmptyMaterialState() {
     s[r.key] = { rows: [makeEmptyMatRow()] };
   }));
   return s;
+}
+
+function clearMatGroupExpansion() {
+  for (const k in _matGroupExpanded) delete _matGroupExpanded[k];
 }
 
 // ============================================
@@ -190,6 +198,7 @@ function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
 // ============================================
 let _sending = false;
 let _addingToJournal = false;
+let _reviewOpen = false;
 
 // ============================================
 //  ВЕРХНЯЯ КНОПКА «ОТПРАВИТЬ»
@@ -274,16 +283,7 @@ function formatQty(raw) {
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
-//  Любой нецифровой символ → «, ».
-//  isDeleting = true (пользователь стирает) — НЕ дописываем ", "
-//  в конце, иначе последнюю цифру невозможно удалить.
 // ============================================
-function sanitizeZadelkaRoomInput(value) {
-  let s = String(value == null ? '' : value);
-  s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').replace(/^\s+/, '');
-  return s;
-}
-
 function liveFormatRooms(raw, isDeleting) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
@@ -295,8 +295,6 @@ function liveFormatRooms(raw, isDeleting) {
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
 
-  // Автопробел после «,» только когда пользователь ВВОДИТ,
-  // но не когда стирает — иначе получается «залипание» на «12, ».
   if (trailingDelim && s && !isDeleting) s += ' ';
   return s;
 }
@@ -357,12 +355,8 @@ function stripPrefixFromRoom(room) {
   return room.split(',').map(p => p.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
 }
 
-// ============================================
-//  ХЕЛПЕР ДЛЯ ПОЛЕЙ ПОМЕЩЕНИЙ
-//  Форматирует ввод на лету, но:
-//  • не дописывает «, » при удалении;
-//  • не прыгает курсором в конец при правке в середине.
-// ============================================
+// Хелпер: форматирование поля помещений с сохранением курсора,
+// без «дописывания» пробела при удалении.
 function setupRoomInput(input, onValueChanged) {
   input.addEventListener('input', () => {
     const raw = input.value;
@@ -508,6 +502,12 @@ function formatJournalTitle(entry) {
   const roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
   if (!floorLabel) return roomLabel.charAt(0).toUpperCase() + roomLabel.slice(1);
   return floorLabel + ' · ' + roomLabel;
+}
+
+function formatRuDate(iso) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
+  const parts = iso.split('-');
+  return parts[2] + '.' + parts[1] + '.' + parts[0];
 }
 
 // ============================================
@@ -868,7 +868,48 @@ function updateAllMainBlocks() {
 }
 
 // ============================================
-//  РЕНДЕР МАТЕРИАЛОВ
+//  ХИНТЫ ДЛЯ СВОРАЧИВАЕМЫХ ГРУПП
+// ============================================
+function getMatGroupHint(mat, state) {
+  let filled = 0;
+  mat.rows.forEach(r => {
+    const data = state[r.key];
+    if (!data) return;
+    data.rows.forEach(row => {
+      if (row.qty) filled++;
+    });
+  });
+  return filled > 0 ? (filled + ' зап.') : '';
+}
+
+function getLocationGroupHint(workKey) {
+  const items = (additionalState[workKey] && additionalState[workKey].items) || [];
+  const w = locationWorkByKey(workKey);
+  const unit = w ? w.unit : '';
+  let sum = 0, count = 0;
+  items.forEach(it => {
+    const v = parseFloat(String(it.value || '').replace(',', '.'));
+    if (isFinite(v) && v > 0) { sum += v; count++; }
+  });
+  if (count === 0) return '';
+  const s = String(Math.round(sum * 100) / 100).replace('.', ',');
+  return s + ' ' + unit;
+}
+
+function getMentorshipGroupHint() {
+  const items = additionalState.mentorship.items || [];
+  let sum = 0, count = 0;
+  items.forEach(m => {
+    const v = parseFloat(String(m.hours || '').replace(',', '.'));
+    if (isFinite(v) && v > 0) { sum += v; count++; }
+  });
+  if (count === 0) return '';
+  const s = String(Math.round(sum * 100) / 100).replace('.', ',');
+  return s + ' ч';
+}
+
+// ============================================
+//  РЕНДЕР МАТЕРИАЛОВ (сворачиваемые группы)
 // ============================================
 function renderMaterialsForBlock(work) {
   const st = mainState[work];
@@ -887,6 +928,43 @@ function renderMaterialsForBlock(work) {
   const buildingList = BUILDINGS_BY_OBJECT[objectSelect.value] || [];
 
   MATERIALS.forEach(mat => {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'mat-group';
+    const expKey = work + '|' + mat.id;
+    const isExpanded = !!_matGroupExpanded[expKey];
+    if (isExpanded) groupEl.classList.add('expanded');
+
+    // Заголовок группы
+    const headerEl = document.createElement('button');
+    headerEl.type = 'button';
+    headerEl.className = 'mat-group-header';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'mat-group-arrow';
+    arrow.textContent = '▸';
+
+    const title = document.createElement('span');
+    title.className = 'mat-group-title';
+    title.textContent = mat.label;
+
+    const hint = document.createElement('span');
+    hint.className = 'mat-group-hint';
+    hint.textContent = getMatGroupHint(mat, state);
+
+    headerEl.appendChild(arrow);
+    headerEl.appendChild(title);
+    headerEl.appendChild(hint);
+
+    headerEl.addEventListener('click', () => {
+      _matGroupExpanded[expKey] = !_matGroupExpanded[expKey];
+      renderMaterialsForBlock(work);
+    });
+    groupEl.appendChild(headerEl);
+
+    // Тело группы
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'mat-group-body';
+
     mat.rows.forEach(r => {
       const data = state[r.key];
       if (!data) return;
@@ -903,7 +981,7 @@ function renderMaterialsForBlock(work) {
 
       const nameEl = document.createElement('span');
       nameEl.className = 'mat-head-name';
-      nameEl.textContent = mat.label;
+      nameEl.textContent = 'Вариант';
       headLeft.appendChild(nameEl);
 
       const forEl = document.createElement('span');
@@ -1058,8 +1136,6 @@ function renderMaterialsForBlock(work) {
           rInput.dataset.focusKey = r.key + '_room_' + idx;
           if (!row.room) rInput.classList.add('is-empty');
 
-          // Единый обработчик: форматирование с сохранением курсора,
-          // без «дописывания» пробела при удалении.
           setupRoomInput(rInput, (val) => {
             row.room = val;
             rInput.classList.toggle('is-empty', !val);
@@ -1167,10 +1243,12 @@ function renderMaterialsForBlock(work) {
       });
       card.appendChild(addFloorBtn);
 
-      container.appendChild(card);
-
+      bodyEl.appendChild(card);
       updateAddFloorButton(card, r.key, work);
     });
+
+    groupEl.appendChild(bodyEl);
+    container.appendChild(groupEl);
   });
 
   if (focusKey) {
@@ -1241,6 +1319,10 @@ function resetMainBlock(work) {
   const st = mainState[work];
   if (!st) return;
   st.materials = makeEmptyMaterialState();
+  // Раскрываем все группы после сброса, чтобы пользователь видел поля заново
+  MATERIALS.forEach(mat => {
+    _matGroupExpanded[work + '|' + mat.id] = false;
+  });
   renderMaterialsForBlock(work);
 }
 
@@ -1485,6 +1567,8 @@ function addAllToJournal() {
 
     renderJournal();
     initAdditionalState();
+    // Сворачиваем все доп. работы после добавления в журнал
+    for (const k in _addGroupExpanded) delete _addGroupExpanded[k];
     renderAdditionalFields();
 
     const parts = [];
@@ -1499,19 +1583,47 @@ function addAllToJournal() {
 }
 
 // ============================================
-//  РЕНДЕР ДОП. РАБОТ
+//  РЕНДЕР ДОП. РАБОТ (сворачиваемые группы)
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
   if (!work) return;
 
-  const group = document.createElement('div');
-  group.className = 'additional-group';
+  const groupEl = document.createElement('div');
+  groupEl.className = 'add-group';
+  const expKey = 'add|' + workKey;
+  const isExpanded = !!_addGroupExpanded[expKey];
+  if (isExpanded) groupEl.classList.add('expanded');
 
-  const title = document.createElement('div');
-  title.className = 'additional-group-name';
+  const headerEl = document.createElement('button');
+  headerEl.type = 'button';
+  headerEl.className = 'add-group-header';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'add-group-arrow';
+  arrow.textContent = '▸';
+
+  const title = document.createElement('span');
+  title.className = 'add-group-title';
   title.textContent = work.label;
-  group.appendChild(title);
+
+  const hint = document.createElement('span');
+  hint.className = 'add-group-hint';
+  hint.textContent = getLocationGroupHint(workKey);
+
+  headerEl.appendChild(arrow);
+  headerEl.appendChild(title);
+  headerEl.appendChild(hint);
+
+  headerEl.addEventListener('click', () => {
+    _addGroupExpanded[expKey] = !_addGroupExpanded[expKey];
+    renderAdditionalFields();
+  });
+
+  groupEl.appendChild(headerEl);
+
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'add-group-body';
 
   const items = additionalState[workKey].items;
 
@@ -1520,12 +1632,12 @@ function renderLocationFields(workKey, container) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
       sep.textContent = 'Место ' + (idx + 1);
-      group.appendChild(sep);
+      bodyEl.appendChild(sep);
     } else if (items.length > 1) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
       sep.textContent = 'Место 1';
-      group.appendChild(sep);
+      bodyEl.appendChild(sep);
     }
 
     if (items.length > 1) {
@@ -1536,13 +1648,13 @@ function renderLocationFields(workKey, container) {
         additionalState[workKey].items.splice(idx, 1);
         renderAdditionalFields();
       });
-      group.appendChild(del);
+      bodyEl.appendChild(del);
     }
 
     const bLabel = document.createElement('label');
     bLabel.className = 'req';
     bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
-    group.appendChild(bLabel);
+    bodyEl.appendChild(bLabel);
 
     const bSeg = document.createElement('div');
     bSeg.className = 'segmented';
@@ -1562,14 +1674,14 @@ function renderLocationFields(workKey, container) {
       });
     } else {
       bSeg.classList.add('segmented-disabled');
-      const hint = document.createElement('span');
-      hint.className = 'segmented-hint';
-      hint.textContent = objectSelect.value
+      const hint2 = document.createElement('span');
+      hint2.className = 'segmented-hint';
+      hint2.textContent = objectSelect.value
         ? 'Для «' + objectSelect.value + '» корпус не используется'
         : '🔒 Сначала объект';
-      bSeg.appendChild(hint);
+      bSeg.appendChild(hint2);
     }
-    group.appendChild(bSeg);
+    bodyEl.appendChild(bSeg);
 
     const building = item.building;
     let showFloor = true;
@@ -1584,13 +1696,13 @@ function renderLocationFields(workKey, container) {
         const fLabel = document.createElement('label');
         fLabel.className = 'req';
         fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
-        group.appendChild(fLabel);
+        bodyEl.appendChild(fLabel);
 
         const fWrap = document.createElement('div');
         fWrap.className = 'segmented segmented-floors';
         fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
           '<span class="segmented-hint">— выберите —</span>';
-        group.appendChild(fWrap);
+        bodyEl.appendChild(fWrap);
 
         const fSeg = new SegmentedControl(fWrap);
         fSeg.setOptions(floorList);
@@ -1610,7 +1722,7 @@ function renderLocationFields(workKey, container) {
       const rLabel = document.createElement('label');
       rLabel.className = 'req';
       rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
-      group.appendChild(rLabel);
+      bodyEl.appendChild(rLabel);
 
       const rWrap = document.createElement('div');
       rWrap.className = 'room-wrap';
@@ -1628,11 +1740,7 @@ function renderLocationFields(workKey, container) {
       rInp.value = item.room || '';
       rInp.dataset.focusId = workKey + '_room_' + idx;
 
-      // Единый обработчик: форматирование с сохранением курсора,
-      // без «дописывания» пробела при удалении.
-      setupRoomInput(rInp, (val) => {
-        item.room = val;
-      });
+      setupRoomInput(rInp, (val) => { item.room = val; });
 
       rInp.addEventListener('blur', () => {
         const n = finalizeRooms(rInp.value);
@@ -1640,14 +1748,14 @@ function renderLocationFields(workKey, container) {
         item.room = n;
       });
       rWrap.appendChild(rInp);
-      group.appendChild(rWrap);
+      bodyEl.appendChild(rWrap);
 
-      const hint = document.createElement('div');
-      hint.className = 'hint-small';
-      hint.textContent = building === MASTER_WING
+      const hintEl = document.createElement('div');
+      hintEl.className = 'hint-small';
+      hintEl.textContent = building === MASTER_WING
         ? 'Номера через запятую. Все сохранятся с префиксом «к».'
         : 'Номера через запятую. Сохранятся по возрастанию.';
-      group.appendChild(hint);
+      bodyEl.appendChild(hintEl);
     }
 
     const qLine = document.createElement('div');
@@ -1697,7 +1805,7 @@ function renderLocationFields(workKey, container) {
     });
 
     updateMinusState(qInp, minusBtn);
-    group.appendChild(qLine);
+    bodyEl.appendChild(qLine);
   });
 
   const addBtn = document.createElement('button');
@@ -1707,25 +1815,53 @@ function renderLocationFields(workKey, container) {
     additionalState[workKey].items.push(makeLocationItem());
     renderAdditionalFields();
   });
-  group.appendChild(addBtn);
+  bodyEl.appendChild(addBtn);
 
-  container.appendChild(group);
+  groupEl.appendChild(bodyEl);
+  container.appendChild(groupEl);
 }
 
 function renderMentorshipFields(container) {
-  const group = document.createElement('div');
-  group.className = 'additional-group';
+  const groupEl = document.createElement('div');
+  groupEl.className = 'add-group';
+  const expKey = 'add|mentorship';
+  const isExpanded = !!_addGroupExpanded[expKey];
+  if (isExpanded) groupEl.classList.add('expanded');
 
-  const name = document.createElement('div');
-  name.className = 'additional-group-name';
-  name.textContent = SECTION_MENTOR;
-  group.appendChild(name);
+  const headerEl = document.createElement('button');
+  headerEl.type = 'button';
+  headerEl.className = 'add-group-header';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'add-group-arrow';
+  arrow.textContent = '▸';
+
+  const title = document.createElement('span');
+  title.className = 'add-group-title';
+  title.textContent = SECTION_MENTOR;
+
+  const hint = document.createElement('span');
+  hint.className = 'add-group-hint';
+  hint.textContent = getMentorshipGroupHint();
+
+  headerEl.appendChild(arrow);
+  headerEl.appendChild(title);
+  headerEl.appendChild(hint);
+
+  headerEl.addEventListener('click', () => {
+    _addGroupExpanded[expKey] = !_addGroupExpanded[expKey];
+    renderAdditionalFields();
+  });
+  groupEl.appendChild(headerEl);
+
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'add-group-body';
 
   const subtitle = document.createElement('div');
   subtitle.className = 'hint-small';
   subtitle.style.marginBottom = '6px';
   subtitle.textContent = 'Укажите имя и фамилию ученика и количество часов';
-  group.appendChild(subtitle);
+  bodyEl.appendChild(subtitle);
 
   additionalState.mentorship.items.forEach((m, idx) => {
     const line = document.createElement('div');
@@ -1806,7 +1942,7 @@ function renderMentorshipFields(container) {
     });
 
     updateMinusState(inputH, minusBtn);
-    group.appendChild(line);
+    bodyEl.appendChild(line);
     updateNameVisual(nameIn, inputH);
   });
 
@@ -1817,9 +1953,10 @@ function renderMentorshipFields(container) {
     additionalState.mentorship.items.push({ name: '', hours: '' });
     renderAdditionalFields();
   });
-  group.appendChild(addBtn);
+  bodyEl.appendChild(addBtn);
 
-  container.appendChild(group);
+  groupEl.appendChild(bodyEl);
+  container.appendChild(groupEl);
 }
 
 function renderAdditionalFields() {
@@ -2047,6 +2184,10 @@ function editJournalEntry(idx) {
       targetRow.floor = restoredFloor;
       targetRow.room = stripPrefixFromRoom(entry.room || '');
       targetRow.qty = entry.materials[matKey];
+
+      // Раскрываем группу этого материала
+      const info = MATERIAL_BY_KEY[matKey];
+      if (info) _matGroupExpanded[entry.work + '|' + info.mat.id] = true;
     }
 
     renderMaterialsForBlock(entry.work);
@@ -2069,9 +2210,11 @@ function editJournalEntry(idx) {
       room: stripPrefixFromRoom(entry.room || ''),
       value: entry.qty || ''
     }];
+    _addGroupExpanded['add|' + entry.kind] = true;
     renderAdditionalFields();
   } else if (entry.kind === 'mentorship') {
     additionalState.mentorship.items = [{ name: entry.name || '', hours: entry.hours || '' }];
+    _addGroupExpanded['add|mentorship'] = true;
     renderAdditionalFields();
   }
 
@@ -2154,6 +2297,9 @@ objectSelect.addEventListener('change', () => {
 
   MAIN_WORKS.forEach(({ work }) => { _mainBlockStatus[work] = null; });
 
+  clearMatGroupExpansion();
+  for (const k in _addGroupExpanded) delete _addGroupExpanded[k];
+
   updateAllMainBlocks();
   updateAdditionalAccessibility();
 
@@ -2188,9 +2334,153 @@ nameInput.addEventListener('blur', () => {
 });
 
 // ============================================
-//  ОТПРАВКА
+//  ЭКРАН ПРОВЕРКИ ПЕРЕД ОТПРАВКОЙ
+// ============================================
+function ensureReviewModal() {
+  let overlay = document.getElementById('review-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'review-overlay';
+  overlay.className = 'review-overlay';
+  overlay.innerHTML =
+    '<div class="review-modal">' +
+      '<div class="review-header">' +
+        '<div class="review-title">Проверьте отчёт</div>' +
+        '<div class="review-subtitle">Проверьте все записи перед отправкой</div>' +
+      '</div>' +
+      '<div class="review-body" id="review-body"></div>' +
+      '<div class="review-footer">' +
+        '<button type="button" class="review-btn review-btn-edit" id="review-edit">✏️ Изменить</button>' +
+        '<button type="button" class="review-btn review-btn-send" id="review-send">✅ Отправить</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function buildEntryLocLabel(entry) {
+  if (entry.kind === 'mentorship') return entry.name || 'Наставничество';
+  const floorLabel = formatFloorLabel(entry.floor);
+  const roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + (entry.room || '');
+  if (!floorLabel) return roomLabel;
+  return floorLabel + ' · ' + roomLabel;
+}
+
+function buildEntryWorkLabel(entry) {
+  if (entry.kind === 'main') return entry.work;
+  if (isLocationKind(entry.kind)) return getSheetWorkForLocation(entry.kind);
+  return 'Наставничество';
+}
+
+function buildReviewContent() {
+  const sorted = journal.slice().sort(compareForSheet);
+
+  let html = '<div class="rv-info">';
+  html += '<div class="rv-info-row"><span class="rv-info-label">Объект:</span> <span class="rv-info-value">' + escapeHtml(objectSelect.value || '—') + '</span></div>';
+  html += '<div class="rv-info-row"><span class="rv-info-label">Дата:</span> <span class="rv-info-value">' + escapeHtml(formatRuDate(dateInput.value) || '—') + '</span></div>';
+  html += '<div class="rv-info-row"><span class="rv-info-label">Имя:</span> <span class="rv-info-value">' + escapeHtml(nameInput.value || '—') + '</span></div>';
+  html += '</div>';
+
+  html += '<div class="rv-entries-title">Записи (' + sorted.length + ')</div>';
+
+  sorted.forEach(entry => {
+    const locLabel = buildEntryLocLabel(entry);
+    const workLabel = buildEntryWorkLabel(entry);
+
+    html += '<div class="rv-entry">';
+    html += '<div class="rv-entry-head">';
+    html += '<span class="rv-entry-loc">' + escapeHtml(locLabel) + '</span>';
+    html += '<span class="rv-entry-work">' + escapeHtml(workLabel) + '</span>';
+    html += '</div>';
+
+    let matsArr = [];
+    if (entry.kind === 'main') {
+      matsArr = materialsMapToArray(entry.materials || {});
+    } else if (isLocationKind(entry.kind)) {
+      const w = locationWorkByKey(entry.kind);
+      matsArr = [{ name: w ? w.label : entry.kind, unit: w ? w.unit : 'шт', qty: entry.qty }];
+    } else if (entry.kind === 'mentorship') {
+      matsArr = [{ name: 'Наставничество — ' + entry.name, unit: 'ч', qty: entry.hours }];
+    }
+
+    if (matsArr.length > 0) {
+      html += '<div class="rv-entry-mats">';
+      matsArr.forEach(m => {
+        html += '<div class="rv-mat">';
+        html += '<span class="rv-mat-name">' + escapeHtml(m.name) + '</span>';
+        html += '<span class="rv-mat-qty">' + escapeHtml(String(m.qty).replace('.', ',')) + ' ' + escapeHtml(m.unit) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  return html;
+}
+
+function showReviewModal() {
+  const overlay = ensureReviewModal();
+  const body = overlay.querySelector('#review-body');
+  body.innerHTML = buildReviewContent();
+  overlay.classList.add('show');
+
+  // Меняем кнопки на клоны, чтобы снять предыдущие обработчики
+  const editOld = overlay.querySelector('#review-edit');
+  const sendOld = overlay.querySelector('#review-send');
+  const editNew = editOld.cloneNode(true);
+  const sendNew = sendOld.cloneNode(true);
+  editOld.parentNode.replaceChild(editNew, editOld);
+  sendOld.parentNode.replaceChild(sendNew, sendOld);
+
+  editNew.addEventListener('click', () => {
+    overlay.classList.remove('show');
+    _reviewOpen = false;
+  });
+
+  sendNew.addEventListener('click', () => {
+    overlay.classList.remove('show');
+    _reviewOpen = false;
+    doActualSend();
+  });
+}
+
+// ============================================
+//  ОТПРАВКА (шаг 1: проверки и показ модалки)
 // ============================================
 async function sendAll() {
+  if (_sending || _reviewOpen) return;
+
+  show('');
+  if (!validateHeader()) return;
+
+  const hasPendingMain = MAIN_WORKS.some(({ work }) => !isMainBlockEmpty(work));
+  const hasPendingAdditional = hasActiveAdditional();
+
+  if (hasPendingMain || hasPendingAdditional) {
+    const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
+    if (doAdd) { const ok = addAllToJournal(); if (!ok) return; }
+  }
+
+  if (journal.length === 0) {
+    show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
+    return;
+  }
+  if (isOffline()) {
+    show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
+    showToast('📵 Нет подключения');
+    return;
+  }
+
+  _reviewOpen = true;
+  showReviewModal();
+}
+
+// ============================================
+//  ОТПРАВКА (шаг 2: собственно отправка)
+// ============================================
+async function doActualSend() {
   if (_sending) return;
   _sending = true;
 
@@ -2199,23 +2489,6 @@ async function sendAll() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
 
   try {
-    show('');
-    if (!validateHeader()) return;
-
-    const hasPendingMain = MAIN_WORKS.some(({ work }) => !isMainBlockEmpty(work));
-    const hasPendingAdditional = hasActiveAdditional();
-
-    if (hasPendingMain || hasPendingAdditional) {
-      const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
-      if (doAdd) { const ok = addAllToJournal(); if (!ok) return; }
-    }
-
-    if (journal.length === 0) { show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err'); return; }
-    if (isOffline()) {
-      show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
-      showToast('📵 Нет подключения'); return;
-    }
-
     show('🔄 Проверяем соединение...', '');
     const reachable = await checkConnection();
     show('');
@@ -2229,7 +2502,6 @@ async function sendAll() {
       if (!proceed) { show('⚠️ Отправка отменена.', 'err'); return; }
     }
 
-    // Сортировка для таблицы: сквозная по этажу, потом по помещению
     const sortedJournal = journal.slice().sort(compareForSheet);
     const records = [];
 
@@ -2297,6 +2569,7 @@ async function sendAll() {
       renderJournal();
       MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
       initAdditionalState();
+      for (const k in _addGroupExpanded) delete _addGroupExpanded[k];
       renderAdditionalFields();
 
       setupDateRange();
