@@ -733,7 +733,6 @@ function refreshMatRowHighlight(rowEl, row, buildingRequired) {
   if (!rowEl || !rowEl.isConnected) return;
   const hasAny = !!(row.building || row.floor || row.room || row.qty);
 
-  // Корпус
   const corpWrap = rowEl.querySelector('.mat-line-corp');
   if (corpWrap) {
     const isEmpty = hasAny && buildingRequired && !row.building;
@@ -743,7 +742,6 @@ function refreshMatRowHighlight(rowEl, row, buildingRequired) {
     });
   }
 
-  // Этаж
   const isAtticRow = isAtticBuilding(row.building);
   const floorsWrap = rowEl.querySelector('.mat-line-floors');
   if (floorsWrap) {
@@ -754,14 +752,12 @@ function refreshMatRowHighlight(rowEl, row, buildingRequired) {
     });
   }
 
-  // Помещения
   const roomInp = rowEl.querySelector('.loc-room-input');
   if (roomInp) {
     if (hasAny && !row.room) roomInp.classList.add('is-empty');
     else roomInp.classList.remove('is-empty');
   }
 
-  // Количество
   const qInp = rowEl.querySelector('.variant-input');
   if (qInp) {
     if (hasAny && !row.qty) qInp.classList.add('is-empty');
@@ -773,14 +769,12 @@ function refreshAddItemHighlight(itemEl, item) {
   if (!itemEl || !itemEl.isConnected) return;
   const hasAny = !!(item.building || item.floor || item.room || item.value);
 
-  // Корпус
   const corpSeg = itemEl.querySelector('.segmented:not(.segmented-floors)');
   if (corpSeg) {
     const isEmpty = hasAny && isBuildingRequired() && !item.building;
     corpSeg.classList.toggle('is-empty', isEmpty);
   }
 
-  // Этаж
   const floorSeg = itemEl.querySelector('.segmented.segmented-floors');
   if (floorSeg) {
     const isAtticZ = (item.building === 'Чердак');
@@ -788,14 +782,12 @@ function refreshAddItemHighlight(itemEl, item) {
     floorSeg.classList.toggle('is-empty', isEmpty);
   }
 
-  // Помещения
   const roomInp = itemEl.querySelector('.room-wrap .req-field');
   if (roomInp) {
     if (hasAny && !item.room) roomInp.classList.add('is-empty');
     else roomInp.classList.remove('is-empty');
   }
 
-  // Количество
   const qInp = itemEl.querySelector('.variant-line .variant-input');
   if (qInp) {
     if (hasAny && !item.value) qInp.classList.add('is-empty');
@@ -1639,7 +1631,9 @@ function updateAddFloorButton(card, matKey, work) {
   if (!lastRow) { btn.classList.add('hidden'); return; }
 
   const buildingRequired = isBuildingRequired();
-  const ready = lastRow.qty && lastRow.room && (isAtticBuilding(lastRow.building) || lastRow.floor) && (!buildingRequired || lastRow.building);
+  const ready = lastRow.qty && lastRow.room &&
+    (isAtticBuilding(lastRow.building) || lastRow.floor) &&
+    (!buildingRequired || lastRow.building);
   btn.classList.toggle('hidden', !ready);
 }
 
@@ -1801,6 +1795,7 @@ function validateHeader() {
   if (!objectSelect.value.trim()) {
     const err = document.getElementById('err-object');
     if (err) err.classList.add('show');
+    updateFieldState(objectSelect);
     if (!firstProblem) firstProblem = objectSelect;
   }
 
@@ -2192,7 +2187,7 @@ function renderLocationFields(workKey, container) {
     }
     itemEl.appendChild(bSeg);
 
-    // === ЭТАЖ (всегда, если не Чердак) ===
+    // === ЭТАЖ ===
     const building = item.building;
     const isAtticZ = (building === 'Чердак');
 
@@ -2778,19 +2773,21 @@ function updateFieldState(el) {
     const hoursEl = document.querySelector('[data-focus-id="mentor_hours_' + idx + '"]');
     updateNameVisual(el, hoursEl); return;
   }
-  // Шапка и доп. работы обрабатываются отдельно
   const wrap = el.closest && el.closest('.segmented');
   if (wrap) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled'); return;
     }
-    // is-empty подсветку внутри доп. работ ведёт refreshAddItemHighlight
-    // Здесь обрабатываем только шапку «Объект»
+    // Обрабатываем только шапку «Объект».
+    // «Объект» подсвечивается красным, только если имя уже валидное
+    // и объект не выбран.
     if (el.id === 'object') {
       wrap.classList.remove('is-empty', 'is-filled');
-      const isEmpty = !el.value || !el.value.trim();
+      const nameOk = isNameValid(nameInput.value);
+      const val = String(el.value || '').trim();
+      const isEmpty = nameOk && !val;
       wrap.classList.toggle('is-empty', isEmpty);
-      wrap.classList.toggle('is-filled', !isEmpty);
+      wrap.classList.toggle('is-filled', !!val);
     }
     return;
   }
@@ -2852,6 +2849,8 @@ nameInput.addEventListener('input', () => {
   if (isNameValid(nameInput.value)) nameErr.classList.remove('show');
   updateFieldState(nameInput);
   refreshNameGates();
+  // Обновляем подсветку «Объекта» — она зависит от валидности имени
+  updateFieldState(objectSelect);
 });
 
 nameInput.addEventListener('blur', () => {
@@ -2862,6 +2861,7 @@ nameInput.addEventListener('blur', () => {
     nameErr.classList.add('show');
   } else nameErr.classList.remove('show');
   refreshNameGates();
+  updateFieldState(objectSelect);
 });
 
 // ============================================
