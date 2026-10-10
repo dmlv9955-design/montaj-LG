@@ -325,7 +325,6 @@ let _sending = false;
 let _addingToJournal = false;
 let _reviewOpen = false;
 
-// Блокировка/разблокировка всей страницы
 function lockApp() { document.body.classList.add('app-blocked'); }
 function unlockApp() { document.body.classList.remove('app-blocked'); }
 
@@ -737,6 +736,144 @@ function systemClass(sys) {
   if (sys === 'СОУЭ')     return 'variant-system variant-system-soue';
   if (sys === 'АПС/СОУЭ') return 'variant-system variant-system-both';
   return 'variant-system';
+}
+
+// ============================================
+//  МОДАЛКА УВЕДОМЛЕНИЯ (о неполных полях)
+// ============================================
+function ensureAlertOverlay() {
+  let overlay = document.getElementById('alert-overlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'alert-overlay';
+  overlay.className = 'alert-overlay';
+  overlay.innerHTML =
+    '<div class="alert-modal">' +
+      '<div class="alert-icon">⚠️</div>' +
+      '<div class="alert-title" id="alert-title">Не все поля заполнены</div>' +
+      '<div class="alert-text" id="alert-text"></div>' +
+      '<div class="alert-actions">' +
+        '<button type="button" class="alert-btn alert-btn-ok" id="alert-ok">Понятно</button>' +
+        '<button type="button" class="alert-btn alert-btn-fix" id="alert-fix">✏️ Исправить</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function showAlert(title, message, opts) {
+  opts = opts || {};
+  const overlay = ensureAlertOverlay();
+  overlay.querySelector('#alert-title').textContent = title || 'Внимание';
+  overlay.querySelector('#alert-text').textContent = message || '';
+
+  const fixBtn = overlay.querySelector('#alert-fix');
+  const okBtn  = overlay.querySelector('#alert-ok');
+
+  const fixNew = fixBtn.cloneNode(true);
+  const okNew = okBtn.cloneNode(true);
+  fixBtn.parentNode.replaceChild(fixNew, fixBtn);
+  okBtn.parentNode.replaceChild(okNew, okBtn);
+
+  if (typeof opts.onFix === 'function') {
+    fixNew.style.display = '';
+    fixNew.textContent = opts.fixLabel || '✏️ Исправить';
+    fixNew.addEventListener('click', () => {
+      overlay.classList.remove('show');
+      opts.onFix();
+    });
+  } else {
+    fixNew.style.display = 'none';
+  }
+
+  okNew.textContent = opts.okLabel || 'Понятно';
+  okNew.addEventListener('click', () => {
+    overlay.classList.remove('show');
+  });
+
+  overlay.classList.add('show');
+}
+
+// Анимация тряски у всех невалидных полей
+function shakeAllInvalidFields() {
+  MAIN_WORKS.forEach(({ work }) => {
+    const st = mainState[work];
+    if (!st || !st.elements) return;
+    const container = st.elements.materialsCont;
+    if (!container) return;
+    const buildingRequired = isBuildingRequired();
+    for (const k in st.materials) {
+      const data = st.materials[k];
+      const card = container.querySelector('[data-mat-key="' + k + '"]');
+      if (!card) continue;
+      const rowEls = card.querySelectorAll('.mat-row');
+      data.rows.forEach((row, idx) => {
+        const qtyNum = parseFloat(String(row.qty || '').replace(',', '.'));
+        if (!isFinite(qtyNum) || qtyNum <= 0) return;
+        const rowEl = rowEls[idx];
+        if (!rowEl) return;
+        if (buildingRequired && !row.building) {
+          rowEl.querySelectorAll('.mat-line-corp .loc-floor-btn').forEach(b => {
+            b.classList.add('shake');
+            setTimeout(() => b.classList.remove('shake'), 700);
+          });
+        }
+        const isAtticRow = isAtticBuilding(row.building);
+        if (!isAtticRow && !row.floor) {
+          rowEl.querySelectorAll('.mat-line-floors .loc-floor-btn').forEach(b => {
+            b.classList.add('shake');
+            setTimeout(() => b.classList.remove('shake'), 700);
+          });
+        }
+        if (!row.room) {
+          const inp = rowEl.querySelector('.loc-room-input');
+          if (inp) {
+            inp.classList.add('shake');
+            setTimeout(() => inp.classList.remove('shake'), 700);
+          }
+        }
+      });
+    }
+  });
+
+  if (!additionalFields) return;
+  LOCATION_WORKS.forEach(w => {
+    const items = (additionalState[w.key] && additionalState[w.key].items) || [];
+    const group = additionalFields.querySelector('.add-group[data-work-key="' + w.key + '"]');
+    if (!group) return;
+    items.forEach((it, idx) => {
+      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
+      if (isEmptyRow) return;
+      const itemEl = group.querySelector('.add-item[data-item-idx="' + idx + '"]');
+      if (!itemEl) return;
+      const needB = isBuildingRequired();
+      if (needB && !it.building) {
+        const seg = itemEl.querySelector('.segmented:not(.segmented-floors)');
+        if (seg) {
+          seg.classList.add('shake');
+          setTimeout(() => seg.classList.remove('shake'), 700);
+        }
+      }
+      const isAtticZ = (it.building === 'Чердак');
+      if (!isAtticZ && !it.floor) {
+        const seg = itemEl.querySelector('.segmented.segmented-floors');
+        if (seg) {
+          seg.classList.add('shake');
+          setTimeout(() => seg.classList.remove('shake'), 700);
+        }
+      }
+      const r = normalizeZadelkaRoom(it.room || '');
+      if (!r) {
+        const inp = itemEl.querySelector('.room-wrap .req-field');
+        if (inp) { inp.classList.add('shake'); setTimeout(() => inp.classList.remove('shake'), 700); }
+      }
+      const v = parseFloat(String(it.value || '').replace(',', '.'));
+      if (!isFinite(v) || v <= 0) {
+        const qInp = itemEl.querySelector('.variant-line .variant-input');
+        if (qInp) { qInp.classList.add('shake'); setTimeout(() => qInp.classList.remove('shake'), 700); }
+      }
+    });
+  });
 }
 
 // ============================================
@@ -1416,11 +1553,87 @@ function updateAddFloorButton(card, matKey, work) {
 }
 
 // ============================================
+//  ФИКС ПОЛЯ В ОСНОВНОМ БЛОКЕ
+// ============================================
+function fixMainField(work, matKey, rowIdx, fieldType) {
+  const st = mainState[work];
+  if (!st) return;
+  if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
+  const info = MATERIAL_BY_KEY[matKey];
+  if (info) _matGroupExpanded[work + '|' + info.mat.id] = true;
+  renderMaterialsForBlock(work);
+
+  requestAnimationFrame(() => {
+    const container = st.elements.materialsCont;
+    if (!container) return;
+    const card = container.querySelector('[data-mat-key="' + matKey + '"]');
+    if (!card) return;
+    const rowEls = card.querySelectorAll('.mat-row');
+    const rowEl = rowEls[rowIdx];
+    if (!rowEl) return;
+    let el = null;
+    if (fieldType === 'corp') el = rowEl.querySelector('.mat-line-corp .loc-floor-btn');
+    else if (fieldType === 'floor') el = rowEl.querySelector('.mat-line-floors .loc-floor-btn');
+    else if (fieldType === 'room') el = rowEl.querySelector('.loc-room-input');
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
+    el.classList.add('pulse-attention');
+    setTimeout(() => el.classList.remove('pulse-attention'), 2200);
+    try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (__) {} }
+  });
+}
+
+// ============================================
+//  ФИКС ПОЛЯ В ДОП. РАБОТАХ
+// ============================================
+function fixAddField(workKey, itemIdx, fieldType) {
+  _addGroupExpanded['add|' + workKey] = true;
+  renderAdditionalFields();
+  requestAnimationFrame(() => {
+    if (!additionalFields) return;
+    const group = additionalFields.querySelector('.add-group[data-work-key="' + workKey + '"]');
+    if (!group) return;
+    const itemEl = group.querySelector('.add-item[data-item-idx="' + itemIdx + '"]');
+    if (!itemEl) return;
+    let el = null;
+    if (fieldType === 'corp') el = itemEl.querySelector('.segmented:not(.segmented-floors) .segmented-btn');
+    else if (fieldType === 'floor') el = itemEl.querySelector('.segmented.segmented-floors .segmented-btn');
+    else if (fieldType === 'room') el = itemEl.querySelector('.room-wrap .req-field');
+    else if (fieldType === 'qty') el = itemEl.querySelector('.variant-line .variant-input');
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
+    el.classList.add('pulse-attention');
+    setTimeout(() => el.classList.remove('pulse-attention'), 2200);
+    try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (__) {} }
+  });
+}
+
+function fixMentorField(itemIdx, fieldType) {
+  _addGroupExpanded['add|mentorship'] = true;
+  renderAdditionalFields();
+  requestAnimationFrame(() => {
+    const group = additionalFields.querySelector('.add-group[data-work-key="__mentorship__"]');
+    if (!group) return;
+    const itemEl = group.querySelector('.add-item[data-item-idx="' + itemIdx + '"]');
+    if (!itemEl) return;
+    let el = null;
+    if (fieldType === 'name') el = itemEl.querySelector('.mentor-name-input');
+    else if (fieldType === 'hours') el = itemEl.querySelector('.variant-line .variant-input');
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
+    el.classList.add('pulse-attention');
+    setTimeout(() => el.classList.remove('pulse-attention'), 2200);
+    try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (__) {} }
+  });
+}
+
+// ============================================
 //  ВАЛИДАЦИЯ БЛОКА
+//  Возвращает null либо { message, fix }
 // ============================================
 function validateMainFieldsForBlock(work) {
   const st = mainState[work];
-  if (!st) return false;
+  if (!st) return null;
   const buildingRequired = isBuildingRequired();
 
   for (const k in st.materials) {
@@ -1434,21 +1647,27 @@ function validateMainFieldsForBlock(work) {
       if (!isFinite(qtyNum) || qtyNum <= 0) continue;
 
       if (buildingRequired && !row.building) {
-        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите корпус', 'err');
-        return false;
+        return {
+          message: label + ', место ' + (i + 1) + ': укажите корпус',
+          fix: () => fixMainField(work, k, i, 'corp')
+        };
       }
       const isAtticRow = isAtticBuilding(row.building);
       if (!isAtticRow && !row.floor) {
-        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите этаж', 'err');
-        return false;
+        return {
+          message: label + ', место ' + (i + 1) + ': укажите этаж',
+          fix: () => fixMainField(work, k, i, 'floor')
+        };
       }
       if (!row.room) {
-        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите помещения', 'err');
-        return false;
+        return {
+          message: label + ', место ' + (i + 1) + ': укажите помещения',
+          fix: () => fixMainField(work, k, i, 'room')
+        };
       }
     }
   }
-  return true;
+  return null;
 }
 
 function resetMainBlock(work) {
@@ -1500,45 +1719,69 @@ function validateHeader() {
 
 // ============================================
 //  ВАЛИДАЦИЯ ДОП. РАБОТ
+//  Возвращает null либо { message, fix }
 // ============================================
 function validateAdditionalOnly() {
-  for (const w of LOCATION_WORKS) {
+  for (let wi = 0; wi < LOCATION_WORKS.length; wi++) {
+    const w = LOCATION_WORKS[wi];
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
       if (isEmptyRow) continue;
       const needB = isBuildingRequired();
-      if (needB && !it.building) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err'); return false; }
+      if (needB && !it.building) {
+        return {
+          message: w.label + ', место ' + (i + 1) + ': укажите корпус',
+          fix: () => fixAddField(w.key, i, 'corp')
+        };
+      }
       const isAtticZ = (it.building === 'Чердак');
-      if (!isAtticZ && !it.floor) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err'); return false; }
+      if (!isAtticZ && !it.floor) {
+        return {
+          message: w.label + ', место ' + (i + 1) + ': укажите этаж',
+          fix: () => fixAddField(w.key, i, 'floor')
+        };
+      }
       const r = normalizeZadelkaRoom(it.room || '');
-      if (!r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещения', 'err'); return false; }
+      if (!r) {
+        return {
+          message: w.label + ', место ' + (i + 1) + ': укажите помещения',
+          fix: () => fixAddField(w.key, i, 'room')
+        };
+      }
       const v = parseFloat(String(it.value || '').replace(',', '.'));
-      if (!isFinite(v) || v <= 0) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err'); return false; }
+      if (!isFinite(v) || v <= 0) {
+        return {
+          message: w.label + ', место ' + (i + 1) + ': укажите количество',
+          fix: () => fixAddField(w.key, i, 'qty')
+        };
+      }
     }
   }
 
-  let mentorBad = false;
-  additionalState.mentorship.items.forEach((m, idx) => {
+  const mentors = additionalState.mentorship.items || [];
+  for (let idx = 0; idx < mentors.length; idx++) {
+    const m = mentors[idx];
     const name = String(m.name || '').trim();
     const hours = String(m.hours || '').trim();
-    if (!name && !hours) return;
+    if (!name && !hours) continue;
     if (!name || !isNameValid(name)) {
-      mentorBad = true;
-      const inp = document.querySelector('[data-focus-id="mentor_name_' + idx + '"]');
-      if (inp) inp.classList.add('is-invalid');
+      return {
+        message: 'Наставничество, ученик ' + (idx + 1) + ': укажите имя (2 слова)',
+        fix: () => fixMentorField(idx, 'name')
+      };
     }
     const n = parseFloat(hours.replace(',', '.'));
-    if (!hours || !isFinite(n) || n <= 0) mentorBad = true;
-  });
-  if (mentorBad) {
-    show('⚠️ Укажите имя ученика (2 слова) и часы', 'err');
-    const badEl = document.querySelector('.mentor-name-input.is-invalid');
-    if (badEl && badEl.scrollIntoView) badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return false;
+    if (!hours || !isFinite(n) || n <= 0) {
+      return {
+        message: 'Наставничество, ученик ' + (idx + 1) + ': укажите часы',
+        fix: () => fixMentorField(idx, 'hours')
+      };
+    }
   }
-  return true;
+
+  return null;
 }
 
 // ============================================
@@ -1673,14 +1916,31 @@ function addAllToJournal() {
       return false;
     }
 
-    for (const work of pendingMainWorks) {
-      if (!validateMainFieldsForBlock(work)) {
+    // Провалидируем все pending блоки. Первую ошибку показываем модалкой.
+    for (let pi = 0; pi < pendingMainWorks.length; pi++) {
+      const work = pendingMainWorks[pi];
+      const err = validateMainFieldsForBlock(work);
+      if (err) {
         const st = mainState[work];
         if (st && !st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
+        shakeAllInvalidFields();
+        showAlert('Не все поля заполнены', err.message, {
+          onFix: err.fix,
+          fixLabel: '✏️ Исправить'
+        });
         return false;
       }
     }
-    if (!validateAdditionalOnly()) return false;
+
+    const addErr = validateAdditionalOnly();
+    if (addErr) {
+      shakeAllInvalidFields();
+      showAlert('Не все поля заполнены', addErr.message, {
+        onFix: addErr.fix,
+        fixLabel: '✏️ Исправить'
+      });
+      return false;
+    }
 
     let addedCount = 0, mergedCount = 0;
 
@@ -1725,6 +1985,7 @@ function renderLocationFields(workKey, container) {
 
   const groupEl = document.createElement('div');
   groupEl.className = 'add-group';
+  groupEl.dataset.workKey = workKey;
   const expKey = 'add|' + workKey;
   const isExpanded = !!_addGroupExpanded[expKey];
   if (isExpanded) groupEl.classList.add('expanded');
@@ -1762,16 +2023,15 @@ function renderLocationFields(workKey, container) {
   const items = additionalState[workKey].items;
 
   items.forEach((item, idx) => {
-    if (idx > 0) {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'add-item';
+    itemEl.dataset.itemIdx = String(idx);
+
+    if (items.length > 1) {
       const sep = document.createElement('div');
       sep.className = 'zadelka-separator';
       sep.textContent = 'Место ' + (idx + 1);
-      bodyEl.appendChild(sep);
-    } else if (items.length > 1) {
-      const sep = document.createElement('div');
-      sep.className = 'zadelka-separator';
-      sep.textContent = 'Место 1';
-      bodyEl.appendChild(sep);
+      itemEl.appendChild(sep);
     }
 
     if (items.length > 1) {
@@ -1782,13 +2042,13 @@ function renderLocationFields(workKey, container) {
         additionalState[workKey].items.splice(idx, 1);
         renderAdditionalFields();
       });
-      bodyEl.appendChild(del);
+      itemEl.appendChild(del);
     }
 
     const bLabel = document.createElement('label');
     bLabel.className = 'req';
     bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
-    bodyEl.appendChild(bLabel);
+    itemEl.appendChild(bLabel);
 
     const bSeg = document.createElement('div');
     bSeg.className = 'segmented';
@@ -1815,7 +2075,7 @@ function renderLocationFields(workKey, container) {
         : '🔒 Сначала объект';
       bSeg.appendChild(hint2);
     }
-    bodyEl.appendChild(bSeg);
+    itemEl.appendChild(bSeg);
 
     const building = item.building;
     let showFloor = true;
@@ -1830,13 +2090,13 @@ function renderLocationFields(workKey, container) {
         const fLabel = document.createElement('label');
         fLabel.className = 'req';
         fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
-        bodyEl.appendChild(fLabel);
+        itemEl.appendChild(fLabel);
 
         const fWrap = document.createElement('div');
         fWrap.className = 'segmented segmented-floors';
         fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
           '<span class="segmented-hint">— выберите —</span>';
-        bodyEl.appendChild(fWrap);
+        itemEl.appendChild(fWrap);
 
         const fSeg = new SegmentedControl(fWrap);
         fSeg.setOptions(floorList);
@@ -1856,7 +2116,7 @@ function renderLocationFields(workKey, container) {
       const rLabel = document.createElement('label');
       rLabel.className = 'req';
       rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
-      bodyEl.appendChild(rLabel);
+      itemEl.appendChild(rLabel);
 
       const rWrap = document.createElement('div');
       rWrap.className = 'room-wrap';
@@ -1882,14 +2142,14 @@ function renderLocationFields(workKey, container) {
         item.room = n;
       });
       rWrap.appendChild(rInp);
-      bodyEl.appendChild(rWrap);
+      itemEl.appendChild(rWrap);
 
       const hintEl = document.createElement('div');
       hintEl.className = 'hint-small';
       hintEl.textContent = building === MASTER_WING
         ? 'Номера через запятую. Все сохранятся с префиксом «к».'
         : 'Номера через запятую. Сохранятся по возрастанию.';
-      bodyEl.appendChild(hintEl);
+      itemEl.appendChild(hintEl);
     }
 
     const qLine = document.createElement('div');
@@ -1939,7 +2199,9 @@ function renderLocationFields(workKey, container) {
     });
 
     updateMinusState(qInp, minusBtn);
-    bodyEl.appendChild(qLine);
+    itemEl.appendChild(qLine);
+
+    bodyEl.appendChild(itemEl);
   });
 
   const addBtn = document.createElement('button');
@@ -1958,6 +2220,7 @@ function renderLocationFields(workKey, container) {
 function renderMentorshipFields(container) {
   const groupEl = document.createElement('div');
   groupEl.className = 'add-group';
+  groupEl.dataset.workKey = '__mentorship__';
   const expKey = 'add|mentorship';
   const isExpanded = !!_addGroupExpanded[expKey];
   if (isExpanded) groupEl.classList.add('expanded');
@@ -1998,6 +2261,10 @@ function renderMentorshipFields(container) {
   bodyEl.appendChild(subtitle);
 
   additionalState.mentorship.items.forEach((m, idx) => {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'add-item';
+    itemEl.dataset.itemIdx = String(idx);
+
     const line = document.createElement('div');
     line.className = 'variant-line';
 
@@ -2076,8 +2343,10 @@ function renderMentorshipFields(container) {
     });
 
     updateMinusState(inputH, minusBtn);
-    bodyEl.appendChild(line);
+    itemEl.appendChild(line);
     updateNameVisual(nameIn, inputH);
+
+    bodyEl.appendChild(itemEl);
   });
 
   const addBtn = document.createElement('button');
@@ -2576,7 +2845,6 @@ function showReviewModal() {
   sendNew.addEventListener('click', () => {
     overlay.classList.remove('show');
     _reviewOpen = false;
-    // блокировка сохраняется, пока идёт отправка
     doActualSend();
   });
 }
@@ -2741,7 +3009,6 @@ async function doActualSend() {
       hideProgress();
       show('');
 
-      // Сброс формы (пока окно успеха ещё висит)
       journal.length = 0;
       clearDraft();
       renderJournal();
@@ -2754,7 +3021,6 @@ async function doActualSend() {
       dateInput.value = toISODate(new Date());
       updateDateHighlight();
 
-      // Показываем окно успеха. Блокировка снимется при нажатии 👍
       showSuccessOverlay(totalRows);
     } catch (e) {
       clearInterval(ticker);
