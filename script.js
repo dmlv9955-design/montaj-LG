@@ -36,12 +36,12 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbw6i5ZyPzjWSkYB8PTACDnFcMFbXxDCDLK137pU6pCCMS4B92dXYtms1qmJN5mWQ-za/exec';
 
 const FLOORS_BY_OBJECT = {
-  'Ларинская гимназия': ['1', '2', '3', 'Нет'],
-  'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак', 'Нет']
+  'Ларинская гимназия': ['1', '2', '3'],
+  'ЖЕДЕПОМ':            ['Подвал', '1', '2', '3', 'Чердак']
 };
 
 const FLOORS_OVERRIDE_BY_BUILDING = {
-  'Крыло мастерских': ['1', '2', 'Нет']
+  'Крыло мастерских': ['1', '2']
 };
 
 const BUILDINGS_BY_OBJECT = {
@@ -214,7 +214,6 @@ function isMatRowLocationComplete(row, buildingRequired) {
   if (buildingRequired && !row.building) return false;
   if (isAtticBuilding(row.building)) return true;
   if (!row.floor) return false;
-  if (row.floor === 'Нет') return true;
   if (!row.room) return false;
   return true;
 }
@@ -255,15 +254,7 @@ function formatQty(raw) {
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
-//
-//  ЛЮБОЙ нецифровой символ автоматически превращается в «, ».
-//  Примеры:
-//    «12 15 20»    → «12, 15, 20»
-//    «12.15.20»    → «12, 15, 20»
-//    «12,15,20»    → «12, 15, 20»
-//    «12-15-20»    → «12, 15, 20»
-//    «12а15»       → «12, 15»
-//    «12!15»       → «12, 15»
+//  Любой нецифровой символ → «, ».
 // ============================================
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
@@ -275,16 +266,10 @@ function liveFormatRooms(raw) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
 
-  // Последний введённый символ — не цифра?
   const trailingDelim = /[^0-9]$/.test(s);
 
-  // Любой нецифровой символ (подряд идущие сливаются) → «, »
   s = s.replace(/[^0-9]+/g, ', ');
-
-  // Убираем ведущие разделители
   s = s.replace(/^(?:,\s*)+/, '');
-
-  // Нормализуем разделители
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
 
@@ -385,7 +370,7 @@ function buildingWeight(b) {
 }
 
 function floorWeight(floor) {
-  const w = { 'Подвал': -1, '1': 1, '2': 2, '3': 3, 'Чердак': 100, '': 900, 'Нет': 1000 };
+  const w = { 'Подвал': -1, '1': 1, '2': 2, '3': 3, 'Чердак': 100, '': 900 };
   return (floor in w) ? w[floor] : 500;
 }
 
@@ -429,7 +414,6 @@ function compareEntries(a, b) {
 
 function formatFloorLabel(floor) {
   if (!floor) return '';
-  if (floor === 'Нет') return 'Без этажа';
   if (floor === 'Подвал') return 'Подвал';
   if (floor === 'Чердак') return 'Чердак';
   return floor + ' этаж';
@@ -445,9 +429,7 @@ function formatJournalTitle(entry) {
   }
   if (entry.kind === 'mentorship') return entry.name || 'Наставничество';
   const floorLabel = formatFloorLabel(entry.floor);
-  let roomLabel;
-  if (entry.room_none) roomLabel = 'без помещения';
-  else roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
+  const roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
   if (!floorLabel) return roomLabel.charAt(0).toUpperCase() + roomLabel.slice(1);
   return floorLabel + ' · ' + roomLabel;
 }
@@ -885,7 +867,7 @@ function renderMaterialsForBlock(work) {
         if (data.rows.length > 1) {
           const numEl = document.createElement('div');
           numEl.className = 'mat-row-num';
-          numEl.textContent = 'Этаж ' + (idx + 1);
+          numEl.textContent = 'Место ' + (idx + 1);
           rowEl.appendChild(numEl);
         }
 
@@ -958,8 +940,6 @@ function renderMaterialsForBlock(work) {
             b.textContent = f;
             b.addEventListener('click', () => {
               row.floor = f;
-              if (f === 'Нет') row.room = 'Нет';
-              else if (row.room === 'Нет') row.room = '';
               renderMaterialsForBlock(work);
             });
             fWrap.appendChild(b);
@@ -970,8 +950,7 @@ function renderMaterialsForBlock(work) {
 
         // === Помещения + количество ===
         const floorChosen = !!row.floor || isAtticRow;
-        const floorIsNo = row.floor === 'Нет';
-        const showRoom = floorChosen && !floorIsNo;
+        const showRoom = floorChosen;
 
         const mainLine = document.createElement('div');
         mainLine.className = 'mat-line';
@@ -998,7 +977,7 @@ function renderMaterialsForBlock(work) {
           rInput.inputMode = 'text';
           rInput.autocomplete = 'off';
           rInput.placeholder = '12, 15, 20';
-          rInput.value = row.room === 'Нет' ? '' : (row.room || '');
+          rInput.value = row.room || '';
           rInput.dataset.focusKey = r.key + '_room_' + idx;
           if (!row.room) rInput.classList.add('is-empty');
 
@@ -1106,7 +1085,7 @@ function renderMaterialsForBlock(work) {
       const addFloorBtn = document.createElement('button');
       addFloorBtn.type = 'button';
       addFloorBtn.className = 'mat-add-floor';
-      addFloorBtn.textContent = '+ Добавить этаж';
+      addFloorBtn.textContent = '+ Добавить место';
       addFloorBtn.dataset.addFloorFor = r.key;
       addFloorBtn.addEventListener('click', () => {
         data.rows.push(makeEmptyMatRow());
@@ -1167,16 +1146,16 @@ function validateMainFieldsForBlock(work) {
       if (!isFinite(qtyNum) || qtyNum <= 0) continue;
 
       if (buildingRequired && !row.building) {
-        show('⚠️ ' + label + ', этаж ' + (i + 1) + ': укажите корпус', 'err');
+        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите корпус', 'err');
         return false;
       }
       const isAtticRow = isAtticBuilding(row.building);
       if (!isAtticRow && !row.floor) {
-        show('⚠️ ' + label + ', этаж ' + (i + 1) + ': укажите этаж', 'err');
+        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите этаж', 'err');
         return false;
       }
-      if (row.floor !== 'Нет' && !isAtticRow && !row.room) {
-        show('⚠️ ' + label + ', этаж ' + (i + 1) + ': укажите помещения', 'err');
+      if (!row.room) {
+        show('⚠️ ' + label + ', место ' + (i + 1) + ': укажите помещения', 'err');
         return false;
       }
     }
@@ -1242,9 +1221,8 @@ function validateAdditionalOnly() {
       if (needB && !it.building) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err'); return false; }
       const isAtticZ = (it.building === 'Чердак');
       if (!isAtticZ && !it.floor) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err'); return false; }
-      const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
-      if (!isAtticZ && !floorIsNo && !r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещения', 'err'); return false; }
+      if (!r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещения', 'err'); return false; }
       const v = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(v) || v <= 0) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err'); return false; }
     }
@@ -1339,9 +1317,8 @@ function applyMainBlockToJournal(work) {
 
       const building = row.building || '';
       const floor = isAtticBuilding(building) ? ATTIC : (row.floor || '');
-      const roomNone = (row.floor === 'Нет');
       const normalizedRoom = finalizeRooms(row.room || '');
-      const room = roomNone ? 'Нет' : applyPrefixToRoom(normalizedRoom, building);
+      const room = applyPrefixToRoom(normalizedRoom, building);
 
       const newEntry = {
         kind: 'main',
@@ -1349,7 +1326,6 @@ function applyMainBlockToJournal(work) {
         work: work,
         floor: floor,
         room: room,
-        room_none: roomNone,
         is_master_wing: isMasterWingBuilding(building),
         materials: { [matKey]: row.qty }
       };
@@ -1360,7 +1336,6 @@ function applyMainBlockToJournal(work) {
         (e.building || '') === newEntry.building &&
         (e.floor || '') === newEntry.floor &&
         (e.room || '') === newEntry.room &&
-        !!e.room_none === !!newEntry.room_none &&
         !!e.is_master_wing === !!newEntry.is_master_wing
       );
 
@@ -1547,7 +1522,7 @@ function renderLocationFields(workKey, container) {
         fSeg.setOptions(floorList);
         if (item.floor) fSeg.value = item.floor;
         fSeg.input.addEventListener('change', () => {
-          item.floor = fSeg.value; item.room = '';
+          item.floor = fSeg.value;
           renderAdditionalFields();
         });
       }
@@ -1555,8 +1530,7 @@ function renderLocationFields(workKey, container) {
 
     const floor = item.floor;
     const isAtticZ = (building === 'Чердак');
-    const floorIsNo = (floor === 'Нет');
-    const showRoom = (!!floor || isAtticZ) && !floorIsNo;
+    const showRoom = (!!floor || isAtticZ);
 
     if (showRoom) {
       const rLabel = document.createElement('label');
@@ -1992,9 +1966,15 @@ function editJournalEntry(idx) {
       const data = st.materials[matKey];
       let targetRow = data.rows.find(r => !r.qty && !r.building && !r.floor && !r.room);
       if (!targetRow) { targetRow = makeEmptyMatRow(); data.rows.push(targetRow); }
+
+      // Чистим «устаревшие» значения при восстановлении
+      let restoredFloor = entry.floor || '';
+      if (restoredFloor === ATTIC) restoredFloor = '';
+      if (restoredFloor === 'Нет') restoredFloor = '';
+
       targetRow.building = entry.building || '';
-      targetRow.floor = entry.floor === ATTIC ? '' : (entry.floor || '');
-      targetRow.room = entry.room === 'Нет' ? 'Нет' : stripPrefixFromRoom(entry.room || '');
+      targetRow.floor = restoredFloor;
+      targetRow.room = stripPrefixFromRoom(entry.room || '');
       targetRow.qty = entry.materials[matKey];
     }
 
@@ -2010,9 +1990,11 @@ function editJournalEntry(idx) {
   renderJournal();
 
   if (isLocationKind(entry.kind)) {
+    let restoredFloor = entry.floor || '';
+    if (restoredFloor === 'Нет') restoredFloor = '';
     additionalState[entry.kind].items = [{
       building: entry.building || '',
-      floor: entry.floor || '',
+      floor: restoredFloor,
       room: stripPrefixFromRoom(entry.room || ''),
       value: entry.qty || ''
     }];
@@ -2183,7 +2165,7 @@ async function sendAll() {
       if (entry.kind === 'main') {
         records.push({
           room: entry.room || '',
-          room_none: entry.room_none,
+          room_none: false,
           floor: entry.floor || '',
           work: entry.work,
           materials: materialsMapToArray(entry.materials || {})
