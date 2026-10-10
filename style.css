@@ -1159,3 +1159,17 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   gap: 4px;
   flex: 1 1 auto;
 }
+
+/* Помещения под материалом — множественный ввод */
+.mat-line-room {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.loc-room-input {
+  width: auto;
+  min-width: 84px;
+  max-width: 100%;
+  flex: 1 1 auto;
+  text-align: left;
+  padding: 6px 8px;
+}
