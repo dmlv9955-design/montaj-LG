@@ -61,15 +61,15 @@ const MAIN_WORKS = [
 ];
 
 const LOCATION_WORKS = [
-  { key: 'zadelka',      label: 'Штукатурка',                        unit: 'шт'  },
-  { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' },
-  { key: 'burenie',      label: 'Бурение проходок',                  unit: 'шт'  },
   { key: 'vata',         label: 'Вата минеральная',                  unit: 'шт'  },
   { key: 'germetik',     label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт'  },
   { key: 'birki',        label: 'Бирки кабельные У-136, 55×62 мм',   unit: 'шт'  },
+  { key: 'burenie',      label: 'Бурение проходок',                  unit: 'шт'  },
   { key: 'raskluchenie', label: 'Расключение',                       unit: 'шт'  },
+  { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   },
   { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру',            unit: 'м'   },
-  { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   }
+  { key: 'zadelka',      label: 'Штукатурка',                        unit: 'шт'  },
+  { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' }
 ];
 
 const SHEET_WORK_MONTAGE = [
@@ -128,9 +128,8 @@ const MATERIAL_BY_KEY = (() => {
 const mainState = {};
 const _mainBlockStatus = {};
 
-// Карты раскрытия сворачиваемых групп
-const _matGroupExpanded = {};   // 'work|matId' → bool
-const _addGroupExpanded = {};   // 'add|workKey' → bool
+const _matGroupExpanded = {};
+const _addGroupExpanded = {};
 
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
 
@@ -355,8 +354,6 @@ function stripPrefixFromRoom(room) {
   return room.split(',').map(p => p.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
 }
 
-// Хелпер: форматирование поля помещений с сохранением курсора,
-// без «дописывания» пробела при удалении.
 function setupRoomInput(input, onValueChanged) {
   input.addEventListener('input', () => {
     const raw = input.value;
@@ -909,7 +906,7 @@ function getMentorshipGroupHint() {
 }
 
 // ============================================
-//  РЕНДЕР МАТЕРИАЛОВ (сворачиваемые группы)
+//  РЕНДЕР МАТЕРИАЛОВ
 // ============================================
 function renderMaterialsForBlock(work) {
   const st = mainState[work];
@@ -934,7 +931,6 @@ function renderMaterialsForBlock(work) {
     const isExpanded = !!_matGroupExpanded[expKey];
     if (isExpanded) groupEl.classList.add('expanded');
 
-    // Заголовок группы
     const headerEl = document.createElement('button');
     headerEl.type = 'button';
     headerEl.className = 'mat-group-header';
@@ -961,7 +957,6 @@ function renderMaterialsForBlock(work) {
     });
     groupEl.appendChild(headerEl);
 
-    // Тело группы
     const bodyEl = document.createElement('div');
     bodyEl.className = 'mat-group-body';
 
@@ -1319,7 +1314,6 @@ function resetMainBlock(work) {
   const st = mainState[work];
   if (!st) return;
   st.materials = makeEmptyMaterialState();
-  // Раскрываем все группы после сброса, чтобы пользователь видел поля заново
   MATERIALS.forEach(mat => {
     _matGroupExpanded[work + '|' + mat.id] = false;
   });
@@ -1567,7 +1561,6 @@ function addAllToJournal() {
 
     renderJournal();
     initAdditionalState();
-    // Сворачиваем все доп. работы после добавления в журнал
     for (const k in _addGroupExpanded) delete _addGroupExpanded[k];
     renderAdditionalFields();
 
@@ -1583,7 +1576,7 @@ function addAllToJournal() {
 }
 
 // ============================================
-//  РЕНДЕР ДОП. РАБОТ (сворачиваемые группы)
+//  РЕНДЕР ДОП. РАБОТ
 // ============================================
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
@@ -2185,7 +2178,6 @@ function editJournalEntry(idx) {
       targetRow.room = stripPrefixFromRoom(entry.room || '');
       targetRow.qty = entry.materials[matKey];
 
-      // Раскрываем группу этого материала
       const info = MATERIAL_BY_KEY[matKey];
       if (info) _matGroupExpanded[entry.work + '|' + info.mat.id] = true;
     }
@@ -2426,7 +2418,6 @@ function showReviewModal() {
   body.innerHTML = buildReviewContent();
   overlay.classList.add('show');
 
-  // Меняем кнопки на клоны, чтобы снять предыдущие обработчики
   const editOld = overlay.querySelector('#review-edit');
   const sendOld = overlay.querySelector('#review-send');
   const editNew = editOld.cloneNode(true);
@@ -2447,7 +2438,7 @@ function showReviewModal() {
 }
 
 // ============================================
-//  ОТПРАВКА (шаг 1: проверки и показ модалки)
+//  ОТПРАВКА (шаг 1)
 // ============================================
 async function sendAll() {
   if (_sending || _reviewOpen) return;
@@ -2478,7 +2469,7 @@ async function sendAll() {
 }
 
 // ============================================
-//  ОТПРАВКА (шаг 2: собственно отправка)
+//  ОТПРАВКА (шаг 2)
 // ============================================
 async function doActualSend() {
   if (_sending) return;
