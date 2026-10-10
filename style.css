@@ -1503,3 +1503,16 @@ body.dark .review-btn-send {
   color: var(--text-main);
   white-space: nowrap;
 }
+
+/* ============================================ */
+/*  ПОЛЕ «ДАТА» — КОМПАКТНО НА ТЕЛЕФОНЕ           */
+/* ============================================ */
+@media (max-width: 520px) {
+  .row > .col-1 { flex: 0 0 122px; }
+  .row > .col-2 { flex: 1 1 auto; }
+  #date {
+    padding: 12px 6px;
+    font-size: 13px;
+    min-width: 0;
+  }
+}
