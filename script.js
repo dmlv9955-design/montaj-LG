@@ -233,19 +233,15 @@ function formatQty(raw) {
   let s = String(raw == null ? '' : raw);
   const trailingDelim = /[^0-9]$/.test(s) && s.length > 0;
 
-  // Любой нецифровой символ → запятая; подряд идущие сливаются в одну.
   s = s.replace(/[^0-9]+/g, ',');
-  // Убираем ведущие запятые (если пользователь начал с разделителя)
   s = s.replace(/^,+/, '');
 
   if (!s) return '';
 
   const parts = s.split(',');
   let intPart = parts[0] || '';
-  let fracAll = parts.slice(1).join(''); // все цифры после первого разделителя
+  let fracAll = parts.slice(1).join('');
 
-  // Ведущий ноль + ещё цифры → остальное уходит в дробную часть
-  // Например: 05 → 0,5 ; 0005 → 0,005
   if (intPart.length > 1 && intPart.charAt(0) === '0') {
     const extra = intPart.slice(1);
     intPart = '0';
@@ -253,7 +249,7 @@ function formatQty(raw) {
   }
 
   if (intPart.length > 4) intPart = intPart.slice(0, 4);
-  if (fracAll.length > 3) fracAll = fracAll.slice(0, 3);  // максимум тысячные
+  if (fracAll.length > 3) fracAll = fracAll.slice(0, 3);
 
   if (fracAll) return intPart + ',' + fracAll;
   if (trailingDelim && s.indexOf(',') !== -1 && intPart) return intPart + ',';
@@ -262,7 +258,17 @@ function formatQty(raw) {
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ ПОМЕЩЕНИЙ
+//
+//  В поле «Помещения» разрешены ТОЛЬКО цифры и знаки-разделители:
+//    .  ,  пробел  -  /  ;  :  |
+//
+//  Все разделители автоматически превращаются в «, ».
+//  Любые другие символы (буквы, !@#$%^&* и т.п.) просто удаляются.
 // ============================================
+const ROOMS_DELIM_RE = /[.,\s\-\/;:|]/;
+const ROOMS_ALLOWED_RE = /[^0-9.,\s\-\/;:|]/g;
+const ROOMS_DELIM_RUN_RE = /[.,\s\-\/;:|]+/g;
+
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
   s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').replace(/^\s+/, '');
@@ -272,17 +278,24 @@ function sanitizeZadelkaRoomInput(value) {
 function liveFormatRooms(raw) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
-  const trailingDelim = /[^0-9]$/.test(s);
 
-  s = s.replace(/[^0-9]+/g, ', ');
+  // Последний введённый символ — разделитель?
+  const trailingDelim = ROOMS_DELIM_RE.test(s.slice(-1));
+
+  // Оставляем только цифры и разрешённые разделители
+  s = s.replace(ROOMS_ALLOWED_RE, '');
+
+  // Все разделители (подряд) → «, »
+  s = s.replace(ROOMS_DELIM_RUN_RE, ', ');
+
+  // Убираем ведущие разделители
   s = s.replace(/^(?:,\s*)+/, '');
+
+  // Нормализуем разделители
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
 
-  if (trailingDelim) {
-    if (!s) s = '';
-    else s += ', ';
-  }
+  if (trailingDelim && s) s += ' ';
   return s;
 }
 
@@ -843,7 +856,6 @@ function renderMaterialsForBlock(work) {
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
 
-      // 0) Префикс перед капсулой (например, «d=»)
       if (mat.prefix) {
         const prefixEl = document.createElement('span');
         prefixEl.className = 'variant-prefix';
@@ -851,19 +863,16 @@ function renderMaterialsForBlock(work) {
         headRight.appendChild(prefixEl);
       }
 
-      // 1) Вид
       const badge = document.createElement('span');
       badge.className = 'variant-badge';
       badge.textContent = r.variant;
       headRight.appendChild(badge);
 
-      // 2) «для»
       const forEl = document.createElement('span');
       forEl.className = 'variant-for';
       forEl.textContent = 'для';
       headRight.appendChild(forEl);
 
-      // 3) Система
       const sysEl = document.createElement('span');
       sysEl.className = systemClass(r.system);
       sysEl.textContent = r.system;
