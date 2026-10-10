@@ -71,6 +71,16 @@ const LOCATION_WORKS = [
   { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру', unit: 'м'   }
 ];
 
+// Какие доп. работы уходят в таблицу как «Монтаж» (вместо «Другие работы»)
+const SHEET_WORK_MONTAGE = [
+  'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie'
+];
+
+function getSheetWorkForLocation(kind) {
+  if (SHEET_WORK_MONTAGE.indexOf(kind) !== -1) return 'Монтаж';
+  return WORK_ADDITIONAL;
+}
+
 function isLocationKind(kind) { return LOCATION_WORKS.some(w => w.key === kind); }
 function locationWorkByKey(key) { return LOCATION_WORKS.find(w => w.key === key) || null; }
 function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label === label) || null; }
@@ -2205,7 +2215,7 @@ async function sendAll() {
         if (!isFinite(z) || z <= 0) return;
         records.push({
           room: entry.room || '', room_none: false, floor: entry.floor || '',
-          work: WORK_ADDITIONAL,
+          work: getSheetWorkForLocation(entry.kind),  // ← теперь «Монтаж» для части работ
           materials: [{ name: w.label, unit: w.unit, qty: String(z), system: '' }]
         });
       } else if (entry.kind === 'mentorship') {
