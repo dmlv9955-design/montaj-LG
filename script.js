@@ -106,6 +106,9 @@ const MATERIAL_BY_KEY = (() => {
 //  СОСТОЯНИЕ
 // ============================================
 const mainState = {};
+// Статус блокировки блока ('enabled' / 'disabled'). Нужен, чтобы
+// не перерисовывать материалы на каждое нажатие клавиши в имени.
+const _mainBlockStatus = {};
 
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
 
@@ -251,7 +254,6 @@ function sanitizeZadelkaRoomInput(value) {
   return s;
 }
 
-// Живое форматирование: любой нецифровой символ → ", "
 function liveFormatRooms(raw) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
@@ -269,7 +271,6 @@ function liveFormatRooms(raw) {
   return s;
 }
 
-// Итоговое: числа по возрастанию, без повторов, через ", "
 function finalizeRooms(raw) {
   const nums = String(raw == null ? '' : raw)
     .split(',')
@@ -766,20 +767,29 @@ function toggleMainAccordion(work) {
   if (st.expanded) renderMaterialsForBlock(work);
 }
 
-function updateHeaderEnabledState(work) {
-  const st = mainState[work];
-  if (!st || !st.elements) return;
+// ============================================
+//  ПЕРЕСЧЁТ БЛОКИРОВКИ
+//  Материалы перерисовываем ТОЛЬКО при смене статуса
+//  (иначе на каждое нажатие клавиши в имени было бы 50+ DOM-узлов).
+// ============================================
+function updateAllMainBlocks() {
   const nameOk = isNameValid(nameInput.value);
   const objOk = !!objectSelect.value;
   const enabled = nameOk && objOk;
-  st.elements.header.disabled = !enabled;
-  if (st.wrapper) st.wrapper.classList.toggle('main-block-locked', !enabled);
-}
+  const newStatus = enabled ? 'enabled' : 'disabled';
 
-function updateAllMainBlocks() {
   MAIN_WORKS.forEach(({ work }) => {
-    updateHeaderEnabledState(work);
-    if (mainState[work] && mainState[work].expanded) renderMaterialsForBlock(work);
+    const st = mainState[work];
+    if (!st) return;
+
+    st.elements.header.disabled = !enabled;
+    if (st.wrapper) st.wrapper.classList.toggle('main-block-locked', !enabled);
+
+    const statusChanged = _mainBlockStatus[work] !== newStatus;
+    if (statusChanged && st.expanded) {
+      renderMaterialsForBlock(work);
+    }
+    _mainBlockStatus[work] = newStatus;
   });
 }
 
@@ -865,7 +875,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
-        // === Корпус ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -896,8 +905,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
-        // === Этаж ===
-        // Этаж показывается только когда корпус выбран (если он вообще нужен).
         const isAtticRow = isAtticBuilding(row.building);
         const floors = getFloorsFor(objectSelect.value, row.building);
         const buildingChosen = !buildingRequired || !!row.building;
@@ -931,9 +938,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
-        // === Помещения + количество ===
-        // Помещение доступно только после выбора этажа
-        // (или сразу для корпуса «Чердак», где этаж не используется).
         const floorChosen = !!row.floor || isAtticRow;
         const floorIsNo = row.floor === 'Нет';
         const showRoom = floorChosen && !floorIsNo;
@@ -2063,6 +2067,9 @@ objectSelect.addEventListener('change', () => {
     const st = mainState[work];
     if (st) st.materials = makeEmptyMaterialState();
   });
+
+  // Сброс кэша статусов, чтобы блоки точно перерисовались
+  MAIN_WORKS.forEach(({ work }) => { _mainBlockStatus[work] = null; });
 
   updateAllMainBlocks();
   updateAdditionalAccessibility();
