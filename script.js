@@ -77,9 +77,19 @@ const SHEET_WORK_MONTAGE = [
   'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie', 'kryshki'
 ];
 
+// Каким доп. работам в таблицу проставляем систему «АПС/СОУЭ»
+const SHEET_SYSTEM_APS_SOUE = [
+  'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'vata', 'germetik', 'birki', 'kryshki'
+];
+
 function getSheetWorkForLocation(kind) {
   if (SHEET_WORK_MONTAGE.indexOf(kind) !== -1) return 'Монтаж';
   return WORK_ADDITIONAL;
+}
+
+function getSheetSystemForLocation(kind) {
+  if (SHEET_SYSTEM_APS_SOUE.indexOf(kind) !== -1) return 'АПС/СОУЭ';
+  return '';
 }
 
 function isLocationKind(kind) { return LOCATION_WORKS.some(w => w.key === kind); }
@@ -1899,7 +1909,7 @@ function renderJournalEntryElement(entry) {
   } else if (isLocationKind(entry.kind)) {
     const w = locationWorkByKey(entry.kind);
     matsArr = [{ name: w ? w.label : entry.kind, unit: w ? w.unit : 'шт',
-      qty: entry.qty.replace(',', '.'), system: '' }];
+      qty: entry.qty.replace(',', '.'), system: getSheetSystemForLocation(entry.kind) }];
   } else if (entry.kind === 'mentorship') {
     matsArr = [{ name: entry.name, unit: 'ч',
       qty: entry.hours.replace(',', '.'), system: '' }];
@@ -2217,7 +2227,7 @@ async function sendAll() {
         records.push({
           room: entry.room || '', room_none: false, floor: entry.floor || '',
           work: getSheetWorkForLocation(entry.kind),
-          materials: [{ name: w.label, unit: w.unit, qty: String(z), system: '' }]
+          materials: [{ name: w.label, unit: w.unit, qty: String(z), system: getSheetSystemForLocation(entry.kind) }]
         });
       } else if (entry.kind === 'mentorship') {
         const h = parseFloat(String(entry.hours).replace(',', '.'));
