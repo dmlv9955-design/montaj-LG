@@ -70,12 +70,10 @@ const LOCATION_WORKS = [
   { key: 'strahovka',    label: 'Страховка лестницы',                unit: 'ч'   }
 ];
 
-// Тип работ в таблице для доп. работ
 const SHEET_WORK_MONTAGE = [
   'zadelka', 'burenie', 'raskluchenie', 'kryshki', 'zatyazhka'
 ];
 
-// Система в таблице для доп. работ
 const SHEET_SYSTEM_APS_SOUE = [
   'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'kryshki'
 ];
@@ -96,9 +94,6 @@ function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label ==
 
 // ============================================
 //  КООРДИНАТЫ ПОМЕЩЕНИЙ
-//  Только для объекта «Ларинская гимназия».
-//  Чердак — плоский список (этажа нет).
-//  Остальные корпуса — { этаж: { №: 'A-B/X-Y' } }.
 // ============================================
 const ROOM_COORDS = {
   'Ларинская гимназия': {
@@ -172,12 +167,6 @@ const ROOM_COORDS = {
   }
 };
 
-/**
- * Ищет координаты помещения.
- *   null  → координаты не применяются (объект не «Ларинская гимназия»)
- *   ''    → координат нет → пишем (?)
- *   'A-B' → координаты найдены
- */
 function lookupRoomCoords(object, building, floor, num) {
   if (object !== 'Ларинская гимназия') return null;
   const objData = ROOM_COORDS[object];
@@ -192,10 +181,6 @@ function lookupRoomCoords(object, building, floor, num) {
   return floorData[String(num)] || '';
 }
 
-/**
- * Применяет координаты к строке помещений вида "1, 2, 3" или "к5, к6".
- * Возвращает "1(А-В/1-2), 2(Ш-Е/5-7)" или "к5(А-В/1-2)".
- */
 function applyCoordsToRoomString(roomStr, object, building, floor) {
   if (!roomStr) return roomStr || '';
   if (object !== 'Ларинская гимназия') return roomStr;
@@ -339,6 +324,10 @@ function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
 let _sending = false;
 let _addingToJournal = false;
 let _reviewOpen = false;
+
+// Блокировка/разблокировка всей страницы
+function lockApp() { document.body.classList.add('app-blocked'); }
+function unlockApp() { document.body.classList.remove('app-blocked'); }
 
 // ============================================
 //  ВЕРХНЯЯ КНОПКА «ОТПРАВИТЬ»
@@ -2569,6 +2558,7 @@ function showReviewModal() {
   const body = overlay.querySelector('#review-body');
   body.innerHTML = buildReviewContent();
   overlay.classList.add('show');
+  lockApp();
 
   const editOld = overlay.querySelector('#review-edit');
   const sendOld = overlay.querySelector('#review-send');
@@ -2580,12 +2570,51 @@ function showReviewModal() {
   editNew.addEventListener('click', () => {
     overlay.classList.remove('show');
     _reviewOpen = false;
+    unlockApp();
   });
 
   sendNew.addEventListener('click', () => {
     overlay.classList.remove('show');
     _reviewOpen = false;
+    // блокировка сохраняется, пока идёт отправка
     doActualSend();
+  });
+}
+
+// ============================================
+//  ОКНО УСПЕХА
+// ============================================
+function ensureSuccessOverlay() {
+  let overlay = document.getElementById('success-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'success-overlay';
+  overlay.className = 'success-overlay';
+  overlay.innerHTML =
+    '<div class="success-box">' +
+      '<div class="success-check">✓</div>' +
+      '<div class="success-title">Отчет отправлен</div>' +
+      '<div class="success-sub" id="success-sub"></div>' +
+      '<button type="button" class="success-btn" id="success-close" title="Закрыть">👍</button>' +
+      '<div class="success-hint">Нажмите, чтобы закрыть</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function showSuccessOverlay(totalRows) {
+  const overlay = ensureSuccessOverlay();
+  const sub = overlay.querySelector('#success-sub');
+  if (sub) sub.textContent = 'Строк: ' + totalRows;
+  overlay.classList.add('show');
+
+  const btnOld = overlay.querySelector('#success-close');
+  const btnNew = btnOld.cloneNode(true);
+  btnOld.parentNode.replaceChild(btnNew, btnOld);
+  btnNew.addEventListener('click', () => {
+    overlay.classList.remove('show');
+    unlockApp();
   });
 }
 
@@ -2642,7 +2671,11 @@ async function doActualSend() {
         'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
         'Отправить всё равно?'
       );
-      if (!proceed) { show('⚠️ Отправка отменена.', 'err'); return; }
+      if (!proceed) {
+        show('⚠️ Отправка отменена.', 'err');
+        unlockApp();
+        return;
+      }
     }
 
     const sortedJournal = journal.slice().sort(compareForSheet);
@@ -2706,8 +2739,9 @@ async function doActualSend() {
       updateProgress(totalRows, totalRows);
       await new Promise(r => setTimeout(r, 350));
       hideProgress();
-      show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+      show('');
 
+      // Сброс формы (пока окно успеха ещё висит)
       journal.length = 0;
       clearDraft();
       renderJournal();
@@ -2719,10 +2753,14 @@ async function doActualSend() {
       setupDateRange();
       dateInput.value = toISODate(new Date());
       updateDateHighlight();
+
+      // Показываем окно успеха. Блокировка снимется при нажатии 👍
+      showSuccessOverlay(totalRows);
     } catch (e) {
       clearInterval(ticker);
       hideProgress();
       show('❌ Ошибка: ' + e.message, 'err');
+      unlockApp();
     }
   } finally {
     _sending = false;
