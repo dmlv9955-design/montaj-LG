@@ -990,3 +990,27 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   .loc-room-input { width: 64px; }
   .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
 }
+
+/* ============================================ */
+/*  БЛОК МОНТАЖ/ДЕМОНТАЖ — ЗАБЛОКИРОВАН           */
+/*  до ввода имени и выбора объекта               */
+/* ============================================ */
+.accordion-item.main-block-locked .accordion-body {
+  pointer-events: none;
+  opacity: .5;
+  user-select: none;
+}
+.accordion-item.main-block-locked .accordion-body input,
+.accordion-item.main-block-locked .accordion-body button {
+  cursor: not-allowed;
+}
+/* Полупрозрачный «замок» поверх тела */
+.accordion-item.main-block-locked .accordion-body::before {
+  content: '🔒 Введите имя и объект';
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-hint);
+  padding: 8px 0 4px;
+}
