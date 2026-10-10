@@ -739,6 +739,78 @@ function systemClass(sys) {
 }
 
 // ============================================
+//  ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+//  Правило: если строка тронута (заполнено хотя бы одно поле) —
+//  все остальные незаполненные поля этой строки подсвечиваются.
+//  Если строка полностью пустая — ничего не подсвечиваем.
+// ============================================
+function refreshMatRowHighlight(rowEl, row, buildingRequired) {
+  if (!rowEl || !rowEl.isConnected) return;
+  const hasAny = !!(row.building || row.floor || row.room || row.qty);
+
+  // Корпус
+  rowEl.querySelectorAll('.mat-line-corp .loc-floor-btn').forEach(btn => {
+    if (buildingRequired && hasAny && !row.building) btn.classList.add('is-empty');
+    else btn.classList.remove('is-empty');
+  });
+
+  // Этаж (если поле есть)
+  const isAtticRow = isAtticBuilding(row.building);
+  rowEl.querySelectorAll('.mat-line-floors .loc-floor-btn').forEach(btn => {
+    if (hasAny && !isAtticRow && !row.floor) btn.classList.add('is-empty');
+    else btn.classList.remove('is-empty');
+  });
+
+  // Помещения
+  const roomInp = rowEl.querySelector('.loc-room-input');
+  if (roomInp) {
+    if (hasAny && !row.room) roomInp.classList.add('is-empty');
+    else roomInp.classList.remove('is-empty');
+  }
+
+  // Количество
+  const qInp = rowEl.querySelector('.variant-input');
+  if (qInp) {
+    if (hasAny && !row.qty) qInp.classList.add('is-empty');
+    else qInp.classList.remove('is-empty');
+  }
+}
+
+function refreshAddItemHighlight(itemEl, item) {
+  if (!itemEl || !itemEl.isConnected) return;
+  const hasAny = !!(item.building || item.floor || item.room || item.value);
+
+  // Корпус
+  const corpSeg = itemEl.querySelector('.segmented:not(.segmented-floors)');
+  if (corpSeg) {
+    const isEmpty = hasAny && isBuildingRequired() && !item.building;
+    corpSeg.classList.toggle('is-empty', isEmpty);
+  }
+
+  // Этаж
+  const floorSeg = itemEl.querySelector('.segmented.segmented-floors');
+  if (floorSeg) {
+    const isAtticZ = (item.building === 'Чердак');
+    const isEmpty = hasAny && !isAtticZ && !item.floor;
+    floorSeg.classList.toggle('is-empty', isEmpty);
+  }
+
+  // Помещения
+  const roomInp = itemEl.querySelector('.room-wrap .req-field');
+  if (roomInp) {
+    if (hasAny && !item.room) roomInp.classList.add('is-empty');
+    else roomInp.classList.remove('is-empty');
+  }
+
+  // Количество
+  const qInp = itemEl.querySelector('.variant-line .variant-input');
+  if (qInp) {
+    if (hasAny && !item.value) qInp.classList.add('is-empty');
+    else qInp.classList.remove('is-empty');
+  }
+}
+
+// ============================================
 //  МОДАЛКА УВЕДОМЛЕНИЯ
 // ============================================
 function ensureAlertOverlay() {
@@ -1309,7 +1381,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(numEl);
         }
 
-        // Кнопка «Сбросить место» — очищает корпус/этаж/помещение/кол-во
+        // Кнопка «Сбросить место»
         const resetBtn = document.createElement('button');
         resetBtn.type = 'button';
         resetBtn.className = 'mat-row-reset';
@@ -1354,8 +1426,7 @@ function renderMaterialsForBlock(work) {
           buildingList.forEach(val => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'loc-floor-btn' + (row.building === val ? ' active' : '')
-              + (!row.building ? ' is-empty' : '');
+            b.className = 'loc-floor-btn' + (row.building === val ? ' active' : '');
             b.textContent = val;
             b.addEventListener('click', () => {
               row.building = val;
@@ -1388,8 +1459,7 @@ function renderMaterialsForBlock(work) {
           floors.forEach(f => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'loc-floor-btn' + (row.floor === f ? ' active' : '')
-              + (!row.floor ? ' is-empty' : '');
+            b.className = 'loc-floor-btn' + (row.floor === f ? ' active' : '');
             b.textContent = f;
             b.addEventListener('click', () => {
               row.floor = f;
@@ -1431,19 +1501,18 @@ function renderMaterialsForBlock(work) {
           rInput.placeholder = '12, 15, 20';
           rInput.value = row.room || '';
           rInput.dataset.focusKey = r.key + '_room_' + idx;
-          if (!row.room) rInput.classList.add('is-empty');
 
           setupRoomInput(rInput, (val) => {
             row.room = val;
-            rInput.classList.toggle('is-empty', !val);
             updateAddFloorButton(card, r.key, work);
+            refreshMatRowHighlight(rowEl, row, buildingRequired);
           });
 
           rInput.addEventListener('blur', () => {
             const finalVal = finalizeRooms(rInput.value);
             if (rInput.value !== finalVal) rInput.value = finalVal;
             row.room = finalVal;
-            rInput.classList.toggle('is-empty', !finalVal);
+            refreshMatRowHighlight(rowEl, row, buildingRequired);
           });
 
           rWrap.appendChild(rInput);
@@ -1504,21 +1573,25 @@ function renderMaterialsForBlock(work) {
           clearBtn.style.display = qInput.value ? 'inline-flex' : 'none';
           updateMinusState(qInput, minusBtn);
           updateAddFloorButton(card, r.key, work);
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
         });
 
         minusBtn.addEventListener('click', () => {
           bumpQty(qInput, v => { row.qty = v; }, -1, clearBtn, minusBtn);
           updateAddFloorButton(card, r.key, work);
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
         });
         plusBtn.addEventListener('click', () => {
           bumpQty(qInput, v => { row.qty = v; }, 1, clearBtn, minusBtn);
           updateAddFloorButton(card, r.key, work);
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
         });
         clearBtn.addEventListener('click', () => {
           qInput.value = ''; row.qty = '';
           clearBtn.style.display = 'none';
           updateMinusState(qInput, minusBtn);
           updateAddFloorButton(card, r.key, work);
+          refreshMatRowHighlight(rowEl, row, buildingRequired);
           qInput.focus();
         });
 
@@ -1527,6 +1600,9 @@ function renderMaterialsForBlock(work) {
         rowEl.appendChild(mainLine);
 
         rowsWrap.appendChild(rowEl);
+
+        // Первичная подсветка для строки
+        refreshMatRowHighlight(rowEl, row, buildingRequired);
       });
 
       const addFloorBtn = document.createElement('button');
@@ -1654,7 +1730,6 @@ function fixMentorField(itemIdx, fieldType) {
 
 // ============================================
 //  ВАЛИДАЦИЯ БЛОКА
-//  Строку валидируем полностью, если тронуто хотя бы одно поле.
 // ============================================
 function validateMainFieldsForBlock(work) {
   const st = mainState[work];
@@ -1751,7 +1826,6 @@ function validateHeader() {
 
 // ============================================
 //  ВАЛИДАЦИЯ ДОП. РАБОТ
-//  Строку валидируем полностью, если тронуто хотя бы одно поле.
 // ============================================
 function validateAdditionalOnly() {
   for (let wi = 0; wi < LOCATION_WORKS.length; wi++) {
@@ -2183,12 +2257,16 @@ function renderLocationFields(workKey, container) {
       rInp.value = item.room || '';
       rInp.dataset.focusId = workKey + '_room_' + idx;
 
-      setupRoomInput(rInp, (val) => { item.room = val; });
+      setupRoomInput(rInp, (val) => {
+        item.room = val;
+        refreshAddItemHighlight(itemEl, item);
+      });
 
       rInp.addEventListener('blur', () => {
         const n = finalizeRooms(rInp.value);
         if (rInp.value !== n) rInp.value = n;
         item.room = n;
+        refreshAddItemHighlight(itemEl, item);
       });
       rWrap.appendChild(rInp);
       itemEl.appendChild(rWrap);
@@ -2238,19 +2316,31 @@ function renderLocationFields(workKey, container) {
       item.value = qInp.value;
       clearBtn.style.display = qInp.value ? 'inline-flex' : 'none';
       updateMinusState(qInp, minusBtn);
+      refreshAddItemHighlight(itemEl, item);
     });
-    minusBtn.addEventListener('click', () => bumpQty(qInp, v => { item.value = v; }, -1, clearBtn, minusBtn));
-    plusBtn.addEventListener('click', () => bumpQty(qInp, v => { item.value = v; }, 1, clearBtn, minusBtn));
+    minusBtn.addEventListener('click', () => {
+      bumpQty(qInp, v => { item.value = v; }, -1, clearBtn, minusBtn);
+      refreshAddItemHighlight(itemEl, item);
+    });
+    plusBtn.addEventListener('click', () => {
+      bumpQty(qInp, v => { item.value = v; }, 1, clearBtn, minusBtn);
+      refreshAddItemHighlight(itemEl, item);
+    });
     clearBtn.addEventListener('click', () => {
       qInp.value = ''; item.value = '';
       clearBtn.style.display = 'none';
-      updateMinusState(qInp, minusBtn); qInp.focus();
+      updateMinusState(qInp, minusBtn);
+      refreshAddItemHighlight(itemEl, item);
+      qInp.focus();
     });
 
     updateMinusState(qInp, minusBtn);
     itemEl.appendChild(qLine);
 
     bodyEl.appendChild(itemEl);
+
+    // Первичная подсветка
+    refreshAddItemHighlight(itemEl, item);
   });
 
   const addBtn = document.createElement('button');
@@ -2708,10 +2798,9 @@ function updateFieldState(el) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
       wrap.classList.remove('is-empty', 'is-filled'); return;
     }
-    wrap.classList.remove('is-empty', 'is-filled');
-    const isEmpty = !el.value || !el.value.trim();
-    wrap.classList.toggle('is-empty', isEmpty);
-    wrap.classList.toggle('is-filled', !isEmpty);
+    // НЕ трогаем is-empty у сегментов внутри доп. работ — этим занимается
+    // refreshAddItemHighlight (учитывает "тронута ли строка").
+    wrap.classList.remove('is-filled');
     return;
   }
   if (!el.classList.contains('req-field')) return;
