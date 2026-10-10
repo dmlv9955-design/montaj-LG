@@ -67,7 +67,8 @@ const LOCATION_WORKS = [
   { key: 'vata',         label: 'Вата',                   unit: 'шт'  },
   { key: 'germetik',     label: 'Герметик',               unit: 'шт'  },
   { key: 'birki',        label: 'Бирки',                  unit: 'шт'  },
-  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  }
+  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  },
+  { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру', unit: 'м'   }
 ];
 
 function isLocationKind(kind) { return LOCATION_WORKS.some(w => w.key === kind); }
