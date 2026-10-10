@@ -60,8 +60,6 @@ const MAIN_WORKS = [
   { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧', alwaysOpen: true  }
 ];
 
-// Осталось только то, что НЕ является материалом:
-// тура, бурение, расключение, крышки, затяжка, штукатурка, страховка
 const LOCATION_WORKS = [
   { key: 'burenie',      label: 'Бурение проходок',                  unit: 'шт'  },
   { key: 'raskluchenie', label: 'Расключение',                       unit: 'шт'  },
@@ -72,12 +70,10 @@ const LOCATION_WORKS = [
   { key: 'strahovka',    label: 'Страховка лестницы',                unit: 'ч'   }
 ];
 
-// Какие доп. работы уходят в таблицу как «Монтаж» (вместо «Другие работы»)
 const SHEET_WORK_MONTAGE = [
   'zadelka', 'burenie', 'raskluchenie', 'kryshki'
 ];
 
-// Каким доп. работам в таблицу проставляем систему «АПС/СОУЭ»
 const SHEET_SYSTEM_APS_SOUE = [
   'zadelka', 'raskluchenie', 'burenie', 'zatyazhka', 'kryshki'
 ];
@@ -98,8 +94,7 @@ function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label ==
 
 // ============================================
 //  МАТЕРИАЛЫ
-//  + три новых «простых» материала без варианта:
-//    вата, герметик, бирки (system = АПС/СОУЭ)
+//  montageOnly: true → показываем только в блоке «Монтаж»
 // ============================================
 const MATERIALS = [
   { id: 'cable', label: 'Кабель КПСЭнг(A)FRHF "Технокабель" 1x2x', unit: 'м', rows: [
@@ -118,14 +113,14 @@ const MATERIALS = [
     { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
     { key: 'steel_20', variant: '20 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
   ]},
-  // ↓↓↓ Перенесены из доп. работ
-  { id: 'vata', label: 'Вата минеральная', unit: 'шт', rows: [
+  // ↓↓↓ Только для «Монтажа» — в «Демонтаже» не показываем
+  { id: 'vata', label: 'Вата минеральная', unit: 'шт', montageOnly: true, rows: [
     { key: 'vata', variant: '', system: 'АПС/СОУЭ', tableName: 'Вата минеральная' }
   ]},
-  { id: 'germetik', label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт', rows: [
+  { id: 'germetik', label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт', montageOnly: true, rows: [
     { key: 'germetik', variant: '', system: 'АПС/СОУЭ', tableName: 'Герметик огнезащитный "ОГНЕЗА-ГТ"' }
   ]},
-  { id: 'birki', label: 'Бирки кабельные У-136, 55×62 мм', unit: 'шт', rows: [
+  { id: 'birki', label: 'Бирки кабельные У-136, 55×62 мм', unit: 'шт', montageOnly: true, rows: [
     { key: 'birki', variant: '', system: 'АПС/СОУЭ', tableName: 'Бирки кабельные У-136, 55×62 мм' }
   ]}
 ];
@@ -135,6 +130,12 @@ const MATERIAL_BY_KEY = (() => {
   MATERIALS.forEach(mat => mat.rows.forEach(r => { m[r.key] = { mat, row: r }; }));
   return m;
 })();
+
+// Подходит ли материал для блока «work» ('Монтаж' / 'Демонтаж')
+function isMatAvailableForWork(mat, work) {
+  if (mat.montageOnly && work !== 'Монтаж') return false;
+  return true;
+}
 
 // ============================================
 //  СОСТОЯНИЕ
@@ -147,11 +148,14 @@ const _addGroupExpanded = {};
 
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
 
-function makeEmptyMaterialState() {
+function makeEmptyMaterialState(work) {
   const s = {};
-  MATERIALS.forEach(mat => mat.rows.forEach(r => {
-    s[r.key] = { rows: [makeEmptyMatRow()] };
-  }));
+  MATERIALS.forEach(mat => {
+    if (!isMatAvailableForWork(mat, work)) return;
+    mat.rows.forEach(r => {
+      s[r.key] = { rows: [makeEmptyMatRow()] };
+    });
+  });
   return s;
 }
 
@@ -822,7 +826,7 @@ function initMainWorks() {
     const st = {
       work, suffix,
       alwaysOpen: !!alwaysOpen,
-      materials: makeEmptyMaterialState(),
+      materials: makeEmptyMaterialState(work),
       expanded: !!alwaysOpen,
       wrapper: wrapper,
       elements: {
@@ -939,6 +943,8 @@ function renderMaterialsForBlock(work) {
   const buildingList = BUILDINGS_BY_OBJECT[objectSelect.value] || [];
 
   MATERIALS.forEach(mat => {
+    if (!isMatAvailableForWork(mat, work)) return;
+
     const groupEl = document.createElement('div');
     groupEl.className = 'mat-group';
     const expKey = work + '|' + mat.id;
@@ -982,9 +988,6 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // «Простой» материал: один вариант, без названия варианта
-      // (вата, герметик, бирки) — не рисуем «Вариант для АПС/СОУЭ»,
-      // оставляем только бейдж системы (или ничего, если системы нет).
       const isSimple = !r.variant && mat.rows.length === 1;
 
       const head = document.createElement('div');
@@ -1339,7 +1342,7 @@ function validateMainFieldsForBlock(work) {
 function resetMainBlock(work) {
   const st = mainState[work];
   if (!st) return;
-  st.materials = makeEmptyMaterialState();
+  st.materials = makeEmptyMaterialState(work);
   MATERIALS.forEach(mat => {
     _matGroupExpanded[work + '|' + mat.id] = false;
   });
@@ -2310,7 +2313,7 @@ objectSelect.addEventListener('change', () => {
 
   MAIN_WORKS.forEach(({ work }) => {
     const st = mainState[work];
-    if (st) st.materials = makeEmptyMaterialState();
+    if (st) st.materials = makeEmptyMaterialState(work);
   });
 
   MAIN_WORKS.forEach(({ work }) => { _mainBlockStatus[work] = null; });
