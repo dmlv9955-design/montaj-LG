@@ -814,7 +814,7 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // === Шапка: название слева, вид+система справа ===
+      // === Шапка: название слева, [вид] для [система] справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
 
@@ -826,16 +826,19 @@ function renderMaterialsForBlock(work) {
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
 
-      const forEl = document.createElement('span');
-      forEl.className = 'variant-for';
-      forEl.textContent = 'для';
-      headRight.appendChild(forEl);
-
+      // 1) Вид
       const badge = document.createElement('span');
       badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
       badge.textContent = r.variant;
       headRight.appendChild(badge);
 
+      // 2) «для»
+      const forEl = document.createElement('span');
+      forEl.className = 'variant-for';
+      forEl.textContent = 'для';
+      headRight.appendChild(forEl);
+
+      // 3) Система
       const sysEl = document.createElement('span');
       sysEl.className = systemClass(r.system);
       sysEl.textContent = r.system;
