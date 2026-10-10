@@ -61,19 +61,20 @@ const MAIN_WORKS = [
 ];
 
 const LOCATION_WORKS = [
-  { key: 'zadelka',      label: 'Штукатурка',             unit: 'шт'  },
-  { key: 'tura',         label: 'Тура (монтаж/демонтаж)', unit: 'раз' },
-  { key: 'burenie',      label: 'Бурение проходок',       unit: 'шт'  },
-  { key: 'vata',         label: 'Вата',                   unit: 'шт'  },
-  { key: 'germetik',     label: 'Герметик',               unit: 'шт'  },
-  { key: 'birki',        label: 'Бирки',                  unit: 'шт'  },
-  { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  },
-  { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру', unit: 'м'   }
+  { key: 'zadelka',      label: 'Штукатурка',                        unit: 'шт'  },
+  { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' },
+  { key: 'burenie',      label: 'Бурение проходок',                  unit: 'шт'  },
+  { key: 'vata',         label: 'Вата минеральная',                  unit: 'шт'  },
+  { key: 'germetik',     label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт'  },
+  { key: 'birki',        label: 'Бирки кабельные У-136, 55×62 мм',   unit: 'шт'  },
+  { key: 'raskluchenie', label: 'Расключение',                       unit: 'шт'  },
+  { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру',            unit: 'м'   },
+  { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   }
 ];
 
 // Какие доп. работы уходят в таблицу как «Монтаж» (вместо «Другие работы»)
 const SHEET_WORK_MONTAGE = [
-  'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie'
+  'zadelka', 'burenie', 'vata', 'germetik', 'birki', 'raskluchenie', 'kryshki'
 ];
 
 function getSheetWorkForLocation(kind) {
@@ -2215,7 +2216,7 @@ async function sendAll() {
         if (!isFinite(z) || z <= 0) return;
         records.push({
           room: entry.room || '', room_none: false, floor: entry.floor || '',
-          work: getSheetWorkForLocation(entry.kind),  // ← теперь «Монтаж» для части работ
+          work: getSheetWorkForLocation(entry.kind),
           materials: [{ name: w.label, unit: w.unit, qty: String(z), system: '' }]
         });
       } else if (entry.kind === 'mentorship') {
