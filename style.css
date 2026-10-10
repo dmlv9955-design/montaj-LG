@@ -1014,3 +1014,148 @@ body.dark .toast { background: #22c55e; color: #052e16; }
   color: var(--text-hint);
   padding: 8px 0 4px;
 }
+
+/* ============================================ */
+/*  МАТЕРИАЛ С НЕСКОЛЬКИМИ ЭТАЖАМИ                */
+/* ============================================ */
+.mat-card {
+  padding: 12px 0 14px;
+  border-bottom: 1px dashed var(--border);
+}
+.mat-card:last-child { border-bottom: none; }
+
+.mat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.mat-head .variant-badge,
+.mat-head .variant-system {
+  flex: 0 0 auto;
+}
+.mat-head-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-label);
+  line-height: 1.3;
+}
+
+.mat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mat-row {
+  position: relative;
+  padding: 10px;
+  background: var(--input-disabled-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.mat-row + .mat-row { margin-top: 0; }
+
+.mat-row-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-hint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+}
+.mat-row-del:hover {
+  background: var(--red-bg);
+  color: var(--red-border);
+}
+
+.mat-row-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.mat-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.mat-line-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-hint);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.mat-line-floors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+.mat-line-room {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mat-line-room .room-prefix {
+  padding: 0 8px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.mat-line-qty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.mat-add-floor {
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1.5px dashed var(--border-focus);
+  color: var(--border-focus);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.mat-add-floor:hover { background: var(--hover-bg); }
+.mat-add-floor:active { transform: scale(.98); }
+
+/* Кнопка "Добавить этаж" не показывается, пока строка не готова */
+.mat-add-floor.hidden { display: none; }
+
+/* Строка корпуса внутри карточки материала */
+.mat-line-corp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+}
