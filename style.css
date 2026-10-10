@@ -679,7 +679,7 @@ body.dark .accordion-header-montazh {
 .btn-save-work-montazh:hover { filter: brightness(1.05); }
 
 /* ============================================ */
-/*  КНОПКА «ДОБАВИТЬ ДОП. РАБОТЫ В ЖУРНАЛ»       */
+/*  КНОПКА «ДОБАВИТЬ В ЖУРНАЛ» (общая)           */
 /* ============================================ */
 .btn-add-journal {
   width: 100%;
@@ -696,13 +696,18 @@ body.dark .accordion-header-montazh {
   box-shadow: 0 4px 14px rgba(34, 197, 94, .35);
   transition: transform .1s, box-shadow .15s, filter .15s;
 }
-.btn-add-journal:hover { box-shadow: 0 6px 20px rgba(34, 197, 94, .5); filter: brightness(1.05); }
-.btn-add-journal:active { transform: scale(.98); }
+.btn-add-journal:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(34, 197, 94, .5); filter: brightness(1.05); }
+.btn-add-journal:active:not(:disabled) { transform: scale(.98); }
+.btn-add-journal:disabled {
+  cursor: not-allowed;
+  opacity: .7;
+  filter: grayscale(.3);
+}
 body.dark .btn-add-journal {
   background: linear-gradient(135deg, #22c55e, #15803d);
   box-shadow: 0 4px 14px rgba(34, 197, 94, .45);
 }
-body.dark .btn-add-journal:hover {
+body.dark .btn-add-journal:hover:not(:disabled) {
   box-shadow: 0 6px 20px rgba(34, 197, 94, .6);
 }
 
@@ -784,7 +789,7 @@ button.submit {
   box-shadow: 0 4px 12px var(--btn-shadow);
   transition: transform .1s;
 }
-button.submit:active { transform: scale(.98); }
+button.submit:active:not(:disabled) { transform: scale(.98); }
 button.submit:disabled {
   background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: .75;
 }
@@ -867,3 +872,121 @@ body.dark .toast { background: #22c55e; color: #052e16; }
 }
 .zadelka-remove-btn:hover { background: rgba(239, 68, 68, .18); }
 .zadelka-remove-btn:active { transform: scale(.97); }
+
+/* ============================================ */
+/*  ЛОКАЦИЯ ПОД КАЖДЫМ МАТЕРИАЛОМ                */
+/* ============================================ */
+.material-row {
+  padding: 10px 0 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.material-row:last-child { border-bottom: none; }
+
+.material-row .variant-line {
+  padding-top: 0;
+  min-height: 36px;
+}
+
+.material-loc {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--input-disabled-bg);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.loc-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-hint);
+  white-space: nowrap;
+}
+
+.material-loc-floors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+.loc-floor-btn {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-label);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.loc-floor-btn:hover { background: var(--hover-bg); }
+.loc-floor-btn:active { transform: scale(.96); }
+.loc-floor-btn.active {
+  background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 6px var(--btn-shadow);
+}
+.loc-floor-btn.is-empty {
+  border-color: var(--red-border);
+  background: var(--red-bg);
+}
+
+.material-loc-room {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.material-loc-room .room-prefix {
+  padding: 0 8px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.loc-room-input {
+  width: 76px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.loc-room-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+.loc-room-input.is-empty {
+  border-color: var(--red-border);
+  background: var(--red-bg);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--red-shadow);
+}
+.loc-room-input:disabled {
+  background: var(--input-disabled-bg);
+  color: var(--input-disabled-color);
+  border-style: dashed;
+  font-style: italic;
+}
+
+@media (max-width: 520px) {
+  .material-loc {
+    gap: 6px;
+    padding: 8px;
+  }
+  .loc-room-input { width: 64px; }
+  .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
+}
