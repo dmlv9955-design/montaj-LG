@@ -1516,3 +1516,109 @@ body.dark .review-btn-send {
     min-width: 0;
   }
 }
+
+/* ============================================ */
+/*  БЛОКИРОВКА ЭКРАНА                            */
+/* ============================================ */
+body.app-blocked {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ============================================ */
+/*  ОКНО УСПЕХА ПОСЛЕ ОТПРАВКИ                    */
+/* ============================================ */
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 30, 25, .82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 600;
+  padding: 20px;
+}
+.success-overlay.show { display: flex; }
+
+.success-box {
+  background: var(--card-bg);
+  border-radius: 24px;
+  padding: 40px 32px 26px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: successPop .35s cubic-bezier(.3, 1.4, .6, 1);
+}
+
+@keyframes successPop {
+  from { opacity: 0; transform: scale(.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.success-check {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5fb26e, #3f8a4d);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 8px 24px rgba(63, 138, 77, .45);
+  animation: successCheck .5s ease .15s backwards;
+}
+
+@keyframes successCheck {
+  from { opacity: 0; transform: scale(.3) rotate(-30deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 6px;
+}
+
+.success-sub {
+  font-size: 14px;
+  color: var(--text-title);
+}
+
+.success-btn {
+  margin-top: 10px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--input-disabled-bg);
+  font-size: 44px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s, background .15s, border-color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.success-btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--border-focus);
+}
+.success-btn:active { transform: scale(.9); }
+
+.success-hint {
+  font-size: 12px;
+  color: var(--text-hint);
+  font-style: italic;
+}
