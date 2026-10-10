@@ -67,9 +67,10 @@ const ATTIC = 'Чердак';
 const WORK_ADDITIONAL = 'Другие работы';
 const SECTION_MENTOR = 'Наставничество';
 
+// Порядок: сверху Демонтаж (раскрывающийся), снизу Монтаж (всегда открыт)
 const MAIN_WORKS = [
-  { work: 'Демонтаж', suffix: 'demontazh', emoji: '🔨' },
-  { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧' }
+  { work: 'Демонтаж', suffix: 'demontazh', emoji: '🔨', alwaysOpen: false },
+  { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧', alwaysOpen: true  }
 ];
 
 const LOCATION_WORKS = [
@@ -96,12 +97,6 @@ function locationWorkByLabel(label) {
 
 // ============================================
 //  МАТЕРИАЛЫ
-//  label / variant — то, что видит монтажник в форме
-//  tableName — то, что уходит в Google Таблицу
-//  system — АПС, СОУЭ или АПС/СОУЭ (для общих позиций)
-//
-//  Кабель х0,75 — только АПС (СОУЭ убран).
-//  Кабель-канал, гофра, сталь — общие для АПС/СОУЭ.
 // ============================================
 const MATERIALS = [
   {
@@ -151,7 +146,7 @@ const MATERIALS = [
 ];
 
 // ============================================
-//  СОСТОЯНИЕ ДЛЯ КАЖДОГО БЛОКА
+//  СОСТОЯНИЕ
 // ============================================
 const mainState = {};
 
@@ -162,7 +157,7 @@ function makeEmptyMaterialState() {
 }
 
 // ============================================
-//  ДОП. РАБОТЫ — состояние формы
+//  ДОП. РАБОТЫ
 // ============================================
 function makeLocationItem() {
   return { building: '', floor: '', room: '', value: '' };
@@ -231,7 +226,7 @@ function clearDraft() {
 }
 
 // ============================================
-//  АКТИВНОСТЬ КНОПКИ «ОТПРАВИТЬ»
+//  КНОПКА «ОТПРАВИТЬ»
 // ============================================
 function updateSendButton() {
   const btn = document.getElementById('btn');
@@ -813,14 +808,16 @@ function refreshNameGates() {
 
 // ============================================
 //  HTML-ШАБЛОН БЛОКА
+//  alwaysOpen → без стрелки (▼ не нужна)
 // ============================================
-function createMainBlockHTML(work, suffix, emoji) {
+function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
   const actionWord = (work === 'Демонтаж') ? 'демонтаж' : 'монтаж';
+  const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
   return `
     <button type="button" class="accordion-header accordion-header-${suffix}" disabled>
       <span class="acc-emoji">${emoji}</span>
       <span class="acc-label">${work}</span>
-      <span class="acc-arrow">▼</span>
+      ${arrowHTML}
     </button>
     <div class="accordion-body">
       <div data-building-row>
@@ -873,21 +870,22 @@ function initMainWorks() {
   }
   container.innerHTML = '';
 
-  MAIN_WORKS.forEach(({ work, suffix, emoji }) => {
+  MAIN_WORKS.forEach(({ work, suffix, emoji, alwaysOpen }) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'accordion-item';
+    wrapper.className = 'accordion-item' + (alwaysOpen ? ' accordion-item-always-open' : '');
     wrapper.dataset.work = work;
 
     const inner = document.createElement('div');
-    inner.innerHTML = createMainBlockHTML(work, suffix, emoji).trim();
+    inner.innerHTML = createMainBlockHTML(work, suffix, emoji, alwaysOpen).trim();
     while (inner.firstChild) wrapper.appendChild(inner.firstChild);
     container.appendChild(wrapper);
 
     const st = {
       work: work,
       suffix: suffix,
+      alwaysOpen: !!alwaysOpen,
       materialState: makeEmptyMaterialState(),
-      expanded: false,
+      expanded: !!alwaysOpen,
       floorSeg: null,
       buildingSeg: null,
       elements: {
@@ -911,10 +909,19 @@ function initMainWorks() {
     st.buildingSeg = new SegmentedControl(st.elements.buildingSegRoot);
     mainState[work] = st;
 
-    st.elements.header.addEventListener('click', () => {
-      if (st.elements.header.disabled) return;
-      toggleMainAccordion(work);
-    });
+    // Всегда открытые блоки: сразу раскрыты и не сворачиваются
+    if (alwaysOpen) {
+      st.elements.header.classList.add('expanded');
+      st.elements.header.classList.add('accordion-header-static');
+      st.elements.body.classList.add('open');
+      // Заголовок не кликабелен
+      st.elements.header.style.cursor = 'default';
+    } else {
+      st.elements.header.addEventListener('click', () => {
+        if (st.elements.header.disabled) return;
+        toggleMainAccordion(work);
+      });
+    }
 
     st.elements.buildingInput.addEventListener('change', () => {
       st.elements.floorInput.value = '';
@@ -951,6 +958,7 @@ function initMainWorks() {
 function toggleMainAccordion(work) {
   const st = mainState[work];
   if (!st) return;
+  if (st.alwaysOpen) return; // нельзя свернуть
   st.expanded = !st.expanded;
   st.elements.header.classList.toggle('expanded', st.expanded);
   st.elements.body.classList.toggle('open', st.expanded);
@@ -1871,7 +1879,6 @@ function renderAdditionalFields() {
 
 // ============================================
 //  МАТЕРИАЛЫ → МАССИВ ДЛЯ ОТПРАВКИ
-//  Использует r.tableName — полное имя для таблицы
 // ============================================
 function materialStateToArrayFromState(state) {
   const list = [];
@@ -2091,7 +2098,8 @@ function editJournalEntry(idx) {
 
     st.materialState = Object.assign({}, entry.materialState || {});
 
-    if (!st.expanded) toggleMainAccordion(entry.work);
+    // Если блок раскрывающийся — раскрыть
+    if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(entry.work);
 
     st.elements.buildingInput.value = entry.building || '';
     updateMainBlock(entry.work);
