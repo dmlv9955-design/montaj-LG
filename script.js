@@ -67,7 +67,7 @@ const ATTIC = 'Чердак';
 const WORK_ADDITIONAL = 'Другие работы';
 const SECTION_MENTOR = 'Наставничество';
 
-// Порядок: сверху Демонтаж (раскрывающийся), снизу Монтаж (всегда открыт)
+// Демонтаж — раскрывающийся; Монтаж — всегда открыт
 const MAIN_WORKS = [
   { work: 'Демонтаж', suffix: 'demontazh', emoji: '🔨', alwaysOpen: false },
   { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧', alwaysOpen: true  }
@@ -249,6 +249,20 @@ function hasActiveAdditional() {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     return items.some(it => it.building || it.floor || it.room || it.value);
   });
+}
+
+// Пустой ли блок Монтаж/Демонтаж
+function isMainBlockEmpty(work) {
+  const st = mainState[work];
+  if (!st) return true;
+  const els = st.elements;
+  if (els.buildingInput.value.trim()) return false;
+  if (els.floorInput.value.trim()) return false;
+  if (els.roomInput.value.trim()) return false;
+  for (const k in st.materialState) {
+    if (String(st.materialState[k] || '').trim()) return false;
+  }
+  return true;
 }
 
 // ============================================
@@ -808,10 +822,10 @@ function refreshNameGates() {
 
 // ============================================
 //  HTML-ШАБЛОН БЛОКА
-//  alwaysOpen → без стрелки (▼ не нужна)
+//  Кнопки «Добавить в журнал» внутри блока больше нет —
+//  она общая, в отдельной карточке.
 // ============================================
 function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
-  const actionWord = (work === 'Демонтаж') ? 'демонтаж' : 'монтаж';
   const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
   return `
     <button type="button" class="accordion-header accordion-header-${suffix}" disabled>
@@ -852,9 +866,6 @@ function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
         <div class="section-subtitle">Основные материалы</div>
         <div data-materials></div>
       </div>
-      <button type="button" class="btn-save-work btn-save-work-${suffix}" data-save>
-        ➕ Добавить ${actionWord} в журнал
-      </button>
     </div>
   `;
 }
@@ -865,7 +876,7 @@ function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
 function initMainWorks() {
   const container = document.getElementById('main-works-container');
   if (!container) {
-    console.warn('Нет #main-works-container в HTML — блоки Монтаж/Демонтаж не будут созданы');
+    console.warn('Нет #main-works-container в HTML');
     return;
   }
   container.innerHTML = '';
@@ -901,20 +912,17 @@ function initMainWorks() {
         errBuilding: wrapper.querySelector('[data-err-building]'),
         errFloor: wrapper.querySelector('[data-err-floor]'),
         errRoom: wrapper.querySelector('[data-err-room]'),
-        materialsCont: wrapper.querySelector('[data-materials]'),
-        saveBtn: wrapper.querySelector('[data-save]')
+        materialsCont: wrapper.querySelector('[data-materials]')
       }
     };
     st.floorSeg = new SegmentedControl(st.elements.floorSegRoot);
     st.buildingSeg = new SegmentedControl(st.elements.buildingSegRoot);
     mainState[work] = st;
 
-    // Всегда открытые блоки: сразу раскрыты и не сворачиваются
     if (alwaysOpen) {
       st.elements.header.classList.add('expanded');
       st.elements.header.classList.add('accordion-header-static');
       st.elements.body.classList.add('open');
-      // Заголовок не кликабелен
       st.elements.header.style.cursor = 'default';
     } else {
       st.elements.header.addEventListener('click', () => {
@@ -949,8 +957,6 @@ function initMainWorks() {
       updateFieldStateForBlock(work);
     });
 
-    st.elements.saveBtn.addEventListener('click', () => saveMainBlock(work));
-
     renderMaterialsForBlock(work);
   });
 }
@@ -958,7 +964,7 @@ function initMainWorks() {
 function toggleMainAccordion(work) {
   const st = mainState[work];
   if (!st) return;
-  if (st.alwaysOpen) return; // нельзя свернуть
+  if (st.alwaysOpen) return;
   st.expanded = !st.expanded;
   st.elements.header.classList.toggle('expanded', st.expanded);
   st.elements.body.classList.toggle('open', st.expanded);
@@ -1254,59 +1260,8 @@ function renderMaterialsForBlock(work) {
 }
 
 // ============================================
-//  СОХРАНЕНИЕ БЛОКА В ЖУРНАЛ
+//  ВАЛИДАЦИЯ ПОЛЕЙ БЛОКА
 // ============================================
-function saveMainBlock(work) {
-  if (!validateHeader()) return;
-  const st = mainState[work];
-  if (!st) return;
-  if (!validateMainFieldsForBlock(work)) return;
-
-  const els = st.elements;
-  const building = els.buildingInput.value.trim();
-  const isMaster = isMasterWingBuilding(building);
-
-  const mainEntry = {
-    kind: 'main',
-    room: els.roomInput.value.trim(),
-    room_none: els.floorInput.value === 'Нет',
-    is_master_wing: isMaster,
-    building: building,
-    floor: els.floorInput.value.trim(),
-    work: work,
-    materialState: Object.assign({}, st.materialState)
-  };
-
-  const idx = findMergeIndex(mainEntry);
-  let merged = false;
-  if (idx !== -1) {
-    journal[idx].materialState = sumMaterialStates(
-      journal[idx].materialState,
-      mainEntry.materialState
-    );
-    merged = true;
-  } else {
-    journal.push(mainEntry);
-  }
-
-  renderJournal();
-  resetMainBlock(work);
-  showToast(merged ? 'Позиции объединены с существующей записью' : 'Запись добавлена в журнал');
-}
-
-function resetMainBlock(work) {
-  const st = mainState[work];
-  if (!st) return;
-  st.materialState = makeEmptyMaterialState();
-  st.elements.buildingInput.value = '';
-  if (st.buildingSeg) st.buildingSeg.value = '';
-  st.elements.floorInput.value = '';
-  if (st.floorSeg) st.floorSeg.value = '';
-  st.elements.roomInput.value = '';
-  renderMaterialsForBlock(work);
-  updateMainBlock(work);
-}
-
 function validateMainFieldsForBlock(work) {
   const st = mainState[work];
   if (!st) return false;
@@ -1336,6 +1291,19 @@ function validateMainFieldsForBlock(work) {
   }
 
   return ok;
+}
+
+function resetMainBlock(work) {
+  const st = mainState[work];
+  if (!st) return;
+  st.materialState = makeEmptyMaterialState();
+  st.elements.buildingInput.value = '';
+  if (st.buildingSeg) st.buildingSeg.value = '';
+  st.elements.floorInput.value = '';
+  if (st.floorSeg) st.floorSeg.value = '';
+  st.elements.roomInput.value = '';
+  renderMaterialsForBlock(work);
+  updateMainBlock(work);
 }
 
 // ============================================
@@ -1377,59 +1345,42 @@ function validateHeader() {
 }
 
 // ============================================
-//  ДОБАВЛЕНИЕ ДОП. РАБОТ / НАСТАВНИЧЕСТВА
+//  ВАЛИДАЦИЯ ДОП. РАБОТ / НАСТАВНИЧЕСТВА
 // ============================================
-function addAdditionalToJournal() {
-  if (!validateHeader()) return false;
-
-  let added = false;
-  let merged = false;
-  const problems = [];
-
-  LOCATION_WORKS.forEach(w => {
+function validateAdditionalOnly() {
+  // Локационные работы
+  for (const w of LOCATION_WORKS) {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
-    items.forEach((it, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
       const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
-      if (isEmptyRow) return;
+      if (isEmptyRow) continue;
 
       const needB = isBuildingRequired();
-      if (needB && !it.building) { problems.push(w.label + ', место ' + (i + 1) + ': укажите корпус'); return; }
+      if (needB && !it.building) {
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err');
+        return false;
+      }
       const isAtticZ = (it.building === 'Чердак');
-      if (!isAtticZ && !it.floor) { problems.push(w.label + ', место ' + (i + 1) + ': укажите этаж'); return; }
+      if (!isAtticZ && !it.floor) {
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err');
+        return false;
+      }
       const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
-      if (!isAtticZ && !floorIsNo && !r) { problems.push(w.label + ', место ' + (i + 1) + ': укажите помещение'); return; }
-      const v = parseFloat(String(it.value || '').replace(',', '.'));
-      if (!isFinite(v) || v <= 0) { problems.push(w.label + ', место ' + (i + 1) + ': укажите количество'); return; }
-
-      const zRoom = applyPrefixToRoom(r, it.building || '');
-      const zEntry = {
-        kind: w.key,
-        building: it.building || '',
-        floor: it.floor || '',
-        room: zRoom,
-        qty: it.value
-      };
-
-      const idx = journal.findIndex(e =>
-        e.kind === w.key &&
-        (e.building || '') === zEntry.building &&
-        (e.floor || '')    === zEntry.floor
-      );
-
-      if (idx !== -1) {
-        const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
-        const newQ = oldQ + v;
-        journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
-        journal[idx].room = combineRooms(journal[idx].room, zEntry.room);
-        merged = true;
-      } else {
-        journal.push(zEntry);
-        added = true;
+      if (!isAtticZ && !floorIsNo && !r) {
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещение', 'err');
+        return false;
       }
-    });
-  });
+      const v = parseFloat(String(it.value || '').replace(',', '.'));
+      if (!isFinite(v) || v <= 0) {
+        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err');
+        return false;
+      }
+    }
+  }
 
+  // Наставничество
   let mentorBad = false;
   additionalState.mentorship.items.forEach((m, idx) => {
     const name = String(m.name || '').trim();
@@ -1443,22 +1394,8 @@ function addAdditionalToJournal() {
     const n = parseFloat(hours.replace(',', '.'));
     if (!hours || !isFinite(n) || n <= 0) {
       mentorBad = true;
-    } else {
-      const idxJ = journal.findIndex(e =>
-        e.kind === 'mentorship' && String(e.name).toLowerCase() === name.toLowerCase()
-      );
-      if (idxJ !== -1) {
-        const oldH = parseFloat(String(journal[idxJ].hours).replace(',', '.')) || 0;
-        const newH = oldH + n;
-        journal[idxJ].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
-        merged = true;
-      } else {
-        journal.push({ kind: 'mentorship', name: name, hours: String(n).replace('.', ',') });
-        added = true;
-      }
     }
   });
-
   if (mentorBad) {
     show('⚠️ Укажите имя ученика (2 слова) и часы', 'err');
     const badEl = document.querySelector('.mentor-name-input.is-invalid');
@@ -1466,21 +1403,171 @@ function addAdditionalToJournal() {
     return false;
   }
 
-  if (problems.length > 0) {
-    show('⚠️ ' + problems[0], 'err');
+  return true;
+}
+
+// ============================================
+//  ПРИМЕНЕНИЕ ДОП. РАБОТ В ЖУРНАЛ (без вывода)
+// ============================================
+function applyAdditionalToJournal() {
+  let added = 0;
+  let merged = 0;
+
+  LOCATION_WORKS.forEach(w => {
+    const items = (additionalState[w.key] && additionalState[w.key].items) || [];
+    items.forEach(it => {
+      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
+      if (isEmptyRow) return;
+      const v = parseFloat(String(it.value || '').replace(',', '.'));
+      if (!isFinite(v) || v <= 0) return;
+
+      const zRoom = applyPrefixToRoom(normalizeZadelkaRoom(it.room || ''), it.building || '');
+      const zEntry = {
+        kind: w.key,
+        building: it.building || '',
+        floor: it.floor || '',
+        room: zRoom,
+        qty: it.value
+      };
+      const idx = journal.findIndex(e =>
+        e.kind === w.key &&
+        (e.building || '') === zEntry.building &&
+        (e.floor || '')    === zEntry.floor
+      );
+      if (idx !== -1) {
+        const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
+        const newQ = oldQ + v;
+        journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
+        journal[idx].room = combineRooms(journal[idx].room, zEntry.room);
+        merged++;
+      } else {
+        journal.push(zEntry);
+        added++;
+      }
+    });
+  });
+
+  additionalState.mentorship.items.forEach(m => {
+    const name = String(m.name || '').trim();
+    const hours = String(m.hours || '').trim();
+    if (!name || !hours) return;
+    const n = parseFloat(hours.replace(',', '.'));
+    if (!isFinite(n) || n <= 0) return;
+    const idx = journal.findIndex(e =>
+      e.kind === 'mentorship' && String(e.name).toLowerCase() === name.toLowerCase()
+    );
+    if (idx !== -1) {
+      const oldH = parseFloat(String(journal[idx].hours).replace(',', '.')) || 0;
+      const newH = oldH + n;
+      journal[idx].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
+      merged++;
+    } else {
+      journal.push({ kind: 'mentorship', name: name, hours: String(n).replace('.', ',') });
+      added++;
+    }
+  });
+
+  return { added, merged };
+}
+
+// ============================================
+//  ОБЩАЯ ФУНКЦИЯ: «ДОБАВИТЬ ВСЁ В ЖУРНАЛ»
+// ============================================
+function addAllToJournal() {
+  show('');
+
+  if (!validateHeader()) return false;
+
+  // Какие основные блоки заполнены
+  const pendingMainWorks = MAIN_WORKS
+    .filter(({ work }) => !isMainBlockEmpty(work))
+    .map(({ work }) => work);
+
+  const hasAdd = hasActiveAdditional();
+
+  if (pendingMainWorks.length === 0 && !hasAdd) {
+    show('⚠️ Заполните хотя бы одну работу', 'err');
+    showToast('Нечего добавлять');
     return false;
   }
 
-  if (!added && !merged) {
-    showToast('Нет дополнительных работ для добавления');
+  // Валидация основных блоков
+  for (const work of pendingMainWorks) {
+    if (!validateMainFieldsForBlock(work)) {
+      const st = mainState[work];
+      if (st && !st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
+      return false;
+    }
+  }
+
+  // Валидация доп. работ
+  if (!validateAdditionalOnly()) return false;
+
+  // === Всё валидно — добавляем ===
+  let addedCount = 0;
+  let mergedCount = 0;
+
+  pendingMainWorks.forEach(work => {
+    const st = mainState[work];
+    const els = st.elements;
+    const building = els.buildingInput.value.trim();
+    const mainEntry = {
+      kind: 'main',
+      room: els.roomInput.value.trim(),
+      room_none: els.floorInput.value === 'Нет',
+      is_master_wing: isMasterWingBuilding(building),
+      building: building,
+      floor: els.floorInput.value.trim(),
+      work: work,
+      materialState: Object.assign({}, st.materialState)
+    };
+    const idx = findMergeIndex(mainEntry);
+    if (idx !== -1) {
+      journal[idx].materialState = sumMaterialStates(
+        journal[idx].materialState,
+        mainEntry.materialState
+      );
+      mergedCount++;
+    } else {
+      journal.push(mainEntry);
+      addedCount++;
+    }
+    resetMainBlock(work);
+  });
+
+  const addRes = applyAdditionalToJournal();
+  addedCount += addRes.added;
+  mergedCount += addRes.merged;
+
+  if (addedCount === 0 && mergedCount === 0) {
+    showToast('Нечего добавлять');
     return false;
   }
 
   renderJournal();
   initAdditionalState();
   renderAdditionalFields();
-  showToast(added ? 'Доп. работы добавлены в журнал' : 'Позиции объединены');
+
+  const parts = [];
+  if (addedCount > 0) parts.push('добавлено: ' + addedCount);
+  if (mergedCount > 0) parts.push('объединено: ' + mergedCount);
+  showToast('В журнал — ' + parts.join(', '));
   return true;
+}
+
+// ============================================
+//  ПОИСК ДЛЯ СЛИЯНИЯ (main)
+// ============================================
+function findMergeIndex(newEntry) {
+  return journal.findIndex(e =>
+    e.kind === 'main' &&
+    e.floor === newEntry.floor &&
+    e.room === newEntry.room &&
+    !!e.room_none === !!newEntry.room_none &&
+    !!e.is_master_wing === !!newEntry.is_master_wing &&
+    (e.building || '') === (newEntry.building || '') &&
+    e.work === newEntry.work
+  );
 }
 
 // ============================================
@@ -1923,7 +2010,7 @@ function bumpQty(input, setter, delta, clearBtn, minusBtn) {
 }
 
 // ============================================
-//  ЖУРНАЛ
+//  ЖУРНАЛ — РЕНДЕР
 // ============================================
 function renderJournalEntryElement(entry) {
   const realIdx = journal.indexOf(entry);
@@ -2073,18 +2160,9 @@ function renderJournal() {
   });
 }
 
-function findMergeIndex(newEntry) {
-  return journal.findIndex(e =>
-    e.kind === 'main' &&
-    e.floor === newEntry.floor &&
-    e.room === newEntry.room &&
-    !!e.room_none === !!newEntry.room_none &&
-    !!e.is_master_wing === !!newEntry.is_master_wing &&
-    (e.building || '') === (newEntry.building || '') &&
-    e.work === newEntry.work
-  );
-}
-
+// ============================================
+//  РЕДАКТИРОВАНИЕ ИЗ ЖУРНАЛА
+// ============================================
 function editJournalEntry(idx) {
   const entry = journal[idx];
   if (!entry) return;
@@ -2098,7 +2176,6 @@ function editJournalEntry(idx) {
 
     st.materialState = Object.assign({}, entry.materialState || {});
 
-    // Если блок раскрывающийся — раскрыть
     if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(entry.work);
 
     st.elements.buildingInput.value = entry.building || '';
@@ -2118,7 +2195,7 @@ function editJournalEntry(idx) {
     const card = document.getElementById('entry-card');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    showToast('Запись загружена для редактирования');
+    showToast('Запись загружена — нажмите «Добавить всё в журнал»');
     return;
   }
 
@@ -2142,7 +2219,7 @@ function editJournalEntry(idx) {
 
   const card = document.getElementById('additional-card');
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  showToast('Запись загружена для редактирования');
+  showToast('Запись загружена — нажмите «Добавить всё в журнал»');
 }
 
 function removeJournalEntry(idx) {
@@ -2274,10 +2351,14 @@ async function sendAll() {
   show('');
   if (!validateHeader()) return;
 
-  if (hasActiveAdditional()) {
-    const doAdd = confirm('В форме есть незанесённые дополнительные работы. Добавить их в журнал перед отправкой?');
+  // Есть незанесённые данные в форме?
+  const hasPendingMain = MAIN_WORKS.some(({ work }) => !isMainBlockEmpty(work));
+  const hasPendingAdditional = hasActiveAdditional();
+
+  if (hasPendingMain || hasPendingAdditional) {
+    const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
     if (doAdd) {
-      const ok = addAdditionalToJournal();
+      const ok = addAllToJournal();
       if (!ok) return;
     }
   }
@@ -2440,5 +2521,5 @@ if (_restoredDraft && _restoredDraft.length > 0) {
   }, 700);
 }
 
-window.addAdditionalToJournal = addAdditionalToJournal;
+window.addAllToJournal = addAllToJournal;
 window.sendAll = sendAll;
