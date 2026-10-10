@@ -52,7 +52,7 @@
 <!-- ============ КАРТОЧКА 2: ОСНОВНЫЕ РАБОТЫ (аккордеон) ============ -->
 <div class="card" id="entry-card">
   <div class="section-title">Основные работы</div>
-  <p class="hint-small" style="margin:0 0 12px">Нажмите на строку — раскроется форма.</p>
+  <p class="hint-small" style="margin:0 0 12px">Демонтаж — по клику. Монтаж всегда открыт.</p>
   <div id="main-works-container"></div>
 </div>
 
@@ -62,11 +62,14 @@
   <div class="additional-fields" id="additional-fields"></div>
 </div>
 
-<!-- ============ КАРТОЧКА 4: ДОБАВИТЬ ДОП. РАБОТЫ В ЖУРНАЛ ============ -->
+<!-- ============ КАРТОЧКА 4: ДОБАВИТЬ В ЖУРНАЛ (общая кнопка) ============ -->
 <div class="card" id="add-journal-card">
-  <button type="button" class="btn-add-journal" onclick="addAdditionalToJournal()">
-    ➕ Добавить доп. работы в журнал
+  <button type="button" class="btn-add-journal" onclick="addAllToJournal()">
+    ➕ Добавить всё в журнал
   </button>
+  <p class="hint-small" style="text-align:center;margin:8px 0 0">
+    Заполненные работы из всех разделов уйдут в журнал одной операцией
+  </p>
 </div>
 
 <!-- ============ КАРТОЧКА 5: ЖУРНАЛ ============ -->
@@ -77,7 +80,7 @@
 
   <div id="journal-container"></div>
   <div class="journal-empty" id="journal-empty">
-    Журнал пуст. Заполните монтаж/демонтаж или доп. работы и добавьте в журнал.
+    Журнал пуст. Заполните работы и нажмите «Добавить всё в журнал».
   </div>
 </div>
 
