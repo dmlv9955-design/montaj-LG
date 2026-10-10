@@ -820,14 +820,29 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
-      // === Шапка: название слева, [d=] [вид] для [система] справа ===
+      // === Шапка: [название для [система]] слева, [d=] [вид] справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
+
+      const headLeft = document.createElement('span');
+      headLeft.className = 'mat-head-left';
 
       const nameEl = document.createElement('span');
       nameEl.className = 'mat-head-name';
       nameEl.textContent = mat.label;
-      head.appendChild(nameEl);
+      headLeft.appendChild(nameEl);
+
+      const forEl = document.createElement('span');
+      forEl.className = 'variant-for';
+      forEl.textContent = 'для';
+      headLeft.appendChild(forEl);
+
+      const sysEl = document.createElement('span');
+      sysEl.className = systemClass(r.system);
+      sysEl.textContent = r.system;
+      headLeft.appendChild(sysEl);
+
+      head.appendChild(headLeft);
 
       const headRight = document.createElement('span');
       headRight.className = 'mat-head-right';
@@ -843,16 +858,6 @@ function renderMaterialsForBlock(work) {
       badge.className = 'variant-badge';
       badge.textContent = r.variant;
       headRight.appendChild(badge);
-
-      const forEl = document.createElement('span');
-      forEl.className = 'variant-for';
-      forEl.textContent = 'для';
-      headRight.appendChild(forEl);
-
-      const sysEl = document.createElement('span');
-      sysEl.className = systemClass(r.system);
-      sysEl.textContent = r.system;
-      headRight.appendChild(sysEl);
 
       head.appendChild(headRight);
       card.appendChild(head);
@@ -886,7 +891,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
-        // === Корпус ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -917,7 +921,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
-        // === Этаж ===
         const isAtticRow = isAtticBuilding(row.building);
         const floors = getFloorsFor(objectSelect.value, row.building);
         const buildingChosen = !buildingRequired || !!row.building;
@@ -949,7 +952,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
-        // === Помещения + количество ===
         const floorChosen = !!row.floor || isAtticRow;
         const showRoom = floorChosen;
 
@@ -1968,7 +1970,6 @@ function editJournalEntry(idx) {
       let targetRow = data.rows.find(r => !r.qty && !r.building && !r.floor && !r.room);
       if (!targetRow) { targetRow = makeEmptyMatRow(); data.rows.push(targetRow); }
 
-      // Чистим «устаревшие» значения при восстановлении
       let restoredFloor = entry.floor || '';
       if (restoredFloor === ATTIC) restoredFloor = '';
       if (restoredFloor === 'Нет') restoredFloor = '';
