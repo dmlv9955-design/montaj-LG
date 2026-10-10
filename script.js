@@ -225,21 +225,38 @@ function isMatRowReadyForMore(row, buildingRequired) {
 
 // ============================================
 //  ФОРМАТИРОВАНИЕ ЧИСЕЛ
+//  Любой нецифровой символ (точка, запятая, пробел, тире, /) → запятая.
+//  Разрешено одно значение: целое + до 3 знаков после запятой
+//  (десятые, сотые, тысячные).
 // ============================================
 function formatQty(raw) {
-  let s = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
-  s = s.replace(/\./g, ',');
-  const firstComma = s.indexOf(',');
-  if (firstComma !== -1) s = s.slice(0, firstComma + 1) + s.slice(firstComma + 1).replace(/,/g, '');
+  let s = String(raw == null ? '' : raw);
+  const trailingDelim = /[^0-9]$/.test(s) && s.length > 0;
+
+  // Любой нецифровой символ → запятая; подряд идущие сливаются в одну.
+  s = s.replace(/[^0-9]+/g, ',');
+  // Убираем ведущие запятые (если пользователь начал с разделителя)
+  s = s.replace(/^,+/, '');
+
+  if (!s) return '';
+
   const parts = s.split(',');
   let intPart = parts[0] || '';
-  let fracPart = parts.length > 1 ? parts[1] : null;
+  let fracAll = parts.slice(1).join(''); // все цифры после первого разделителя
+
+  // Ведущий ноль + ещё цифры → остальное уходит в дробную часть
+  // Например: 05 → 0,5 ; 0005 → 0,005
   if (intPart.length > 1 && intPart.charAt(0) === '0') {
-    const extra = intPart.slice(1); intPart = '0'; fracPart = extra + (fracPart || '');
+    const extra = intPart.slice(1);
+    intPart = '0';
+    fracAll = extra + fracAll;
   }
+
   if (intPart.length > 4) intPart = intPart.slice(0, 4);
-  if (fracPart !== null && fracPart.length > 2) fracPart = fracPart.slice(0, 2);
-  if (fracPart !== null) return intPart + ',' + fracPart;
+  if (fracAll.length > 3) fracAll = fracAll.slice(0, 3);  // максимум тысячные
+
+  if (fracAll) return intPart + ',' + fracAll;
+  if (trailingDelim && s.indexOf(',') !== -1 && intPart) return intPart + ',';
   return intPart;
 }
 
