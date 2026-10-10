@@ -226,11 +226,20 @@ function clearDraft() {
 }
 
 // ============================================
+//  ЗАЩИТА ОТ ДВОЙНЫХ НАЖАТИЙ
+// ============================================
+let _sending = false;          // «Отправить отчёт»
+let _addingToJournal = false;  // «Добавить всё в журнал»
+
+// ============================================
 //  КНОПКА «ОТПРАВИТЬ»
 // ============================================
 function updateSendButton() {
   const btn = document.getElementById('btn');
   if (!btn) return;
+  // Пока идёт отправка — не трогаем
+  if (_sending) return;
+
   const offline = isOffline();
   const empty = journal.length === 0;
   btn.disabled = empty || offline;
@@ -822,8 +831,6 @@ function refreshNameGates() {
 
 // ============================================
 //  HTML-ШАБЛОН БЛОКА
-//  Кнопки «Добавить в журнал» внутри блока больше нет —
-//  она общая, в отдельной карточке.
 // ============================================
 function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
   const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
@@ -1348,7 +1355,6 @@ function validateHeader() {
 //  ВАЛИДАЦИЯ ДОП. РАБОТ / НАСТАВНИЧЕСТВА
 // ============================================
 function validateAdditionalOnly() {
-  // Локационные работы
   for (const w of LOCATION_WORKS) {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     for (let i = 0; i < items.length; i++) {
@@ -1380,7 +1386,6 @@ function validateAdditionalOnly() {
     }
   }
 
-  // Наставничество
   let mentorBad = false;
   additionalState.mentorship.items.forEach((m, idx) => {
     const name = String(m.name || '').trim();
@@ -1472,87 +1477,104 @@ function applyAdditionalToJournal() {
 
 // ============================================
 //  ОБЩАЯ ФУНКЦИЯ: «ДОБАВИТЬ ВСЁ В ЖУРНАЛ»
+//  + Защита от двойного нажатия
 // ============================================
 function addAllToJournal() {
-  show('');
+  // Защита от двойного нажатия
+  if (_addingToJournal) return false;
+  _addingToJournal = true;
 
-  if (!validateHeader()) return false;
-
-  // Какие основные блоки заполнены
-  const pendingMainWorks = MAIN_WORKS
-    .filter(({ work }) => !isMainBlockEmpty(work))
-    .map(({ work }) => work);
-
-  const hasAdd = hasActiveAdditional();
-
-  if (pendingMainWorks.length === 0 && !hasAdd) {
-    show('⚠️ Заполните хотя бы одну работу', 'err');
-    showToast('Нечего добавлять');
-    return false;
+  const btn = document.querySelector('.btn-add-journal');
+  const prevText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Добавляем…';
   }
 
-  // Валидация основных блоков
-  for (const work of pendingMainWorks) {
-    if (!validateMainFieldsForBlock(work)) {
-      const st = mainState[work];
-      if (st && !st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
+  try {
+    show('');
+
+    if (!validateHeader()) return false;
+
+    const pendingMainWorks = MAIN_WORKS
+      .filter(({ work }) => !isMainBlockEmpty(work))
+      .map(({ work }) => work);
+
+    const hasAdd = hasActiveAdditional();
+
+    if (pendingMainWorks.length === 0 && !hasAdd) {
+      show('⚠️ Заполните хотя бы одну работу', 'err');
+      showToast('Нечего добавлять');
       return false;
     }
-  }
 
-  // Валидация доп. работ
-  if (!validateAdditionalOnly()) return false;
-
-  // === Всё валидно — добавляем ===
-  let addedCount = 0;
-  let mergedCount = 0;
-
-  pendingMainWorks.forEach(work => {
-    const st = mainState[work];
-    const els = st.elements;
-    const building = els.buildingInput.value.trim();
-    const mainEntry = {
-      kind: 'main',
-      room: els.roomInput.value.trim(),
-      room_none: els.floorInput.value === 'Нет',
-      is_master_wing: isMasterWingBuilding(building),
-      building: building,
-      floor: els.floorInput.value.trim(),
-      work: work,
-      materialState: Object.assign({}, st.materialState)
-    };
-    const idx = findMergeIndex(mainEntry);
-    if (idx !== -1) {
-      journal[idx].materialState = sumMaterialStates(
-        journal[idx].materialState,
-        mainEntry.materialState
-      );
-      mergedCount++;
-    } else {
-      journal.push(mainEntry);
-      addedCount++;
+    for (const work of pendingMainWorks) {
+      if (!validateMainFieldsForBlock(work)) {
+        const st = mainState[work];
+        if (st && !st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
+        return false;
+      }
     }
-    resetMainBlock(work);
-  });
 
-  const addRes = applyAdditionalToJournal();
-  addedCount += addRes.added;
-  mergedCount += addRes.merged;
+    if (!validateAdditionalOnly()) return false;
 
-  if (addedCount === 0 && mergedCount === 0) {
-    showToast('Нечего добавлять');
-    return false;
+    let addedCount = 0;
+    let mergedCount = 0;
+
+    pendingMainWorks.forEach(work => {
+      const st = mainState[work];
+      const els = st.elements;
+      const building = els.buildingInput.value.trim();
+      const mainEntry = {
+        kind: 'main',
+        room: els.roomInput.value.trim(),
+        room_none: els.floorInput.value === 'Нет',
+        is_master_wing: isMasterWingBuilding(building),
+        building: building,
+        floor: els.floorInput.value.trim(),
+        work: work,
+        materialState: Object.assign({}, st.materialState)
+      };
+      const idx = findMergeIndex(mainEntry);
+      if (idx !== -1) {
+        journal[idx].materialState = sumMaterialStates(
+          journal[idx].materialState,
+          mainEntry.materialState
+        );
+        mergedCount++;
+      } else {
+        journal.push(mainEntry);
+        addedCount++;
+      }
+      resetMainBlock(work);
+    });
+
+    const addRes = applyAdditionalToJournal();
+    addedCount += addRes.added;
+    mergedCount += addRes.merged;
+
+    if (addedCount === 0 && mergedCount === 0) {
+      showToast('Нечего добавлять');
+      return false;
+    }
+
+    renderJournal();
+    initAdditionalState();
+    renderAdditionalFields();
+
+    const parts = [];
+    if (addedCount > 0) parts.push('добавлено: ' + addedCount);
+    if (mergedCount > 0) parts.push('объединено: ' + mergedCount);
+    showToast('В журнал — ' + parts.join(', '));
+    return true;
+
+  } finally {
+    _addingToJournal = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = prevText;
+    }
   }
-
-  renderJournal();
-  initAdditionalState();
-  renderAdditionalFields();
-
-  const parts = [];
-  if (addedCount > 0) parts.push('добавлено: ' + addedCount);
-  if (mergedCount > 0) parts.push('объединено: ' + mergedCount);
-  showToast('В журнал — ' + parts.join(', '));
-  return true;
 }
 
 // ============================================
@@ -2343,155 +2365,167 @@ nameInput.addEventListener('blur', () => {
 
 // ============================================
 //  ОТПРАВКА
+//  + Защита от двойного нажатия
 // ============================================
-let _sending = false;
-
 async function sendAll() {
+  // Защита от двойного нажатия — выставляем флаг в самом начале
   if (_sending) return;
-  show('');
-  if (!validateHeader()) return;
-
-  // Есть незанесённые данные в форме?
-  const hasPendingMain = MAIN_WORKS.some(({ work }) => !isMainBlockEmpty(work));
-  const hasPendingAdditional = hasActiveAdditional();
-
-  if (hasPendingMain || hasPendingAdditional) {
-    const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
-    if (doAdd) {
-      const ok = addAllToJournal();
-      if (!ok) return;
-    }
-  }
-
-  if (journal.length === 0) {
-    show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
-    return;
-  }
-
-  if (isOffline()) {
-    show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
-    showToast('📵 Нет подключения');
-    return;
-  }
-
   _sending = true;
-  try {
-    show('🔄 Проверяем соединение...', '');
-    const reachable = await checkConnection();
-    show('');
 
-    if (!reachable) {
-      const proceed = confirm(
-        '📵 Не удалось связаться с сервером.\n\n' +
-        'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
-        'Отправить всё равно?'
-      );
-      if (!proceed) {
-        show('⚠️ Отправка отменена. Проверьте подключение и попробуйте снова.', 'err');
-        return;
+  const btn = document.getElementById('btn');
+  const prevText = btn ? btn.textContent : 'Отправить отчет';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Отправляем…';
+  }
+
+  try {
+    show('');
+    if (!validateHeader()) return;
+
+    const hasPendingMain = MAIN_WORKS.some(({ work }) => !isMainBlockEmpty(work));
+    const hasPendingAdditional = hasActiveAdditional();
+
+    if (hasPendingMain || hasPendingAdditional) {
+      const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
+      if (doAdd) {
+        const ok = addAllToJournal();
+        if (!ok) return;
       }
     }
 
-    const sortedJournal = journal.slice().sort(compareEntries);
-    const records = [];
+    if (journal.length === 0) {
+      show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
+      return;
+    }
 
-    sortedJournal.forEach(entry => {
-      if (entry.kind === 'main') {
-        let room = entry.room || '';
-        if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
-        records.push({
-          room: room,
-          room_none: entry.room_none,
-          floor: entry.floor || '',
-          work: entry.work,
-          materials: materialStateToArrayFromState(entry.materialState || {})
-        });
-      } else if (isLocationKind(entry.kind)) {
-        const w = locationWorkByKey(entry.kind);
-        const z = parseFloat(String(entry.qty).replace(',', '.'));
-        if (!isFinite(z) || z <= 0) return;
-        records.push({
-          room: entry.room || '',
-          room_none: false,
-          floor: entry.floor || '',
-          work: WORK_ADDITIONAL,
-          materials: [{
-            name: w.label, unit: w.unit, qty: String(z), system: ''
-          }]
-        });
-      } else if (entry.kind === 'mentorship') {
-        const h = parseFloat(String(entry.hours).replace(',', '.'));
-        if (!isFinite(h) || h <= 0) return;
-        records.push({
-          room: '', room_none: false, floor: '',
-          work: WORK_ADDITIONAL,
-          materials: [{
-            name: 'Наставничество — ' + entry.name,
-            unit: 'ч', qty: String(h), system: ''
-          }]
-        });
-      }
-    });
-
-    const payload = {
-      object:  objectSelect.value.trim(),
-      date:    dateInput.value.trim(),
-      name:    nameInput.value.trim(),
-      records: records
-    };
-
-    const totalRows = records.reduce((sum, r) =>
-      sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
-
-    const btn = document.getElementById('btn');
-    btn.disabled = true;
-    btn.textContent = 'Отправляем...';
-
-    showProgress(totalRows);
-
-    let shown = 0;
-    const tickMs = Math.max(60, Math.floor(1800 / totalRows));
-    const ticker = setInterval(() => {
-      if (shown < totalRows - 1) {
-        shown++;
-        updateProgress(shown, totalRows);
-      }
-    }, tickMs);
+    if (isOffline()) {
+      show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
+      showToast('📵 Нет подключения');
+      return;
+    }
 
     try {
-      await fetch(API_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+      show('🔄 Проверяем соединение...', '');
+      const reachable = await checkConnection();
+      show('');
+
+      if (!reachable) {
+        const proceed = confirm(
+          '📵 Не удалось связаться с сервером.\n\n' +
+          'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
+          'Отправить всё равно?'
+        );
+        if (!proceed) {
+          show('⚠️ Отправка отменена. Проверьте подключение и попробуйте снова.', 'err');
+          return;
+        }
+      }
+
+      const sortedJournal = journal.slice().sort(compareEntries);
+      const records = [];
+
+      sortedJournal.forEach(entry => {
+        if (entry.kind === 'main') {
+          let room = entry.room || '';
+          if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
+          records.push({
+            room: room,
+            room_none: entry.room_none,
+            floor: entry.floor || '',
+            work: entry.work,
+            materials: materialStateToArrayFromState(entry.materialState || {})
+          });
+        } else if (isLocationKind(entry.kind)) {
+          const w = locationWorkByKey(entry.kind);
+          const z = parseFloat(String(entry.qty).replace(',', '.'));
+          if (!isFinite(z) || z <= 0) return;
+          records.push({
+            room: entry.room || '',
+            room_none: false,
+            floor: entry.floor || '',
+            work: WORK_ADDITIONAL,
+            materials: [{
+              name: w.label, unit: w.unit, qty: String(z), system: ''
+            }]
+          });
+        } else if (entry.kind === 'mentorship') {
+          const h = parseFloat(String(entry.hours).replace(',', '.'));
+          if (!isFinite(h) || h <= 0) return;
+          records.push({
+            room: '', room_none: false, floor: '',
+            work: WORK_ADDITIONAL,
+            materials: [{
+              name: 'Наставничество — ' + entry.name,
+              unit: 'ч', qty: String(h), system: ''
+            }]
+          });
+        }
       });
 
-      clearInterval(ticker);
-      updateProgress(totalRows, totalRows);
-      await new Promise(r => setTimeout(r, 350));
-      hideProgress();
-      show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+      const payload = {
+        object:  objectSelect.value.trim(),
+        date:    dateInput.value.trim(),
+        name:    nameInput.value.trim(),
+        records: records
+      };
 
-      journal.length = 0;
-      clearDraft();
-      renderJournal();
+      const totalRows = records.reduce((sum, r) =>
+        sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
 
-      MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
-      initAdditionalState();
-      renderAdditionalFields();
+      if (btn) btn.textContent = '⏳ Отправляем…';
 
-      setupDateRange();
-      dateInput.value = toISODate(new Date());
-      updateDateHighlight();
-    } catch (e) {
-      clearInterval(ticker);
-      hideProgress();
-      show('❌ Ошибка: ' + e.message, 'err');
+      showProgress(totalRows);
+
+      let shown = 0;
+      const tickMs = Math.max(60, Math.floor(1800 / totalRows));
+      const ticker = setInterval(() => {
+        if (shown < totalRows - 1) {
+          shown++;
+          updateProgress(shown, totalRows);
+        }
+      }, tickMs);
+
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        clearInterval(ticker);
+        updateProgress(totalRows, totalRows);
+        await new Promise(r => setTimeout(r, 350));
+        hideProgress();
+        show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
+
+        journal.length = 0;
+        clearDraft();
+        renderJournal();
+
+        MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
+        initAdditionalState();
+        renderAdditionalFields();
+
+        setupDateRange();
+        dateInput.value = toISODate(new Date());
+        updateDateHighlight();
+      } catch (e) {
+        clearInterval(ticker);
+        hideProgress();
+        show('❌ Ошибка: ' + e.message, 'err');
+      }
     } finally {
-      updateSendButton();
+      // Ничего — finally на верхнем уровне
     }
   } finally {
     _sending = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = prevText;
+    }
+    updateSendButton();
   }
 }
 
