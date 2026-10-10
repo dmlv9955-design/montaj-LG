@@ -106,8 +106,6 @@ const MATERIAL_BY_KEY = (() => {
 //  СОСТОЯНИЕ
 // ============================================
 const mainState = {};
-// Статус блокировки блока ('enabled' / 'disabled'). Нужен, чтобы
-// не перерисовывать материалы на каждое нажатие клавиши в имени.
 const _mainBlockStatus = {};
 
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
@@ -767,11 +765,6 @@ function toggleMainAccordion(work) {
   if (st.expanded) renderMaterialsForBlock(work);
 }
 
-// ============================================
-//  ПЕРЕСЧЁТ БЛОКИРОВКИ
-//  Материалы перерисовываем ТОЛЬКО при смене статуса
-//  (иначе на каждое нажатие клавиши в имени было бы 50+ DOM-узлов).
-// ============================================
 function updateAllMainBlocks() {
   const nameOk = isNameValid(nameInput.value);
   const objOk = !!objectSelect.value;
@@ -821,29 +814,34 @@ function renderMaterialsForBlock(work) {
       card.className = 'mat-card';
       card.dataset.matKey = r.key;
 
+      // === Шапка: название слева, вид+система справа ===
       const head = document.createElement('div');
       head.className = 'mat-head';
-
-      const badge = document.createElement('span');
-      badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
-      badge.textContent = r.variant;
-      head.appendChild(badge);
-
-      const forEl = document.createElement('span');
-      forEl.className = 'variant-for';
-      forEl.textContent = 'для';
-      head.appendChild(forEl);
-
-      const sysEl = document.createElement('span');
-      sysEl.className = systemClass(r.system);
-      sysEl.textContent = r.system;
-      head.appendChild(sysEl);
 
       const nameEl = document.createElement('span');
       nameEl.className = 'mat-head-name';
       nameEl.textContent = mat.label;
       head.appendChild(nameEl);
 
+      const headRight = document.createElement('span');
+      headRight.className = 'mat-head-right';
+
+      const forEl = document.createElement('span');
+      forEl.className = 'variant-for';
+      forEl.textContent = 'для';
+      headRight.appendChild(forEl);
+
+      const badge = document.createElement('span');
+      badge.className = 'variant-badge' + (r.primary ? ' primary' : '');
+      badge.textContent = r.variant;
+      headRight.appendChild(badge);
+
+      const sysEl = document.createElement('span');
+      sysEl.className = systemClass(r.system);
+      sysEl.textContent = r.system;
+      headRight.appendChild(sysEl);
+
+      head.appendChild(headRight);
       card.appendChild(head);
 
       const rowsWrap = document.createElement('div');
@@ -875,6 +873,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
+        // === Корпус ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -905,6 +904,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
+        // === Этаж ===
         const isAtticRow = isAtticBuilding(row.building);
         const floors = getFloorsFor(objectSelect.value, row.building);
         const buildingChosen = !buildingRequired || !!row.building;
@@ -938,6 +938,7 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
+        // === Помещения + количество ===
         const floorChosen = !!row.floor || isAtticRow;
         const floorIsNo = row.floor === 'Нет';
         const showRoom = floorChosen && !floorIsNo;
@@ -2068,7 +2069,6 @@ objectSelect.addEventListener('change', () => {
     if (st) st.materials = makeEmptyMaterialState();
   });
 
-  // Сброс кэша статусов, чтобы блоки точно перерисовались
   MAIN_WORKS.forEach(({ work }) => { _mainBlockStatus[work] = null; });
 
   updateAllMainBlocks();
