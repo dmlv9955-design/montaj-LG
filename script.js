@@ -27,16 +27,12 @@
 (function initScrollTop() {
   const btn = document.getElementById('scroll-top');
   if (!btn) return;
-
   function update() {
     if (window.scrollY > 300) btn.classList.add('show');
     else btn.classList.remove('show');
   }
-
   window.addEventListener('scroll', update, { passive: true });
-  btn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   update();
 })();
 
@@ -59,15 +55,12 @@ const BUILDINGS_BY_OBJECT = {
 };
 
 const BUILDING_ORDER = ['Основное здание', 'Крыло мастерских', 'Чердак'];
-
 const MASTER_WING = 'Крыло мастерских';
 const MASTER_WING_PREFIX = 'к';
 const ATTIC = 'Чердак';
-
 const WORK_ADDITIONAL = 'Другие работы';
 const SECTION_MENTOR = 'Наставничество';
 
-// Демонтаж — раскрывающийся; Монтаж — всегда открыт
 const MAIN_WORKS = [
   { work: 'Демонтаж', suffix: 'demontazh', emoji: '🔨', alwaysOpen: false },
   { work: 'Монтаж',   suffix: 'montazh',   emoji: '🔧', alwaysOpen: true  }
@@ -83,17 +76,9 @@ const LOCATION_WORKS = [
   { key: 'raskluchenie', label: 'Расключение',            unit: 'шт'  }
 ];
 
-function isLocationKind(kind) {
-  return LOCATION_WORKS.some(w => w.key === kind);
-}
-
-function locationWorkByKey(key) {
-  return LOCATION_WORKS.find(w => w.key === key) || null;
-}
-
-function locationWorkByLabel(label) {
-  return LOCATION_WORKS.find(w => w.label === label) || null;
-}
+function isLocationKind(kind) { return LOCATION_WORKS.some(w => w.key === kind); }
+function locationWorkByKey(key) { return LOCATION_WORKS.find(w => w.key === key) || null; }
+function locationWorkByLabel(label) { return LOCATION_WORKS.find(w => w.label === label) || null; }
 
 // ============================================
 //  МАТЕРИАЛЫ
@@ -145,41 +130,48 @@ const MATERIALS = [
   }
 ];
 
+// Плоская карта materialKey → { mat, row }
+const MATERIAL_BY_KEY = (() => {
+  const m = {};
+  MATERIALS.forEach(mat => mat.rows.forEach(r => { m[r.key] = { mat, row: r }; }));
+  return m;
+})();
+
 // ============================================
 //  СОСТОЯНИЕ
 // ============================================
 const mainState = {};
 
+// Пустое состояние одного материала в блоке
+function makeEmptyMaterialEntry() {
+  return { qty: '', floor: '', room: '' };
+}
+
+// Полный набор материалов блока
 function makeEmptyMaterialState() {
   const s = {};
-  MATERIALS.forEach(mat => mat.rows.forEach(r => { s[r.key] = ''; }));
+  MATERIALS.forEach(mat => mat.rows.forEach(r => { s[r.key] = makeEmptyMaterialEntry(); }));
   return s;
 }
 
 // ============================================
 //  ДОП. РАБОТЫ
 // ============================================
-function makeLocationItem() {
-  return { building: '', floor: '', room: '', value: '' };
-}
+function makeLocationItem() { return { building: '', floor: '', room: '', value: '' }; }
 
 function makeAdditionalState() {
   const state = {};
-  LOCATION_WORKS.forEach(w => {
-    state[w.key] = { items: [makeLocationItem()] };
-  });
+  LOCATION_WORKS.forEach(w => { state[w.key] = { items: [makeLocationItem()] }; });
   state.mentorship = { items: [{ name: '', hours: '' }] };
   return state;
 }
 
 let additionalState = makeAdditionalState();
-
-function initAdditionalState() {
-  additionalState = makeAdditionalState();
-}
+function initAdditionalState() { additionalState = makeAdditionalState(); }
 
 // ============================================
 //  ЖУРНАЛ
+//  kind=main запись: { kind, building, work, floor, room, room_none, is_master_wing, materials: {key: qty} }
 // ============================================
 const journal = [];
 
@@ -188,14 +180,8 @@ const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function saveDraft() {
   try {
-    if (!journal || journal.length === 0) {
-      localStorage.removeItem(DRAFT_KEY);
-      return;
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      savedAt: Date.now(),
-      entries: journal
-    }));
+    if (!journal || journal.length === 0) { localStorage.removeItem(DRAFT_KEY); return; }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), entries: journal }));
   } catch (e) { console.warn('Не удалось сохранить черновик:', e); }
 }
 
@@ -206,30 +192,21 @@ function loadDraft() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
     if (!Array.isArray(parsed.entries)) return null;
-    if (typeof parsed.savedAt === 'number' &&
-        Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
-      localStorage.removeItem(DRAFT_KEY);
-      return null;
+    if (typeof parsed.savedAt === 'number' && Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY); return null;
     }
-    const ok = parsed.entries.every(e =>
-      e && typeof e === 'object' && typeof e.kind === 'string'
-    );
+    const ok = parsed.entries.every(e => e && typeof e === 'object' && typeof e.kind === 'string');
     return ok ? parsed.entries : null;
-  } catch (e) {
-    console.warn('Не удалось прочитать черновик:', e);
-    return null;
-  }
+  } catch (e) { console.warn('Не удалось прочитать черновик:', e); return null; }
 }
 
-function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
-}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {} }
 
 // ============================================
 //  ЗАЩИТА ОТ ДВОЙНЫХ НАЖАТИЙ
 // ============================================
-let _sending = false;          // «Отправить отчёт»
-let _addingToJournal = false;  // «Добавить всё в журнал»
+let _sending = false;
+let _addingToJournal = false;
 
 // ============================================
 //  КНОПКА «ОТПРАВИТЬ»
@@ -237,9 +214,7 @@ let _addingToJournal = false;  // «Добавить всё в журнал»
 function updateSendButton() {
   const btn = document.getElementById('btn');
   if (!btn) return;
-  // Пока идёт отправка — не трогаем
   if (_sending) return;
-
   const offline = isOffline();
   const empty = journal.length === 0;
   btn.disabled = empty || offline;
@@ -260,16 +235,16 @@ function hasActiveAdditional() {
   });
 }
 
-// Пустой ли блок Монтаж/Демонтаж
+// Есть ли хоть один заполненный материал в блоке
 function isMainBlockEmpty(work) {
   const st = mainState[work];
   if (!st) return true;
-  const els = st.elements;
-  if (els.buildingInput.value.trim()) return false;
-  if (els.floorInput.value.trim()) return false;
-  if (els.roomInput.value.trim()) return false;
-  for (const k in st.materialState) {
-    if (String(st.materialState[k] || '').trim()) return false;
+  if (st.building.trim()) return false;
+  for (const k in st.materials) {
+    const m = st.materials[k];
+    if (String(m.qty || '').trim()) return false;
+    if (String(m.floor || '').trim()) return false;
+    if (String(m.room || '').trim()) return false;
   }
   return true;
 }
@@ -300,52 +275,34 @@ function formatQty(raw) {
 
 function sanitizeZadelkaRoomInput(value) {
   let s = String(value == null ? '' : value);
-  s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\s]/g, '');
-  s = s.replace(/\s+/g, ' ');
-  s = s.replace(/^\s+/, '');
+  s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').replace(/^\s+/, '');
   return s;
 }
 
 function normalizeZadelkaRoom(value) {
   let s = String(value == null ? '' : value);
-  s = s.replace(/\./g, ' ');
-  s = s.replace(/[^0-9\s]/g, '');
-  s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/\./g, ' ').replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').trim();
   const parts = s.split(' ').filter(p => p !== '');
   const set = new Set();
-  parts.forEach(p => {
-    const n = parseInt(p, 10);
-    if (!isFinite(n) || n <= 0) return;
-    set.add(n);
-  });
+  parts.forEach(p => { const n = parseInt(p, 10); if (isFinite(n) && n > 0) set.add(n); });
   return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
 function parseRooms(roomStr) {
-  const plain = new Set();
-  const prefixed = new Set();
+  const plain = new Set(); const prefixed = new Set();
   String(roomStr || '').split(',').forEach(part => {
-    const s = part.trim();
-    if (!s) return;
-    const m = s.match(/^([кК]?)(\d+)$/);
-    if (!m) return;
-    const n = parseInt(m[2], 10);
-    if (!isFinite(n) || n <= 0) return;
+    const s = part.trim(); if (!s) return;
+    const m = s.match(/^([кК]?)(\d+)$/); if (!m) return;
+    const n = parseInt(m[2], 10); if (!isFinite(n) || n <= 0) return;
     if (m[1]) prefixed.add(n); else plain.add(n);
   });
   return { plain, prefixed };
 }
 
 function combineRooms(a, b) {
-  const pa = parseRooms(a);
-  const pb = parseRooms(b);
-  const plain = new Set();
-  pa.plain.forEach(n => plain.add(n));
-  pb.plain.forEach(n => plain.add(n));
-  const prefixed = new Set();
-  pa.prefixed.forEach(n => prefixed.add(n));
-  pb.prefixed.forEach(n => prefixed.add(n));
+  const pa = parseRooms(a); const pb = parseRooms(b);
+  const plain = new Set(); pa.plain.forEach(n => plain.add(n)); pb.plain.forEach(n => plain.add(n));
+  const prefixed = new Set(); pa.prefixed.forEach(n => prefixed.add(n)); pb.prefixed.forEach(n => prefixed.add(n));
   return []
     .concat(Array.from(plain).sort((x, y) => x - y).map(n => String(n)))
     .concat(Array.from(prefixed).sort((x, y) => x - y).map(n => 'к' + n))
@@ -355,9 +312,8 @@ function combineRooms(a, b) {
 function applyPrefixToRoom(room, building) {
   if (!room) return '';
   if (building !== MASTER_WING) return room;
-  return room.split(',').map(part => {
-    const s = part.trim();
-    if (!s) return '';
+  return room.split(',').map(p => {
+    const s = p.trim(); if (!s) return '';
     if (/^[кК]/.test(s)) return s;
     return MASTER_WING_PREFIX + s;
   }).filter(Boolean).join(', ');
@@ -365,25 +321,7 @@ function applyPrefixToRoom(room, building) {
 
 function stripPrefixFromRoom(room) {
   if (!room) return '';
-  return room.split(',').map(part => part.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
-}
-
-function sumMaterialStates(a, b) {
-  const result = Object.assign({}, a);
-  Object.keys(b).forEach(key => {
-    const av = String(result[key] || '').trim();
-    const bv = String(b[key] || '').trim();
-    if (!av && !bv) return;
-    const an = av ? parseFloat(av.replace(',', '.')) : 0;
-    const bn = bv ? parseFloat(bv.replace(',', '.')) : 0;
-    const sum = (isFinite(an) ? an : 0) + (isFinite(bn) ? bn : 0);
-    if (sum <= 0) result[key] = '';
-    else {
-      const rounded = Math.round(sum * 100) / 100;
-      result[key] = String(rounded).replace('.', ',');
-    }
-  });
-  return result;
+  return room.split(',').map(p => p.trim().replace(/^[кК]/, '')).filter(Boolean).join(', ');
 }
 
 function workWeight(work) {
@@ -407,10 +345,8 @@ function sectionKeyFor(entry) {
 
 function sectionWeight(key) {
   if (key === '') return -1;
-  const bi = BUILDING_ORDER.indexOf(key);
-  if (bi !== -1) return bi;
-  const li = LOCATION_WORKS.findIndex(w => w.label === key);
-  if (li !== -1) return 900 + li;
+  const bi = BUILDING_ORDER.indexOf(key); if (bi !== -1) return bi;
+  const li = LOCATION_WORKS.findIndex(w => w.label === key); if (li !== -1) return 900 + li;
   if (key === SECTION_MENTOR) return 999;
   return 500;
 }
@@ -422,10 +358,7 @@ function buildingWeight(b) {
 }
 
 function floorWeight(floor) {
-  const w = {
-    'Подвал': -1, '1': 1, '2': 2, '3': 3,
-    'Чердак': 100, '': 900, 'Нет': 1000
-  };
+  const w = { 'Подвал': -1, '1': 1, '2': 2, '3': 3, 'Чердак': 100, '': 900, 'Нет': 1000 };
   return (floor in w) ? w[floor] : 500;
 }
 
@@ -440,25 +373,19 @@ function roomSortKey(room) {
 }
 
 function compareEntries(a, b) {
-  const aLoc = isLocationKind(a.kind);
-  const bLoc = isLocationKind(b.kind);
-  const aAdd = aLoc || a.kind === 'mentorship';
-  const bAdd = bLoc || b.kind === 'mentorship';
+  const aLoc = isLocationKind(a.kind); const bLoc = isLocationKind(b.kind);
+  const aAdd = aLoc || a.kind === 'mentorship'; const bAdd = bLoc || b.kind === 'mentorship';
   if (aAdd !== bAdd) return aAdd ? 1 : -1;
 
   if (aAdd && bAdd) {
-    const ka = kindOrder(a.kind);
-    const kb = kindOrder(b.kind);
+    const ka = kindOrder(a.kind); const kb = kindOrder(b.kind);
     if (ka !== kb) return ka - kb;
     if (aLoc && bLoc) {
-      const ba = buildingWeight(a.building);
-      const bb = buildingWeight(b.building);
+      const ba = buildingWeight(a.building); const bb = buildingWeight(b.building);
       if (ba !== bb) return ba - bb;
-      const fa = floorWeight(a.floor);
-      const fb = floorWeight(b.floor);
+      const fa = floorWeight(a.floor); const fb = floorWeight(b.floor);
       if (fa !== fb) return fa - fb;
-      const ra = roomSortKey(a.room);
-      const rb = roomSortKey(b.room);
+      const ra = roomSortKey(a.room); const rb = roomSortKey(b.room);
       if (ra !== rb) return ra - rb;
       return String(a.room).localeCompare(String(b.room));
     }
@@ -468,14 +395,11 @@ function compareEntries(a, b) {
     return 0;
   }
 
-  const fa = floorWeight(a.floor);
-  const fb = floorWeight(b.floor);
+  const fa = floorWeight(a.floor); const fb = floorWeight(b.floor);
   if (fa !== fb) return fa - fb;
-  const ra = roomSortKey(a.room);
-  const rb = roomSortKey(b.room);
+  const ra = roomSortKey(a.room); const rb = roomSortKey(b.room);
   if (ra !== rb) return ra - rb;
-  const ka = a.is_master_wing ? 1 : 0;
-  const kb = b.is_master_wing ? 1 : 0;
+  const ka = a.is_master_wing ? 1 : 0; const kb = b.is_master_wing ? 1 : 0;
   if (ka !== kb) return ka - kb;
   return workWeight(a.work) - workWeight(b.work);
 }
@@ -496,16 +420,12 @@ function formatJournalTitle(entry) {
     if (entry.room) parts.push('пом. ' + entry.room);
     return parts.length ? parts.join(' · ') : 'Без привязки';
   }
-  if (entry.kind === 'mentorship') {
-    return entry.name || 'Наставничество';
-  }
+  if (entry.kind === 'mentorship') return entry.name || 'Наставничество';
+
   const floorLabel = formatFloorLabel(entry.floor);
   let roomLabel;
-  if (entry.room_none) {
-    roomLabel = 'без помещения';
-  } else {
-    roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
-  }
+  if (entry.room_none) roomLabel = 'без помещения';
+  else roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + entry.room;
   if (!floorLabel) return roomLabel.charAt(0).toUpperCase() + roomLabel.slice(1);
   return floorLabel + ' · ' + roomLabel;
 }
@@ -524,18 +444,14 @@ function toISODate(d) {
 }
 
 function setupDateRange() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const minDate = new Date(today);
-  minDate.setDate(minDate.getDate() - DATE_MIN_DAYS_AGO);
-  dateInput.min = toISODate(minDate);
-  dateInput.max = toISODate(today);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const minDate = new Date(today); minDate.setDate(minDate.getDate() - DATE_MIN_DAYS_AGO);
+  dateInput.min = toISODate(minDate); dateInput.max = toISODate(today);
   if (!dateInput.value) dateInput.value = toISODate(today);
 }
 
 function updateDateHighlight() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayISO = toISODate(today);
   const v = dateInput.value;
   dateInput.classList.remove('is-old-date');
@@ -543,29 +459,23 @@ function updateDateHighlight() {
   dateInput.classList.add('is-old-date');
 }
 
-setupDateRange();
-updateDateHighlight();
+setupDateRange(); updateDateHighlight();
 
 dateInput.addEventListener('change', () => {
   if (dateInput.value) {
     if (dateInput.value < dateInput.min) dateInput.value = dateInput.min;
     if (dateInput.value > dateInput.max) dateInput.value = dateInput.max;
   }
-  updateDateHighlight();
-  updateFieldState(dateInput);
+  updateDateHighlight(); updateFieldState(dateInput);
 });
 
 // ============================================
 //  УТИЛИТЫ
 // ============================================
-function show(text, cls) {
-  const m = document.getElementById('msg');
-  m.textContent = text; m.className = cls || '';
-}
+function show(text, cls) { const m = document.getElementById('msg'); m.textContent = text; m.className = cls || ''; }
 
 function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
@@ -573,15 +483,12 @@ let toastTimer = null;
 function showToast(text) {
   const el = document.getElementById('toast');
   if (!el) return;
-  el.textContent = text;
-  el.classList.add('show');
+  el.textContent = text; el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-function isOffline() {
-  return typeof navigator !== 'undefined' && navigator.onLine === false;
-}
+function isOffline() { return typeof navigator !== 'undefined' && navigator.onLine === false; }
 
 async function checkConnection() {
   if (isOffline()) return false;
@@ -590,54 +497,33 @@ async function checkConnection() {
     const timer = setTimeout(() => controller.abort(), 5000);
     const pingUrl = API_URL + (API_URL.indexOf('?') === -1 ? '?' : '&') + '_ping=' + Date.now();
     await fetch(pingUrl, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
-    clearTimeout(timer);
-    return true;
+    clearTimeout(timer); return true;
   } catch (_) { return false; }
 }
 
 function setupConnectionWatcher() {
-  window.addEventListener('online', () => {
-    showToast('✅ Соединение восстановлено');
-    updateSendButton();
-  });
-  window.addEventListener('offline', () => {
-    showToast('📵 Нет подключения к интернету');
-    updateSendButton();
-  });
+  window.addEventListener('online', () => { showToast('✅ Соединение восстановлено'); updateSendButton(); });
+  window.addEventListener('offline', () => { showToast('📵 Нет подключения к интернету'); updateSendButton(); });
 }
 
 function showProgress(total) {
   const o = document.getElementById('progress-overlay');
   const c = document.getElementById('progress-counter');
   if (!o || !c) return;
-  c.textContent = '0 из ' + total;
-  o.classList.add('show');
+  c.textContent = '0 из ' + total; o.classList.add('show');
 }
-function updateProgress(done, total) {
-  const c = document.getElementById('progress-counter');
-  if (c) c.textContent = done + ' из ' + total;
-}
-function hideProgress() {
-  const o = document.getElementById('progress-overlay');
-  if (o) o.classList.remove('show');
-}
+function updateProgress(done, total) { const c = document.getElementById('progress-counter'); if (c) c.textContent = done + ' из ' + total; }
+function hideProgress() { const o = document.getElementById('progress-overlay'); if (o) o.classList.remove('show'); }
 
 function getFloorsFor(object, building) {
-  if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) {
-    return FLOORS_OVERRIDE_BY_BUILDING[building];
-  }
+  if (building && FLOORS_OVERRIDE_BY_BUILDING[building]) return FLOORS_OVERRIDE_BY_BUILDING[building];
   return FLOORS_BY_OBJECT[object] || null;
 }
 
-function isBuildingRequired() {
-  return !!BUILDINGS_BY_OBJECT[objectSelect.value];
-}
+function isBuildingRequired() { return !!BUILDINGS_BY_OBJECT[objectSelect.value]; }
 function isMasterWingBuilding(b) { return b === MASTER_WING; }
-function isAtticBuilding(b)      { return b === ATTIC; }
+function isAtticBuilding(b) { return b === ATTIC; }
 
-// ============================================
-//  КЛАСС БЕЙДЖА СИСТЕМЫ
-// ============================================
 function systemClass(sys) {
   if (!sys) return 'variant-system';
   if (sys === 'АПС')      return 'variant-system variant-system-aps';
@@ -658,19 +544,14 @@ class SegmentedControl {
   get value() { return this.input.value; }
   set value(v) { this.input.value = v || ''; this.updateDisplay(); }
   get disabled() { return this.root.classList.contains('segmented-disabled'); }
-  set disabled(v) {
-    this.root.classList.toggle('segmented-disabled', !!v);
-    this.input.disabled = !!v;
-  }
+  set disabled(v) { this.root.classList.toggle('segmented-disabled', !!v); this.input.disabled = !!v; }
   setHint(text) { if (this.hint) this.hint.textContent = text; }
   setOptions(arr) {
     this.root.querySelectorAll('.segmented-btn').forEach(b => b.remove());
     arr.forEach(val => {
       const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'segmented-btn';
-      btn.dataset.value = val;
-      btn.textContent = val;
+      btn.type = 'button'; btn.className = 'segmented-btn';
+      btn.dataset.value = val; btn.textContent = val;
       btn.addEventListener('click', () => {
         if (this.root.classList.contains('segmented-disabled')) return;
         this.input.value = val;
@@ -751,11 +632,9 @@ function attachClearButton(inputId, btnId) {
     input.value = '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
-    input.focus();
-    update();
+    input.focus(); update();
   });
-  update();
-  input._updateClearBtn = update;
+  update(); input._updateClearBtn = update;
 }
 attachClearButton('name', 'clear-name');
 
@@ -771,10 +650,7 @@ function updateNameVisual(el, gateInput) {
   if (!el) return;
   el.classList.remove('is-empty', 'is-partial', 'is-filled', 'is-invalid');
   if (el.disabled) return;
-  if (gateInput) {
-    const gateVal = String(gateInput.value || '').trim();
-    if (!gateVal) return;
-  }
+  if (gateInput) { const g = String(gateInput.value || '').trim(); if (!g) return; }
   const v = String(el.value || '').trim();
   if (!v) el.classList.add('is-empty');
   else if (!isNameValid(v)) el.classList.add('is-partial');
@@ -786,20 +662,13 @@ function updateNameVisual(el, gateInput) {
 // ============================================
 function updateAdditionalAccessibility() {
   if (!additionalCard) return;
-  const nameOk   = isNameValid(nameInput.value);
+  const nameOk = isNameValid(nameInput.value);
   const objectOk = !!objectSelect.value;
   const unlocked = nameOk && objectOk;
-
-  if (unlocked) {
-    additionalCard.classList.remove('additional-block-disabled');
-    return;
-  }
+  if (unlocked) { additionalCard.classList.remove('additional-block-disabled'); return; }
   additionalCard.classList.add('additional-block-disabled');
   const hadActive = hasActiveAdditional();
-  if (hadActive) {
-    additionalState = makeAdditionalState();
-    renderAdditionalFields();
-  }
+  if (hadActive) { additionalState = makeAdditionalState(); renderAdditionalFields(); }
 }
 
 // ============================================
@@ -807,9 +676,7 @@ function updateAdditionalAccessibility() {
 // ============================================
 function refreshNameGates() {
   const nameOk = isNameValid(nameInput.value);
-
   dateInput.disabled = !nameOk;
-
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
@@ -818,19 +685,14 @@ function refreshNameGates() {
       objectSelect.value = '';
       if (objectSelect._updateSegmentedDisplay) objectSelect._updateSegmentedDisplay();
     }
-  } else {
-    objectSeg.classList.remove('segmented-disabled');
-  }
-
-  updateFieldState(dateInput);
-  updateFieldState(objectSelect);
-
-  updateAllMainBlocks();
-  updateAdditionalAccessibility();
+  } else objectSeg.classList.remove('segmented-disabled');
+  updateFieldState(dateInput); updateFieldState(objectSelect);
+  updateAllMainBlocks(); updateAdditionalAccessibility();
 }
 
 // ============================================
 //  HTML-ШАБЛОН БЛОКА
+//  Корпус оставляем на блоке, этаж/помещение теперь в каждой строке материала.
 // ============================================
 function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
   const arrowHTML = alwaysOpen ? '' : '<span class="acc-arrow">▼</span>';
@@ -849,28 +711,8 @@ function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
         </div>
         <div class="field-error" data-err-building>Заполните это поле</div>
       </div>
-      <div class="row">
-        <div class="col-1">
-          <label class="req">Этаж <span class="req-star">*</span></label>
-          <div class="segmented segmented-floors segmented-disabled" data-floor-seg>
-            <input type="hidden" class="req-field" data-floor value="">
-            <span class="segmented-hint">🔒 Корпус</span>
-          </div>
-          <div class="field-error" data-err-floor>Заполните это поле</div>
-        </div>
-        <div class="col-2">
-          <label class="req">Помещение <span class="req-star">*</span></label>
-          <div class="room-wrap">
-            <span class="room-prefix" data-room-prefix style="display: none;">к</span>
-            <input type="text" class="req-field" data-room
-                   placeholder="🔒 Этаж" inputmode="numeric" maxlength="4" disabled>
-          </div>
-          <div class="hint-small">Если помещения нет — введите 0</div>
-          <div class="field-error" data-err-room>Заполните это поле</div>
-        </div>
-      </div>
       <div data-materials-section>
-        <div class="section-subtitle">Основные материалы</div>
+        <div class="section-subtitle">Материалы</div>
         <div data-materials></div>
       </div>
     </div>
@@ -882,10 +724,7 @@ function createMainBlockHTML(work, suffix, emoji, alwaysOpen) {
 // ============================================
 function initMainWorks() {
   const container = document.getElementById('main-works-container');
-  if (!container) {
-    console.warn('Нет #main-works-container в HTML');
-    return;
-  }
+  if (!container) { console.warn('Нет #main-works-container в HTML'); return; }
   container.innerHTML = '';
 
   MAIN_WORKS.forEach(({ work, suffix, emoji, alwaysOpen }) => {
@@ -899,12 +738,11 @@ function initMainWorks() {
     container.appendChild(wrapper);
 
     const st = {
-      work: work,
-      suffix: suffix,
+      work, suffix,
       alwaysOpen: !!alwaysOpen,
-      materialState: makeEmptyMaterialState(),
+      building: '',
+      materials: makeEmptyMaterialState(),
       expanded: !!alwaysOpen,
-      floorSeg: null,
       buildingSeg: null,
       elements: {
         header: wrapper.querySelector('.accordion-header'),
@@ -912,23 +750,15 @@ function initMainWorks() {
         buildingRow: wrapper.querySelector('[data-building-row]'),
         buildingSegRoot: wrapper.querySelector('[data-building-seg]'),
         buildingInput: wrapper.querySelector('[data-building]'),
-        floorSegRoot: wrapper.querySelector('[data-floor-seg]'),
-        floorInput: wrapper.querySelector('[data-floor]'),
-        roomInput: wrapper.querySelector('[data-room]'),
-        roomPrefix: wrapper.querySelector('[data-room-prefix]'),
         errBuilding: wrapper.querySelector('[data-err-building]'),
-        errFloor: wrapper.querySelector('[data-err-floor]'),
-        errRoom: wrapper.querySelector('[data-err-room]'),
         materialsCont: wrapper.querySelector('[data-materials]')
       }
     };
-    st.floorSeg = new SegmentedControl(st.elements.floorSegRoot);
     st.buildingSeg = new SegmentedControl(st.elements.buildingSegRoot);
     mainState[work] = st;
 
     if (alwaysOpen) {
-      st.elements.header.classList.add('expanded');
-      st.elements.header.classList.add('accordion-header-static');
+      st.elements.header.classList.add('expanded', 'accordion-header-static');
       st.elements.body.classList.add('open');
       st.elements.header.style.cursor = 'default';
     } else {
@@ -939,29 +769,13 @@ function initMainWorks() {
     }
 
     st.elements.buildingInput.addEventListener('change', () => {
-      st.elements.floorInput.value = '';
-      if (st.floorSeg) st.floorSeg.value = '';
-      st.elements.roomInput.value = '';
+      st.building = st.elements.buildingInput.value;
+      // Сбрасываем локации материалов, если корпус изменился (кроме Чердака — там свой room)
+      for (const k in st.materials) {
+        st.materials[k].floor = '';
+        st.materials[k].room = '';
+      }
       updateMainBlock(work);
-    });
-
-    st.elements.floorInput.addEventListener('change', () => {
-      if (st.elements.floorInput.value !== 'Нет' && st.elements.roomInput.value === 'Нет') {
-        st.elements.roomInput.value = '';
-      }
-      updateRoomStateForBlock(work);
-      updateFieldStateForBlock(work);
-    });
-
-    st.elements.roomInput.addEventListener('input', () => {
-      if (st.elements.roomInput.disabled) return;
-      const before = st.elements.roomInput.value;
-      const after = formatRoom(before);
-      if (before !== after) {
-        st.elements.roomInput.value = after;
-        st.elements.roomInput.setSelectionRange(after.length, after.length);
-      }
-      updateFieldStateForBlock(work);
     });
 
     renderMaterialsForBlock(work);
@@ -970,8 +784,7 @@ function initMainWorks() {
 
 function toggleMainAccordion(work) {
   const st = mainState[work];
-  if (!st) return;
-  if (st.alwaysOpen) return;
+  if (!st || st.alwaysOpen) return;
   st.expanded = !st.expanded;
   st.elements.header.classList.toggle('expanded', st.expanded);
   st.elements.body.classList.toggle('open', st.expanded);
@@ -990,53 +803,25 @@ function updateMainBlock(work) {
   if (!needBuild) {
     els.buildingRow.style.display = 'none';
     els.buildingInput.value = '';
+    st.building = '';
     st.buildingSeg.setOptions([]);
     st.buildingSeg.disabled = true;
   } else {
     els.buildingRow.style.display = 'block';
-    const buildingsList = BUILDINGS_BY_OBJECT[obj] || [];
-
+    const list = BUILDINGS_BY_OBJECT[obj] || [];
     if (!nameOk) {
-      st.buildingSeg.setOptions([]);
-      st.buildingSeg.setHint('🔒 Имя');
-      st.buildingSeg.disabled = true;
-    } else if (!obj || buildingsList.length === 0) {
-      st.buildingSeg.setOptions([]);
-      st.buildingSeg.setHint('🔒 Объект');
-      st.buildingSeg.disabled = true;
+      st.buildingSeg.setOptions([]); st.buildingSeg.setHint('🔒 Имя'); st.buildingSeg.disabled = true;
+    } else if (!obj || list.length === 0) {
+      st.buildingSeg.setOptions([]); st.buildingSeg.setHint('🔒 Объект'); st.buildingSeg.disabled = true;
     } else {
-      st.buildingSeg.setOptions(buildingsList);
-      st.buildingSeg.disabled = false;
+      st.buildingSeg.setOptions(list); st.buildingSeg.disabled = false;
     }
   }
 
-  const build = els.buildingInput.value;
-  const floors = getFloorsFor(obj, build);
-  const fSeg = st.floorSeg;
+  // Если корпус сменился вне этого вызова — подхватим
+  st.building = els.buildingInput.value;
 
-  if (isAtticBuilding(build)) {
-    fSeg.setOptions([]);
-    fSeg.disabled = true;
-    els.floorInput.value = ATTIC;
-  } else if (!nameOk) {
-    fSeg.setOptions([]);
-    fSeg.setHint('🔒 Имя');
-    fSeg.disabled = true;
-  } else if (!obj || !floors) {
-    fSeg.setOptions([]);
-    fSeg.setHint('🔒 Объект');
-    fSeg.disabled = true;
-  } else if (needBuild && !build) {
-    fSeg.setOptions([]);
-    fSeg.setHint('🔒 Корпус');
-    fSeg.disabled = true;
-  } else {
-    fSeg.setOptions(floors);
-    fSeg.disabled = false;
-  }
-
-  updateRoomStateForBlock(work);
-  updateFieldStateForBlock(work);
+  renderMaterialsForBlock(work);
 }
 
 function updateHeaderEnabledState(work) {
@@ -1047,100 +832,15 @@ function updateHeaderEnabledState(work) {
   st.elements.header.disabled = !(nameOk && objOk);
 }
 
-function updateRoomStateForBlock(work) {
-  const st = mainState[work];
-  if (!st || !st.elements) return;
-  const els = st.elements;
-  const nameOk = isNameValid(nameInput.value);
-  const floorVal = els.floorInput.value;
-
-  els.roomInput.classList.remove('is-empty', 'is-filled', 'is-invalid');
-
-  if (!nameOk) {
-    els.roomInput.disabled = true;
-    els.roomInput.placeholder = '🔒 Имя';
-    updateRoomPrefixForBlock(work);
-    return;
-  }
-  if (isAtticBuilding(els.buildingInput.value)) {
-    els.roomInput.disabled = false;
-    els.roomInput.placeholder = '1234';
-    updateRoomPrefixForBlock(work);
-    return;
-  }
-  if (!floorVal) {
-    els.roomInput.disabled = true;
-    els.roomInput.placeholder = '🔒 Этаж';
-    updateRoomPrefixForBlock(work);
-    return;
-  }
-  if (floorVal === 'Нет') {
-    els.roomInput.value = 'Нет';
-    els.roomInput.disabled = true;
-    els.roomInput.placeholder = '';
-    updateRoomPrefixForBlock(work);
-    return;
-  }
-  els.roomInput.disabled = false;
-  els.roomInput.placeholder = '1234';
-  updateRoomPrefixForBlock(work);
-}
-
-function updateRoomPrefixForBlock(work) {
-  const st = mainState[work];
-  if (!st || !st.elements) return;
-  const active = isMasterWingBuilding(st.elements.buildingInput.value)
-              && st.elements.floorInput.value
-              && st.elements.floorInput.value !== 'Нет';
-  st.elements.roomPrefix.style.display = active ? 'inline-flex' : 'none';
-}
-
-function updateFieldStateForBlock(work) {
-  const st = mainState[work];
-  if (!st || !st.elements) return;
-  const els = st.elements;
-
-  const bWrap = els.buildingInput.closest('.segmented');
-  if (bWrap) {
-    bWrap.classList.remove('is-empty', 'is-filled');
-    if (els.buildingRow.style.display !== 'none'
-        && !els.buildingInput.disabled
-        && !bWrap.classList.contains('segmented-disabled')) {
-      const isEmpty = !els.buildingInput.value;
-      bWrap.classList.toggle('is-empty', isEmpty);
-      bWrap.classList.toggle('is-filled', !isEmpty);
-    }
-  }
-
-  const fWrap = els.floorInput.closest('.segmented');
-  if (fWrap) {
-    fWrap.classList.remove('is-empty', 'is-filled');
-    if (!els.floorInput.disabled && !fWrap.classList.contains('segmented-disabled')) {
-      const isEmpty = !els.floorInput.value;
-      fWrap.classList.toggle('is-empty', isEmpty);
-      fWrap.classList.toggle('is-filled', !isEmpty);
-    }
-  }
-
-  els.roomInput.classList.remove('is-empty', 'is-filled');
-  if (!els.roomInput.disabled) {
-    const isEmpty = !els.roomInput.value.trim();
-    els.roomInput.classList.toggle('is-empty', isEmpty);
-    els.roomInput.classList.toggle('is-filled', !isEmpty);
-  }
-}
-
 function updateAllMainBlocks() {
   MAIN_WORKS.forEach(({ work }) => {
     updateHeaderEnabledState(work);
-    if (mainState[work] && mainState[work].expanded) {
-      updateMainBlock(work);
-    }
+    if (mainState[work] && mainState[work].expanded) updateMainBlock(work);
   });
 }
 
 // ============================================
-//  РЕНДЕР МАТЕРИАЛОВ В БЛОКЕ
+//  РЕНДЕР МАТЕРИАЛОВ С ЛОКАЦИЕЙ
 // ============================================
 function renderMaterialsForBlock(work) {
   const st = mainState[work];
@@ -1148,13 +848,20 @@ function renderMaterialsForBlock(work) {
   const container = st.elements.materialsCont;
   if (!container) return;
 
+  // Сохраняем фокус, если он внутри этого контейнера
   const active = document.activeElement;
-  const inThisContainer = active && container.contains(active);
-  const focusId = inThisContainer && active.dataset ? active.dataset.focusId : null;
-  const selStart = inThisContainer && typeof active.selectionStart === 'number' ? active.selectionStart : null;
+  const inThis = active && container.contains(active);
+  const focusId = inThis && active.dataset ? active.dataset.focusId : null;
+  const selStart = inThis && typeof active.selectionStart === 'number' ? active.selectionStart : null;
 
   container.innerHTML = '';
-  const state = st.materialState;
+  const state = st.materials;
+  const building = st.building || st.elements.buildingInput.value;
+  const needBuild = isBuildingRequired();
+  const floors = getFloorsFor(objectSelect.value, building);
+  const isAttic = isAtticBuilding(building);
+  const isMasterWing = isMasterWingBuilding(building);
+  const canChooseFloor = !isAttic && floors && floors.length > 0;
 
   MATERIALS.forEach(mat => {
     const group = document.createElement('div');
@@ -1170,6 +877,12 @@ function renderMaterialsForBlock(work) {
     group.appendChild(variantsWrap);
 
     mat.rows.forEach(r => {
+      const me = state[r.key] || makeEmptyMaterialEntry();
+
+      const rowEl = document.createElement('div');
+      rowEl.className = 'material-row';
+
+      // === Строка количества ===
       const line = document.createElement('div');
       line.className = 'variant-line';
 
@@ -1194,15 +907,15 @@ function renderMaterialsForBlock(work) {
       minusBtn.textContent = '−';
       line.appendChild(minusBtn);
 
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.inputMode = 'decimal';
-      input.className = 'variant-input';
-      input.dataset.focusId = r.key;
-      input.placeholder = '0';
-      input.autocomplete = 'off';
-      input.value = state[r.key] || '';
-      line.appendChild(input);
+      const qInput = document.createElement('input');
+      qInput.type = 'text';
+      qInput.inputMode = 'decimal';
+      qInput.className = 'variant-input';
+      qInput.dataset.focusId = r.key + '_qty';
+      qInput.placeholder = '0';
+      qInput.autocomplete = 'off';
+      qInput.value = me.qty || '';
+      line.appendChild(qInput);
 
       const plusBtn = document.createElement('button');
       plusBtn.type = 'button';
@@ -1214,7 +927,7 @@ function renderMaterialsForBlock(work) {
       clearBtn.type = 'button';
       clearBtn.className = 'variant-clear-btn';
       clearBtn.textContent = '×';
-      clearBtn.style.display = input.value ? 'inline-flex' : 'none';
+      clearBtn.style.display = qInput.value ? 'inline-flex' : 'none';
       line.appendChild(clearBtn);
 
       const unit = document.createElement('span');
@@ -1222,38 +935,76 @@ function renderMaterialsForBlock(work) {
       unit.textContent = mat.unit;
       line.appendChild(unit);
 
-      input.addEventListener('input', () => {
-        const before = input.value;
+      qInput.addEventListener('input', () => {
+        const before = qInput.value;
         const after = formatQty(before);
         if (before !== after) {
-          input.value = after;
-          input.setSelectionRange(after.length, after.length);
+          qInput.value = after;
+          qInput.setSelectionRange(after.length, after.length);
         }
-        state[r.key] = input.value;
-        clearBtn.style.display = input.value ? 'inline-flex' : 'none';
-        updateMinusState(input, minusBtn);
-      });
-      minusBtn.addEventListener('click', () => {
-        bumpQty(input, v => { state[r.key] = v; }, -1, clearBtn, minusBtn);
-      });
-      plusBtn.addEventListener('click', () => {
-        bumpQty(input, v => { state[r.key] = v; }, 1, clearBtn, minusBtn);
-      });
-      clearBtn.addEventListener('click', () => {
-        input.value = '';
-        state[r.key] = '';
-        clearBtn.style.display = 'none';
-        updateMinusState(input, minusBtn);
-        input.focus();
+        me.qty = qInput.value;
+        clearBtn.style.display = qInput.value ? 'inline-flex' : 'none';
+        updateMinusState(qInput, minusBtn);
+
+        // Показываем / прячем локацию
+        const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
+        const hasLoc = me.floor || me.room;
+        const shouldShow = hasQty || hasLoc;
+        const locEl = rowEl.querySelector('.material-loc');
+        if (shouldShow && !locEl) {
+          renderMaterialLocation(rowEl, work, r, me);
+        } else if (!shouldShow && locEl) {
+          locEl.remove();
+        }
       });
 
-      updateMinusState(input, minusBtn);
-      variantsWrap.appendChild(line);
+      minusBtn.addEventListener('click', () => {
+        bumpQty(qInput, v => { me.qty = v; }, -1, clearBtn, minusBtn);
+        const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
+        const hasLoc = me.floor || me.room;
+        const shouldShow = hasQty || hasLoc;
+        const locEl = rowEl.querySelector('.material-loc');
+        if (shouldShow && !locEl) renderMaterialLocation(rowEl, work, r, me);
+        else if (!shouldShow && locEl) locEl.remove();
+      });
+      plusBtn.addEventListener('click', () => {
+        bumpQty(qInput, v => { me.qty = v; }, 1, clearBtn, minusBtn);
+        const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
+        const hasLoc = me.floor || me.room;
+        const shouldShow = hasQty || hasLoc;
+        const locEl = rowEl.querySelector('.material-loc');
+        if (shouldShow && !locEl) renderMaterialLocation(rowEl, work, r, me);
+        else if (!shouldShow && locEl) locEl.remove();
+      });
+      clearBtn.addEventListener('click', () => {
+        qInput.value = '';
+        me.qty = '';
+        me.floor = '';
+        me.room = '';
+        clearBtn.style.display = 'none';
+        updateMinusState(qInput, minusBtn);
+        const locEl = rowEl.querySelector('.material-loc');
+        if (locEl) locEl.remove();
+        qInput.focus();
+      });
+
+      updateMinusState(qInput, minusBtn);
+      rowEl.appendChild(line);
+
+      // === Локация (если qty или локация заполнены) ===
+      const hasQty = parseFloat(me.qty.replace(',', '.')) > 0;
+      const hasLoc = me.floor || me.room;
+      if (hasQty || hasLoc) {
+        renderMaterialLocation(rowEl, work, r, me);
+      }
+
+      variantsWrap.appendChild(rowEl);
     });
 
     container.appendChild(group);
   });
 
+  // Восстанавливаем фокус
   if (focusId) {
     const el = container.querySelector('[data-focus-id="' + focusId + '"]');
     if (el) {
@@ -1266,49 +1017,131 @@ function renderMaterialsForBlock(work) {
   }
 }
 
+// Рендер блока «Этаж + Помещение» под строкой материала
+function renderMaterialLocation(rowEl, work, r, me) {
+  const st = mainState[work];
+  const building = st.building || st.elements.buildingInput.value;
+  const floors = getFloorsFor(objectSelect.value, building);
+  const isAttic = isAtticBuilding(building);
+  const isMasterWing = isMasterWingBuilding(building);
+  const canChooseFloor = !isAttic && floors && floors.length > 0;
+  const floorIsNo = me.floor === 'Нет';
+
+  const loc = document.createElement('div');
+  loc.className = 'material-loc';
+
+  if (canChooseFloor) {
+    const lbl = document.createElement('span');
+    lbl.className = 'loc-label';
+    lbl.textContent = 'Этаж:';
+    loc.appendChild(lbl);
+
+    const fWrap = document.createElement('div');
+    fWrap.className = 'material-loc-floors';
+    floors.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'loc-floor-btn' + (me.floor === f ? ' active' : '')
+        + (!me.floor ? ' is-empty' : '');
+      b.textContent = f;
+      b.addEventListener('click', () => {
+        me.floor = f;
+        if (f === 'Нет') me.room = 'Нет';
+        else if (me.room === 'Нет') me.room = '';
+        renderMaterialsForBlock(work);
+      });
+      fWrap.appendChild(b);
+    });
+    loc.appendChild(fWrap);
+  }
+
+  // Помещение — только если не Чердак и не "Нет"
+  const showRoom = !floorIsNo;
+  if (showRoom) {
+    const rlbl = document.createElement('span');
+    rlbl.className = 'loc-label';
+    rlbl.textContent = 'Пом.:';
+    loc.appendChild(rlbl);
+
+    const rWrap = document.createElement('div');
+    rWrap.className = 'material-loc-room';
+
+    if (isMasterWing) {
+      const p = document.createElement('span');
+      p.className = 'room-prefix';
+      p.textContent = MASTER_WING_PREFIX;
+      rWrap.appendChild(p);
+    }
+
+    const rInput = document.createElement('input');
+    rInput.type = 'text';
+    rInput.className = 'loc-room-input';
+    rInput.inputMode = 'numeric';
+    rInput.maxLength = 4;
+    rInput.autocomplete = 'off';
+    rInput.value = me.room === 'Нет' ? '' : (me.room || '');
+    rInput.dataset.focusId = r.key + '_room';
+    if (!me.room) rInput.classList.add('is-empty');
+
+    rInput.addEventListener('input', () => {
+      let v = rInput.value.replace(/[^0-9]/g, '').slice(0, 4);
+      if (rInput.value !== v) rInput.value = v;
+      me.room = v;
+      rInput.classList.toggle('is-empty', !v);
+    });
+
+    rWrap.appendChild(rInput);
+    loc.appendChild(rWrap);
+  }
+
+  rowEl.appendChild(loc);
+}
+
 // ============================================
 //  ВАЛИДАЦИЯ ПОЛЕЙ БЛОКА
 // ============================================
 function validateMainFieldsForBlock(work) {
   const st = mainState[work];
   if (!st) return false;
-  const els = st.elements;
-  els.errBuilding.classList.remove('show');
-  els.errFloor.classList.remove('show');
-  els.errRoom.classList.remove('show');
-  let ok = true;
+  st.elements.errBuilding.classList.remove('show');
 
   const needBuild = isBuildingRequired();
-  if (needBuild && !els.buildingInput.value.trim()) {
-    els.errBuilding.classList.add('show');
-    ok = false;
+  if (needBuild && !st.building.trim()) {
+    st.elements.errBuilding.classList.add('show');
+    return false;
   }
 
-  const isAttic = isAtticBuilding(els.buildingInput.value);
-  if (!isAttic && !els.floorInput.value.trim()) {
-    els.errFloor.classList.add('show');
-    ok = false;
-  }
+  const building = st.building;
+  const isAttic = isAtticBuilding(building);
 
-  if (els.floorInput.value !== 'Нет' && !els.roomInput.value.trim()) {
-    els.roomInput.classList.add('shake');
-    setTimeout(() => els.roomInput.classList.remove('shake'), 500);
-    els.errRoom.classList.add('show');
-    ok = false;
-  }
+  for (const k in st.materials) {
+    const me = st.materials[k];
+    const qtyNum = parseFloat(String(me.qty || '').replace(',', '.'));
+    if (!isFinite(qtyNum) || qtyNum <= 0) continue;
 
-  return ok;
+    const info = MATERIAL_BY_KEY[k];
+    const label = info ? (info.mat.label + ' ' + info.row.variant) : k;
+
+    if (!isAttic && !me.floor) {
+      show('⚠️ ' + label + ': укажите этаж', 'err');
+      return false;
+    }
+    const floorIsNo = me.floor === 'Нет';
+    if (!floorIsNo && !me.room) {
+      show('⚠️ ' + label + ': укажите помещение', 'err');
+      return false;
+    }
+  }
+  return true;
 }
 
 function resetMainBlock(work) {
   const st = mainState[work];
   if (!st) return;
-  st.materialState = makeEmptyMaterialState();
+  st.materials = makeEmptyMaterialState();
+  st.building = '';
   st.elements.buildingInput.value = '';
   if (st.buildingSeg) st.buildingSeg.value = '';
-  st.elements.floorInput.value = '';
-  if (st.floorSeg) st.floorSeg.value = '';
-  st.elements.roomInput.value = '';
   renderMaterialsForBlock(work);
   updateMainBlock(work);
 }
@@ -1319,8 +1152,7 @@ function resetMainBlock(work) {
 function validateHeader() {
   let firstProblem = null;
   ['err-object'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('show');
+    const el = document.getElementById(id); if (el) el.classList.remove('show');
   });
   nameErr.classList.remove('show');
   nameInput.classList.remove('is-invalid');
@@ -1363,26 +1195,14 @@ function validateAdditionalOnly() {
       if (isEmptyRow) continue;
 
       const needB = isBuildingRequired();
-      if (needB && !it.building) {
-        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err');
-        return false;
-      }
+      if (needB && !it.building) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите корпус', 'err'); return false; }
       const isAtticZ = (it.building === 'Чердак');
-      if (!isAtticZ && !it.floor) {
-        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err');
-        return false;
-      }
+      if (!isAtticZ && !it.floor) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите этаж', 'err'); return false; }
       const floorIsNo = (it.floor === 'Нет');
       const r = normalizeZadelkaRoom(it.room || '');
-      if (!isAtticZ && !floorIsNo && !r) {
-        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещение', 'err');
-        return false;
-      }
+      if (!isAtticZ && !floorIsNo && !r) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите помещение', 'err'); return false; }
       const v = parseFloat(String(it.value || '').replace(',', '.'));
-      if (!isFinite(v) || v <= 0) {
-        show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err');
-        return false;
-      }
+      if (!isFinite(v) || v <= 0) { show('⚠️ ' + w.label + ', место ' + (i + 1) + ': укажите количество', 'err'); return false; }
     }
   }
 
@@ -1397,9 +1217,7 @@ function validateAdditionalOnly() {
       if (inp) inp.classList.add('is-invalid');
     }
     const n = parseFloat(hours.replace(',', '.'));
-    if (!hours || !isFinite(n) || n <= 0) {
-      mentorBad = true;
-    }
+    if (!hours || !isFinite(n) || n <= 0) mentorBad = true;
   });
   if (mentorBad) {
     show('⚠️ Укажите имя ученика (2 слова) и часы', 'err');
@@ -1407,16 +1225,14 @@ function validateAdditionalOnly() {
     if (badEl && badEl.scrollIntoView) badEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return false;
   }
-
   return true;
 }
 
 // ============================================
-//  ПРИМЕНЕНИЕ ДОП. РАБОТ В ЖУРНАЛ (без вывода)
+//  ПРИМЕНЕНИЕ ДОП. РАБОТ
 // ============================================
 function applyAdditionalToJournal() {
-  let added = 0;
-  let merged = 0;
+  let added = 0, merged = 0;
 
   LOCATION_WORKS.forEach(w => {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
@@ -1427,17 +1243,9 @@ function applyAdditionalToJournal() {
       if (!isFinite(v) || v <= 0) return;
 
       const zRoom = applyPrefixToRoom(normalizeZadelkaRoom(it.room || ''), it.building || '');
-      const zEntry = {
-        kind: w.key,
-        building: it.building || '',
-        floor: it.floor || '',
-        room: zRoom,
-        qty: it.value
-      };
+      const zEntry = { kind: w.key, building: it.building || '', floor: it.floor || '', room: zRoom, qty: it.value };
       const idx = journal.findIndex(e =>
-        e.kind === w.key &&
-        (e.building || '') === zEntry.building &&
-        (e.floor || '')    === zEntry.floor
+        e.kind === w.key && (e.building || '') === zEntry.building && (e.floor || '') === zEntry.floor
       );
       if (idx !== -1) {
         const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
@@ -1445,10 +1253,7 @@ function applyAdditionalToJournal() {
         journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
         journal[idx].room = combineRooms(journal[idx].room, zEntry.room);
         merged++;
-      } else {
-        journal.push(zEntry);
-        added++;
-      }
+      } else { journal.push(zEntry); added++; }
     });
   });
 
@@ -1458,16 +1263,81 @@ function applyAdditionalToJournal() {
     if (!name || !hours) return;
     const n = parseFloat(hours.replace(',', '.'));
     if (!isFinite(n) || n <= 0) return;
-    const idx = journal.findIndex(e =>
-      e.kind === 'mentorship' && String(e.name).toLowerCase() === name.toLowerCase()
-    );
+    const idx = journal.findIndex(e => e.kind === 'mentorship' && String(e.name).toLowerCase() === name.toLowerCase());
     if (idx !== -1) {
       const oldH = parseFloat(String(journal[idx].hours).replace(',', '.')) || 0;
       const newH = oldH + n;
       journal[idx].hours = String(Math.round(newH * 100) / 100).replace('.', ',');
       merged++;
+    } else { journal.push({ kind: 'mentorship', name, hours: String(n).replace('.', ',') }); added++; }
+  });
+
+  return { added, merged };
+}
+
+// ============================================
+//  ПРИМЕНЕНИЕ ОСНОВНОГО БЛОКА
+//  Группируем материалы по (floor, room), каждая группа = одна journal-запись
+// ============================================
+function applyMainBlockToJournal(work) {
+  const st = mainState[work];
+  if (!st) return { added: 0, merged: 0 };
+  const building = st.building;
+  const isMasterWing = isMasterWingBuilding(building);
+
+  // Группируем: ключ = floor + '|' + room
+  const groups = {};
+  for (const k in st.materials) {
+    const me = st.materials[k];
+    const qtyNum = parseFloat(String(me.qty || '').replace(',', '.'));
+    if (!isFinite(qtyNum) || qtyNum <= 0) continue;
+    const floor = me.floor || (isAtticBuilding(building) ? ATTIC : '');
+    const room = me.room === 'Нет' ? 'Нет' : normalizeZadelkaRoom(me.room || '');
+    const groupKey = floor + '|' + room;
+    if (!groups[groupKey]) groups[groupKey] = { floor, room, materials: {} };
+    groups[groupKey].materials[k] = me.qty;
+  }
+
+  let added = 0, merged = 0;
+
+  Object.values(groups).forEach(g => {
+    const roomNone = (g.room === 'Нет');
+    const entryRoom = roomNone ? 'Нет' : applyPrefixToRoom(g.room, building);
+
+    const newEntry = {
+      kind: 'main',
+      building: building,
+      work: work,
+      floor: g.floor,
+      room: entryRoom,
+      room_none: roomNone,
+      is_master_wing: isMasterWing,
+      materials: Object.assign({}, g.materials)
+    };
+
+    const idx = journal.findIndex(e =>
+      e.kind === 'main' &&
+      e.work === newEntry.work &&
+      (e.building || '') === newEntry.building &&
+      (e.floor || '') === newEntry.floor &&
+      (e.room || '') === newEntry.room &&
+      !!e.room_none === !!newEntry.room_none &&
+      !!e.is_master_wing === !!newEntry.is_master_wing
+    );
+
+    if (idx !== -1) {
+      // Сливаем материалы
+      const target = journal[idx].materials || {};
+      Object.keys(newEntry.materials).forEach(k => {
+        const oldQ = parseFloat(String(target[k] || '').replace(',', '.')) || 0;
+        const addQ = parseFloat(String(newEntry.materials[k]).replace(',', '.')) || 0;
+        const sum = oldQ + addQ;
+        target[k] = String(Math.round(sum * 100) / 100).replace('.', ',');
+      });
+      journal[idx].materials = target;
+      merged++;
     } else {
-      journal.push({ kind: 'mentorship', name: name, hours: String(n).replace('.', ',') });
+      journal.push(newEntry);
       added++;
     }
   });
@@ -1476,24 +1346,18 @@ function applyAdditionalToJournal() {
 }
 
 // ============================================
-//  ОБЩАЯ ФУНКЦИЯ: «ДОБАВИТЬ ВСЁ В ЖУРНАЛ»
-//  + Защита от двойного нажатия
+//  ОБЩАЯ КНОПКА: «ДОБАВИТЬ ВСЁ В ЖУРНАЛ»
 // ============================================
 function addAllToJournal() {
-  // Защита от двойного нажатия
   if (_addingToJournal) return false;
   _addingToJournal = true;
 
   const btn = document.querySelector('.btn-add-journal');
   const prevText = btn ? btn.textContent : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Добавляем…';
-  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Добавляем…'; }
 
   try {
     show('');
-
     if (!validateHeader()) return false;
 
     const pendingMainWorks = MAIN_WORKS
@@ -1501,7 +1365,6 @@ function addAllToJournal() {
       .map(({ work }) => work);
 
     const hasAdd = hasActiveAdditional();
-
     if (pendingMainWorks.length === 0 && !hasAdd) {
       show('⚠️ Заполните хотя бы одну работу', 'err');
       showToast('Нечего добавлять');
@@ -1515,37 +1378,14 @@ function addAllToJournal() {
         return false;
       }
     }
-
     if (!validateAdditionalOnly()) return false;
 
-    let addedCount = 0;
-    let mergedCount = 0;
+    let addedCount = 0, mergedCount = 0;
 
     pendingMainWorks.forEach(work => {
-      const st = mainState[work];
-      const els = st.elements;
-      const building = els.buildingInput.value.trim();
-      const mainEntry = {
-        kind: 'main',
-        room: els.roomInput.value.trim(),
-        room_none: els.floorInput.value === 'Нет',
-        is_master_wing: isMasterWingBuilding(building),
-        building: building,
-        floor: els.floorInput.value.trim(),
-        work: work,
-        materialState: Object.assign({}, st.materialState)
-      };
-      const idx = findMergeIndex(mainEntry);
-      if (idx !== -1) {
-        journal[idx].materialState = sumMaterialStates(
-          journal[idx].materialState,
-          mainEntry.materialState
-        );
-        mergedCount++;
-      } else {
-        journal.push(mainEntry);
-        addedCount++;
-      }
+      const res = applyMainBlockToJournal(work);
+      addedCount += res.added;
+      mergedCount += res.merged;
       resetMainBlock(work);
     });
 
@@ -1567,29 +1407,10 @@ function addAllToJournal() {
     if (mergedCount > 0) parts.push('объединено: ' + mergedCount);
     showToast('В журнал — ' + parts.join(', '));
     return true;
-
   } finally {
     _addingToJournal = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = prevText;
-    }
+    if (btn) { btn.disabled = false; btn.textContent = prevText; }
   }
-}
-
-// ============================================
-//  ПОИСК ДЛЯ СЛИЯНИЯ (main)
-// ============================================
-function findMergeIndex(newEntry) {
-  return journal.findIndex(e =>
-    e.kind === 'main' &&
-    e.floor === newEntry.floor &&
-    e.room === newEntry.room &&
-    !!e.room_none === !!newEntry.room_none &&
-    !!e.is_master_wing === !!newEntry.is_master_wing &&
-    (e.building || '') === (newEntry.building || '') &&
-    e.work === newEntry.work
-  );
 }
 
 // ============================================
@@ -1624,8 +1445,7 @@ function renderLocationFields(workKey, container) {
 
     if (items.length > 1) {
       const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'zadelka-remove-btn';
+      del.type = 'button'; del.className = 'zadelka-remove-btn';
       del.textContent = '× удалить место';
       del.addEventListener('click', () => {
         additionalState[workKey].items.splice(idx, 1);
@@ -1645,15 +1465,12 @@ function renderLocationFields(workKey, container) {
     if (isBuildingRequired()) {
       BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
         const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'segmented-btn';
+        btn.type = 'button'; btn.className = 'segmented-btn';
         btn.dataset.value = val;
         if (item.building === val) btn.classList.add('active');
         btn.textContent = val;
         btn.addEventListener('click', () => {
-          item.building = val;
-          item.floor = '';
-          item.room = '';
+          item.building = val; item.floor = ''; item.room = '';
           renderAdditionalFields();
         });
         bSeg.appendChild(btn);
@@ -1686,8 +1503,7 @@ function renderLocationFields(workKey, container) {
 
         const fWrap = document.createElement('div');
         fWrap.className = 'segmented segmented-floors';
-        fWrap.innerHTML =
-          '<input type="hidden" class="req-field" value="">' +
+        fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
           '<span class="segmented-hint">— выберите —</span>';
         group.appendChild(fWrap);
 
@@ -1696,8 +1512,7 @@ function renderLocationFields(workKey, container) {
         if (item.floor) fSeg.value = item.floor;
 
         fSeg.input.addEventListener('change', () => {
-          item.floor = fSeg.value;
-          item.room = '';
+          item.floor = fSeg.value; item.room = '';
           renderAdditionalFields();
         });
       }
@@ -1725,28 +1540,22 @@ function renderLocationFields(workKey, container) {
       }
 
       const rInp = document.createElement('input');
-      rInp.type = 'text';
-      rInp.className = 'req-field';
+      rInp.type = 'text'; rInp.className = 'req-field';
       rInp.placeholder = '12 15 20';
-      rInp.inputMode = 'text';
-      rInp.autocomplete = 'off';
-      rInp.maxLength = 60;
+      rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
       rInp.value = item.room || '';
       rInp.dataset.focusId = workKey + '_room_' + idx;
 
       rInp.addEventListener('input', () => {
         const before = rInp.value;
         const after = sanitizeZadelkaRoomInput(before);
-        if (before !== after) {
-          rInp.value = after;
-          rInp.setSelectionRange(after.length, after.length);
-        }
+        if (before !== after) { rInp.value = after; rInp.setSelectionRange(after.length, after.length); }
         item.room = rInp.value;
       });
       rInp.addEventListener('blur', () => {
-        const normalized = normalizeZadelkaRoom(rInp.value);
-        if (rInp.value !== normalized) rInp.value = normalized;
-        item.room = normalized;
+        const n = normalizeZadelkaRoom(rInp.value);
+        if (rInp.value !== n) rInp.value = n;
+        item.room = n;
       });
 
       rWrap.appendChild(rInp);
@@ -1764,30 +1573,24 @@ function renderLocationFields(workKey, container) {
     qLine.className = 'variant-line';
 
     const minusBtn = document.createElement('button');
-    minusBtn.type = 'button';
-    minusBtn.className = 'qty-btn qty-btn-minus';
+    minusBtn.type = 'button'; minusBtn.className = 'qty-btn qty-btn-minus';
     minusBtn.textContent = '−';
     qLine.appendChild(minusBtn);
 
     const qInp = document.createElement('input');
-    qInp.type = 'text';
-    qInp.inputMode = 'decimal';
-    qInp.className = 'variant-input';
-    qInp.placeholder = '0';
-    qInp.autocomplete = 'off';
-    qInp.value = item.value || '';
+    qInp.type = 'text'; qInp.inputMode = 'decimal';
+    qInp.className = 'variant-input'; qInp.placeholder = '0';
+    qInp.autocomplete = 'off'; qInp.value = item.value || '';
     qInp.dataset.focusId = workKey + '_qty_' + idx;
     qLine.appendChild(qInp);
 
     const plusBtn = document.createElement('button');
-    plusBtn.type = 'button';
-    plusBtn.className = 'qty-btn qty-btn-plus';
+    plusBtn.type = 'button'; plusBtn.className = 'qty-btn qty-btn-plus';
     plusBtn.textContent = '+';
     qLine.appendChild(plusBtn);
 
     const clearBtn = document.createElement('button');
-    clearBtn.type = 'button';
-    clearBtn.className = 'variant-clear-btn';
+    clearBtn.type = 'button'; clearBtn.className = 'variant-clear-btn';
     clearBtn.textContent = '×';
     clearBtn.style.display = qInp.value ? 'inline-flex' : 'none';
     qLine.appendChild(clearBtn);
@@ -1798,28 +1601,18 @@ function renderLocationFields(workKey, container) {
     qLine.appendChild(unit);
 
     qInp.addEventListener('input', () => {
-      const before = qInp.value;
-      const after = formatQty(before);
-      if (before !== after) {
-        qInp.value = after;
-        qInp.setSelectionRange(after.length, after.length);
-      }
+      const before = qInp.value; const after = formatQty(before);
+      if (before !== after) { qInp.value = after; qInp.setSelectionRange(after.length, after.length); }
       item.value = qInp.value;
       clearBtn.style.display = qInp.value ? 'inline-flex' : 'none';
       updateMinusState(qInp, minusBtn);
     });
-    minusBtn.addEventListener('click', () => {
-      bumpQty(qInp, v => { item.value = v; }, -1, clearBtn, minusBtn);
-    });
-    plusBtn.addEventListener('click', () => {
-      bumpQty(qInp, v => { item.value = v; }, 1, clearBtn, minusBtn);
-    });
+    minusBtn.addEventListener('click', () => bumpQty(qInp, v => { item.value = v; }, -1, clearBtn, minusBtn));
+    plusBtn.addEventListener('click', () => bumpQty(qInp, v => { item.value = v; }, 1, clearBtn, minusBtn));
     clearBtn.addEventListener('click', () => {
-      qInp.value = '';
-      item.value = '';
+      qInp.value = ''; item.value = '';
       clearBtn.style.display = 'none';
-      updateMinusState(qInp, minusBtn);
-      qInp.focus();
+      updateMinusState(qInp, minusBtn); qInp.focus();
     });
 
     updateMinusState(qInp, minusBtn);
@@ -1827,8 +1620,7 @@ function renderLocationFields(workKey, container) {
   });
 
   const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.className = 'btn-add-mentor';
+  addBtn.type = 'button'; addBtn.className = 'btn-add-mentor';
   addBtn.textContent = '+ Добавить место';
   addBtn.addEventListener('click', () => {
     additionalState[workKey].items.push(makeLocationItem());
@@ -1859,19 +1651,15 @@ function renderMentorshipFields(container) {
     line.className = 'variant-line';
 
     const nameIn = document.createElement('input');
-    nameIn.type = 'text';
-    nameIn.className = 'mentor-name-input';
+    nameIn.type = 'text'; nameIn.className = 'mentor-name-input';
     nameIn.placeholder = 'Иван Иванов';
-    nameIn.autocomplete = 'off';
-    nameIn.autocapitalize = 'words';
-    nameIn.spellcheck = false;
-    nameIn.maxLength = 40;
+    nameIn.autocomplete = 'off'; nameIn.autocapitalize = 'words';
+    nameIn.spellcheck = false; nameIn.maxLength = 40;
     nameIn.value = m.name || '';
     nameIn.dataset.focusId = 'mentor_name_' + idx;
 
     nameIn.addEventListener('input', () => {
-      const before = nameIn.value;
-      const pos = nameIn.selectionStart;
+      const before = nameIn.value; const pos = nameIn.selectionStart;
       const after = formatName(before);
       if (before !== after) {
         nameIn.value = after;
@@ -1886,30 +1674,25 @@ function renderMentorshipFields(container) {
     line.appendChild(nameIn);
 
     const minusBtn = document.createElement('button');
-    minusBtn.type = 'button';
-    minusBtn.className = 'qty-btn qty-btn-minus';
+    minusBtn.type = 'button'; minusBtn.className = 'qty-btn qty-btn-minus';
     minusBtn.textContent = '−';
     line.appendChild(minusBtn);
 
     const inputH = document.createElement('input');
-    inputH.type = 'text';
-    inputH.inputMode = 'decimal';
+    inputH.type = 'text'; inputH.inputMode = 'decimal';
     inputH.className = 'variant-input';
     inputH.dataset.focusId = 'mentor_hours_' + idx;
-    inputH.placeholder = '0';
-    inputH.autocomplete = 'off';
+    inputH.placeholder = '0'; inputH.autocomplete = 'off';
     inputH.value = m.hours || '';
     line.appendChild(inputH);
 
     const plusBtn = document.createElement('button');
-    plusBtn.type = 'button';
-    plusBtn.className = 'qty-btn qty-btn-plus';
+    plusBtn.type = 'button'; plusBtn.className = 'qty-btn qty-btn-plus';
     plusBtn.textContent = '+';
     line.appendChild(plusBtn);
 
     const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'variant-clear-btn';
+    delBtn.type = 'button'; delBtn.className = 'variant-clear-btn';
     delBtn.textContent = '×';
     delBtn.style.display = additionalState.mentorship.items.length > 1 ? 'inline-flex' : 'none';
     line.appendChild(delBtn);
@@ -1920,12 +1703,8 @@ function renderMentorshipFields(container) {
     line.appendChild(unit);
 
     inputH.addEventListener('input', () => {
-      const before = inputH.value;
-      const after = formatQty(before);
-      if (before !== after) {
-        inputH.value = after;
-        inputH.setSelectionRange(after.length, after.length);
-      }
+      const before = inputH.value; const after = formatQty(before);
+      if (before !== after) { inputH.value = after; inputH.setSelectionRange(after.length, after.length); }
       m.hours = inputH.value;
       updateMinusState(inputH, minusBtn);
       updateNameVisual(nameIn, inputH);
@@ -1952,8 +1731,7 @@ function renderMentorshipFields(container) {
   });
 
   const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.className = 'btn-add-mentor';
+  addBtn.type = 'button'; addBtn.className = 'btn-add-mentor';
   addBtn.textContent = '+ Добавить ученика';
   addBtn.addEventListener('click', () => {
     additionalState.mentorship.items.push({ name: '', hours: '' });
@@ -1987,13 +1765,13 @@ function renderAdditionalFields() {
 }
 
 // ============================================
-//  МАТЕРИАЛЫ → МАССИВ ДЛЯ ОТПРАВКИ
+//  МАТЕРИАЛЫ → МАССИВ
 // ============================================
-function materialStateToArrayFromState(state) {
+function materialsMapToArray(map) {
   const list = [];
   MATERIALS.forEach(mat => {
     mat.rows.forEach(r => {
-      const raw = (state[r.key] || '').trim();
+      const raw = String((map[r.key] || '')).trim();
       if (!raw) return;
       const num = parseFloat(raw.replace(',', '.'));
       if (!isFinite(num) || num <= 0) return;
@@ -2012,21 +1790,16 @@ function materialStateToArrayFromState(state) {
 //  ЧИСЛО
 // ============================================
 function parseQty(raw) {
-  const s = String(raw || '').trim();
-  if (!s) return 0;
+  const s = String(raw || '').trim(); if (!s) return 0;
   const n = parseFloat(s.replace(',', '.'));
   return isFinite(n) ? n : 0;
 }
-function updateMinusState(input, minusBtn) {
-  minusBtn.disabled = parseQty(input.value) <= 0;
-}
+function updateMinusState(input, minusBtn) { minusBtn.disabled = parseQty(input.value) <= 0; }
 function bumpQty(input, setter, delta, clearBtn, minusBtn) {
   const num = parseQty(input.value);
-  let next = num + delta;
-  if (next < 0) next = 0;
+  let next = num + delta; if (next < 0) next = 0;
   const formatted = next === 0 ? '' : formatQty(String(next).replace('.', ','));
-  input.value = formatted;
-  setter(formatted);
+  input.value = formatted; setter(formatted);
   if (clearBtn) clearBtn.style.display = formatted ? 'inline-flex' : 'none';
   updateMinusState(input, minusBtn);
 }
@@ -2051,18 +1824,14 @@ function renderJournalEntryElement(entry) {
   actions.className = 'journal-entry-actions';
 
   const editBtn = document.createElement('button');
-  editBtn.type = 'button';
-  editBtn.className = 'journal-btn journal-btn-edit';
-  editBtn.title = 'Изменить';
-  editBtn.textContent = '✏️';
+  editBtn.type = 'button'; editBtn.className = 'journal-btn journal-btn-edit';
+  editBtn.title = 'Изменить'; editBtn.textContent = '✏️';
   editBtn.addEventListener('click', () => editJournalEntry(realIdx));
   actions.appendChild(editBtn);
 
   const delBtn = document.createElement('button');
-  delBtn.type = 'button';
-  delBtn.className = 'journal-btn journal-btn-del';
-  delBtn.title = 'Удалить';
-  delBtn.textContent = '🗑';
+  delBtn.type = 'button'; delBtn.className = 'journal-btn journal-btn-del';
+  delBtn.title = 'Удалить'; delBtn.textContent = '🗑';
   delBtn.addEventListener('click', () => removeJournalEntry(realIdx));
   actions.appendChild(delBtn);
 
@@ -2078,22 +1847,14 @@ function renderJournalEntryElement(entry) {
 
   let matsArr = [];
   if (entry.kind === 'main') {
-    matsArr = materialStateToArrayFromState(entry.materialState || {});
+    matsArr = materialsMapToArray(entry.materials || {});
   } else if (isLocationKind(entry.kind)) {
     const w = locationWorkByKey(entry.kind);
-    matsArr = [{
-      name: w ? w.label : entry.kind,
-      unit: w ? w.unit : 'шт',
-      qty: entry.qty.replace(',', '.'),
-      system: ''
-    }];
+    matsArr = [{ name: w ? w.label : entry.kind, unit: w ? w.unit : 'шт',
+      qty: entry.qty.replace(',', '.'), system: '' }];
   } else if (entry.kind === 'mentorship') {
-    matsArr = [{
-      name: entry.name,
-      unit: 'ч',
-      qty: entry.hours.replace(',', '.'),
-      system: ''
-    }];
+    matsArr = [{ name: entry.name, unit: 'ч',
+      qty: entry.hours.replace(',', '.'), system: '' }];
   }
 
   if (matsArr.length > 0) {
@@ -2119,9 +1880,7 @@ function renderJournal() {
   updateSendButton();
 
   if (journal.length === 0) {
-    journalCont.innerHTML = '';
-    journalEmpty.style.display = 'block';
-    return;
+    journalCont.innerHTML = ''; journalEmpty.style.display = 'block'; return;
   }
   journalEmpty.style.display = 'none';
   journalCont.innerHTML = '';
@@ -2152,10 +1911,7 @@ function renderJournal() {
         byBuilding[b].push(entry);
       });
 
-      const bKeys = Object.keys(byBuilding).sort(
-        (a, b) => buildingWeight(a) - buildingWeight(b)
-      );
-
+      const bKeys = Object.keys(byBuilding).sort((a, b) => buildingWeight(a) - buildingWeight(b));
       bKeys.forEach(bKey => {
         if (bKey) {
           const st = document.createElement('div');
@@ -2196,27 +1952,27 @@ function editJournalEntry(idx) {
     journal.splice(idx, 1);
     renderJournal();
 
-    st.materialState = Object.assign({}, entry.materialState || {});
-
     if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(entry.work);
 
-    st.elements.buildingInput.value = entry.building || '';
+    st.building = entry.building || '';
+    st.elements.buildingInput.value = st.building;
     updateMainBlock(entry.work);
-    if (st.buildingSeg) st.buildingSeg.value = entry.building || '';
+    if (st.buildingSeg) st.buildingSeg.value = st.building;
 
-    updateMainBlock(entry.work);
-    st.elements.floorInput.value = entry.floor || '';
-    if (st.floorSeg) st.floorSeg.value = entry.floor || '';
-
-    st.elements.roomInput.value = entry.room || '';
+    // Восстанавливаем материалы в строки блока
+    st.materials = makeEmptyMaterialState();
+    Object.keys(entry.materials || {}).forEach(k => {
+      if (st.materials[k]) {
+        st.materials[k].qty = entry.materials[k];
+        st.materials[k].floor = entry.floor || '';
+        st.materials[k].room = entry.room === 'Нет' ? 'Нет' : stripPrefixFromRoom(entry.room || '');
+      }
+    });
 
     renderMaterialsForBlock(entry.work);
-    updateRoomStateForBlock(entry.work);
-    updateFieldStateForBlock(entry.work);
 
     const card = document.getElementById('entry-card');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
     showToast('Запись загружена — нажмите «Добавить всё в журнал»');
     return;
   }
@@ -2233,9 +1989,7 @@ function editJournalEntry(idx) {
     }];
     renderAdditionalFields();
   } else if (entry.kind === 'mentorship') {
-    additionalState.mentorship.items = [
-      { name: entry.name || '', hours: entry.hours || '' }
-    ];
+    additionalState.mentorship.items = [{ name: entry.name || '', hours: entry.hours || '' }];
     renderAdditionalFields();
   }
 
@@ -2254,17 +2008,12 @@ function removeJournalEntry(idx) {
 // ============================================
 //  ФОРМАТ
 // ============================================
-function formatRoom(value) {
-  return value.replace(/[^0-9]/g, '').slice(0, 4);
-}
+function formatRoom(value) { return value.replace(/[^0-9]/g, '').slice(0, 4); }
 
 function formatName(value) {
   let cleaned = value.replace(/[^А-Яа-яЁёA-Za-z\s-]/g, '');
-  cleaned = cleaned.replace(/\s+/g, ' ');
-  cleaned = cleaned.replace(/-+/g, '-');
-  cleaned = cleaned.replace(/\s-|-\s/g, '-');
-  cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g,
-                            (m, p1, p2) => p1 + p2.toUpperCase());
+  cleaned = cleaned.replace(/\s+/g, ' ').replace(/-+/g, '-').replace(/\s-|-\s/g, '-');
+  cleaned = cleaned.replace(/(^|\s|-)([а-яёa-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
   const parts = cleaned.split(' ');
   if (parts.length > 2) cleaned = parts.slice(0, 2).join(' ');
   return cleaned;
@@ -2279,15 +2028,13 @@ function updateFieldState(el) {
   if (el.classList.contains('mentor-name-input')) {
     const idx = String(el.dataset.focusId || '').replace('mentor_name_', '');
     const hoursEl = document.querySelector('[data-focus-id="mentor_hours_' + idx + '"]');
-    updateNameVisual(el, hoursEl);
-    return;
+    updateNameVisual(el, hoursEl); return;
   }
 
   const wrap = el.closest && el.closest('.segmented');
   if (wrap) {
     if (el.disabled || wrap.classList.contains('segmented-disabled')) {
-      wrap.classList.remove('is-empty', 'is-filled');
-      return;
+      wrap.classList.remove('is-empty', 'is-filled'); return;
     }
     wrap.classList.remove('is-empty', 'is-filled');
     const isEmpty = !el.value || !el.value.trim();
@@ -2297,10 +2044,7 @@ function updateFieldState(el) {
   }
 
   if (!el.classList.contains('req-field')) return;
-  if (el.disabled) {
-    el.classList.remove('is-empty', 'is-filled', 'is-invalid');
-    return;
-  }
+  if (el.disabled) { el.classList.remove('is-empty', 'is-filled', 'is-invalid'); return; }
   const isEmpty = !el.value || !el.value.trim();
   el.classList.toggle('is-empty', isEmpty);
   el.classList.toggle('is-filled', !isEmpty);
@@ -2327,18 +2071,14 @@ objectSelect.addEventListener('change', () => {
   updateFieldState(objectSelect);
   updateAllMainBlocks();
   updateAdditionalAccessibility();
-
   LOCATION_WORKS.forEach(w => {
-    if (additionalState[w.key]) {
-      additionalState[w.key].items = [makeLocationItem()];
-    }
+    if (additionalState[w.key]) additionalState[w.key].items = [makeLocationItem()];
   });
   renderAdditionalFields();
 });
 
 nameInput.addEventListener('input', () => {
-  const before = nameInput.value;
-  const pos = nameInput.selectionStart;
+  const before = nameInput.value; const pos = nameInput.selectionStart;
   const after = formatName(before);
   if (before !== after) {
     nameInput.value = after;
@@ -2357,27 +2097,20 @@ nameInput.addEventListener('blur', () => {
   if (v && !isNameValid(v)) {
     nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)';
     nameErr.classList.add('show');
-  } else {
-    nameErr.classList.remove('show');
-  }
+  } else nameErr.classList.remove('show');
   refreshNameGates();
 });
 
 // ============================================
 //  ОТПРАВКА
-//  + Защита от двойного нажатия
 // ============================================
 async function sendAll() {
-  // Защита от двойного нажатия — выставляем флаг в самом начале
   if (_sending) return;
   _sending = true;
 
   const btn = document.getElementById('btn');
   const prevText = btn ? btn.textContent : 'Отправить отчет';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Отправляем…';
-  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Отправляем…'; }
 
   try {
     show('');
@@ -2388,143 +2121,108 @@ async function sendAll() {
 
     if (hasPendingMain || hasPendingAdditional) {
       const doAdd = confirm('В форме есть незанесённые работы. Добавить их в журнал перед отправкой?');
-      if (doAdd) {
-        const ok = addAllToJournal();
-        if (!ok) return;
-      }
+      if (doAdd) { const ok = addAllToJournal(); if (!ok) return; }
     }
 
-    if (journal.length === 0) {
-      show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err');
-      return;
-    }
-
+    if (journal.length === 0) { show('⚠️ Журнал пуст. Добавьте хотя бы одну запись.', 'err'); return; }
     if (isOffline()) {
       show('📵 Нет подключения к интернету. Проверьте сеть и попробуйте снова.', 'err');
-      showToast('📵 Нет подключения');
-      return;
+      showToast('📵 Нет подключения'); return;
     }
 
-    try {
-      show('🔄 Проверяем соединение...', '');
-      const reachable = await checkConnection();
-      show('');
+    show('🔄 Проверяем соединение...', '');
+    const reachable = await checkConnection();
+    show('');
 
-      if (!reachable) {
-        const proceed = confirm(
-          '📵 Не удалось связаться с сервером.\n\n' +
-          'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
-          'Отправить всё равно?'
-        );
-        if (!proceed) {
-          show('⚠️ Отправка отменена. Проверьте подключение и попробуйте снова.', 'err');
-          return;
-        }
+    if (!reachable) {
+      const proceed = confirm(
+        '📵 Не удалось связаться с сервером.\n\n' +
+        'Возможно, сеть нестабильна или сервер недоступен.\n\n' +
+        'Отправить всё равно?'
+      );
+      if (!proceed) { show('⚠️ Отправка отменена.', 'err'); return; }
+    }
+
+    const sortedJournal = journal.slice().sort(compareEntries);
+    const records = [];
+
+    sortedJournal.forEach(entry => {
+      if (entry.kind === 'main') {
+        records.push({
+          room: entry.room || '',
+          room_none: entry.room_none,
+          floor: entry.floor || '',
+          work: entry.work,
+          materials: materialsMapToArray(entry.materials || {})
+        });
+      } else if (isLocationKind(entry.kind)) {
+        const w = locationWorkByKey(entry.kind);
+        const z = parseFloat(String(entry.qty).replace(',', '.'));
+        if (!isFinite(z) || z <= 0) return;
+        records.push({
+          room: entry.room || '', room_none: false, floor: entry.floor || '',
+          work: WORK_ADDITIONAL,
+          materials: [{ name: w.label, unit: w.unit, qty: String(z), system: '' }]
+        });
+      } else if (entry.kind === 'mentorship') {
+        const h = parseFloat(String(entry.hours).replace(',', '.'));
+        if (!isFinite(h) || h <= 0) return;
+        records.push({
+          room: '', room_none: false, floor: '',
+          work: WORK_ADDITIONAL,
+          materials: [{ name: 'Наставничество — ' + entry.name, unit: 'ч', qty: String(h), system: '' }]
+        });
       }
+    });
 
-      const sortedJournal = journal.slice().sort(compareEntries);
-      const records = [];
+    const payload = {
+      object: objectSelect.value.trim(),
+      date: dateInput.value.trim(),
+      name: nameInput.value.trim(),
+      records: records
+    };
 
-      sortedJournal.forEach(entry => {
-        if (entry.kind === 'main') {
-          let room = entry.room || '';
-          if (entry.is_master_wing && room) room = MASTER_WING_PREFIX + room;
-          records.push({
-            room: room,
-            room_none: entry.room_none,
-            floor: entry.floor || '',
-            work: entry.work,
-            materials: materialStateToArrayFromState(entry.materialState || {})
-          });
-        } else if (isLocationKind(entry.kind)) {
-          const w = locationWorkByKey(entry.kind);
-          const z = parseFloat(String(entry.qty).replace(',', '.'));
-          if (!isFinite(z) || z <= 0) return;
-          records.push({
-            room: entry.room || '',
-            room_none: false,
-            floor: entry.floor || '',
-            work: WORK_ADDITIONAL,
-            materials: [{
-              name: w.label, unit: w.unit, qty: String(z), system: ''
-            }]
-          });
-        } else if (entry.kind === 'mentorship') {
-          const h = parseFloat(String(entry.hours).replace(',', '.'));
-          if (!isFinite(h) || h <= 0) return;
-          records.push({
-            room: '', room_none: false, floor: '',
-            work: WORK_ADDITIONAL,
-            materials: [{
-              name: 'Наставничество — ' + entry.name,
-              unit: 'ч', qty: String(h), system: ''
-            }]
-          });
-        }
+    const totalRows = records.reduce((sum, r) =>
+      sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
+
+    showProgress(totalRows);
+    let shown = 0;
+    const tickMs = Math.max(60, Math.floor(1800 / totalRows));
+    const ticker = setInterval(() => {
+      if (shown < totalRows - 1) { shown++; updateProgress(shown, totalRows); }
+    }, tickMs);
+
+    try {
+      await fetch(API_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
       });
 
-      const payload = {
-        object:  objectSelect.value.trim(),
-        date:    dateInput.value.trim(),
-        name:    nameInput.value.trim(),
-        records: records
-      };
+      clearInterval(ticker);
+      updateProgress(totalRows, totalRows);
+      await new Promise(r => setTimeout(r, 350));
+      hideProgress();
+      show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
 
-      const totalRows = records.reduce((sum, r) =>
-        sum + (r.materials.length === 0 ? 1 : r.materials.length), 0);
+      journal.length = 0;
+      clearDraft();
+      renderJournal();
+      MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
+      initAdditionalState();
+      renderAdditionalFields();
 
-      if (btn) btn.textContent = '⏳ Отправляем…';
-
-      showProgress(totalRows);
-
-      let shown = 0;
-      const tickMs = Math.max(60, Math.floor(1800 / totalRows));
-      const ticker = setInterval(() => {
-        if (shown < totalRows - 1) {
-          shown++;
-          updateProgress(shown, totalRows);
-        }
-      }, tickMs);
-
-      try {
-        await fetch(API_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
-
-        clearInterval(ticker);
-        updateProgress(totalRows, totalRows);
-        await new Promise(r => setTimeout(r, 350));
-        hideProgress();
-        show('✅ Отчет отправлен! Строк: ' + totalRows, 'ok');
-
-        journal.length = 0;
-        clearDraft();
-        renderJournal();
-
-        MAIN_WORKS.forEach(({ work }) => resetMainBlock(work));
-        initAdditionalState();
-        renderAdditionalFields();
-
-        setupDateRange();
-        dateInput.value = toISODate(new Date());
-        updateDateHighlight();
-      } catch (e) {
-        clearInterval(ticker);
-        hideProgress();
-        show('❌ Ошибка: ' + e.message, 'err');
-      }
-    } finally {
-      // Ничего — finally на верхнем уровне
+      setupDateRange();
+      dateInput.value = toISODate(new Date());
+      updateDateHighlight();
+    } catch (e) {
+      clearInterval(ticker);
+      hideProgress();
+      show('❌ Ошибка: ' + e.message, 'err');
     }
   } finally {
     _sending = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = prevText;
-    }
+    if (btn) { btn.disabled = false; btn.textContent = prevText; }
     updateSendButton();
   }
 }
@@ -2532,27 +2230,19 @@ async function sendAll() {
 // ============================================
 //  СТАРТ
 // ============================================
-console.log('[Отчет монтажника] Стартуем...');
-console.log('[Отчет монтажника] Контейнер main-works-container:',
-  document.getElementById('main-works-container'));
-
 initMainWorks();
 initAdditionalState();
 renderAdditionalFields();
 refreshNameGates();
 
 const _restoredDraft = loadDraft();
-if (_restoredDraft && _restoredDraft.length > 0) {
-  journal.push(..._restoredDraft);
-}
+if (_restoredDraft && _restoredDraft.length > 0) journal.push(..._restoredDraft);
 renderJournal();
 updateSendButton();
 setupConnectionWatcher();
 
 if (_restoredDraft && _restoredDraft.length > 0) {
-  setTimeout(() => {
-    showToast('📂 Восстановлено записей: ' + _restoredDraft.length);
-  }, 700);
+  setTimeout(() => showToast('📂 Восстановлено записей: ' + _restoredDraft.length), 700);
 }
 
 window.addAllToJournal = addAllToJournal;
