@@ -65,6 +65,7 @@ const LOCATION_WORKS = [
   { key: 'raskluchenie', label: 'Расключение',                       unit: 'шт'  },
   { key: 'kryshki',      label: 'Установка крышек кабель-канала',    unit: 'м'   },
   { key: 'zatyazhka',    label: 'Затяжка кабеля в гофру',            unit: 'м'   },
+  { key: 'razmetka',     label: 'Разметка кабельных трасс',          unit: 'м'   },
   { key: 'zadelka',      label: 'Штукатурка',                        unit: 'шт'  },
   { key: 'tura',         label: 'Тура (монтаж/демонтаж)',            unit: 'раз' },
   { key: 'strahovka',    label: 'Страховка лестницы',                unit: 'ч'   }
@@ -1254,7 +1255,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(numEl);
         }
 
-        // Кнопка «Сбросить место»
         const resetBtn = document.createElement('button');
         resetBtn.type = 'button';
         resetBtn.className = 'mat-row-reset';
@@ -1285,7 +1285,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(del);
         }
 
-        // === КОРПУС ===
         if (buildingRequired) {
           const corpLine = document.createElement('div');
           corpLine.className = 'mat-line';
@@ -1315,7 +1314,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(corpLine);
         }
 
-        // === ЭТАЖ (всегда, если не Чердак) ===
         const isAtticRow = isAtticBuilding(row.building);
         if (!isAtticRow) {
           const floorLine = document.createElement('div');
@@ -1349,7 +1347,6 @@ function renderMaterialsForBlock(work) {
           rowEl.appendChild(floorLine);
         }
 
-        // === ПОМЕЩЕНИЯ + КОЛИЧЕСТВО (всегда) ===
         const mainLine = document.createElement('div');
         mainLine.className = 'mat-line';
 
@@ -2008,7 +2005,6 @@ function renderLocationFields(workKey, container) {
     itemEl.className = 'add-item';
     itemEl.dataset.itemIdx = String(idx);
 
-    // Кнопка «Сбросить место»
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'add-item-reset';
@@ -2043,7 +2039,6 @@ function renderLocationFields(workKey, container) {
       itemEl.appendChild(del);
     }
 
-    // === КОРПУС ===
     const bLabel = document.createElement('label');
     bLabel.className = 'req';
     bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
@@ -2076,7 +2071,6 @@ function renderLocationFields(workKey, container) {
     }
     itemEl.appendChild(bSeg);
 
-    // === ЭТАЖ ===
     const building = item.building;
     const isAtticZ = (building === 'Чердак');
 
@@ -2106,7 +2100,6 @@ function renderLocationFields(workKey, container) {
       if (!buildingChosen) fSeg.disabled = true;
     }
 
-    // === ПОМЕЩЕНИЯ ===
     const rLabel = document.createElement('label');
     rLabel.className = 'req';
     rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
@@ -2149,7 +2142,6 @@ function renderLocationFields(workKey, container) {
       : 'Номера через запятую. Сохранятся по возрастанию.';
     itemEl.appendChild(hintEl);
 
-    // === КОЛИЧЕСТВО ===
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
 
