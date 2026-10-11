@@ -762,12 +762,19 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
   .loc-room-input { min-width: 60px; }
   .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
 
-  /* Всё в одну строку, поля компактнее */
-  .mat-line-room { flex: 1 1 auto; }
-  .mat-line-qty  { flex: 0 0 auto; }
+  /* Помещения — на своей строке */
+  .mat-line-room { flex: 1 1 100%; }
 
-  .variant-line input.variant-input {
-    flex: 0 0 40px; width: 40px; min-width: 40px; max-width: 40px;
+  /* Количество — на своей строке, компактно слева */
+  .mat-line-qty {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  /* Поле ввода количества — компактное */
+  input.variant-input {
+    flex: 0 0 44px; width: 44px; min-width: 44px; max-width: 44px;
     padding: 6px 2px;
     font-size: 13px;
   }
@@ -776,7 +783,8 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
 }
 
 /* ============================================ */
-/*  КОЛИЧЕСТВО / КНОПКИ ±                        */
+/*  КОЛИЧЕСТВО / КНОПКИ ± / ПОЛЕ ВВОДА            */
+/*  (работает и в материалах, и в доп. работах)   */
 /* ============================================ */
 .qty-btn {
   flex: 0 0 26px; width: 26px; height: 30px; padding: 0;
@@ -796,7 +804,7 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
   padding-top: 12px; min-height: 44px; min-width: 0;
 }
 
-.variant-line input.variant-input {
+input.variant-input {
   flex: 0 0 56px; width: 56px; min-width: 56px; max-width: 56px;
   padding: 8px 4px; border: 1.5px solid var(--border); border-radius: 8px;
   background: var(--input-bg); color: var(--text-main);
@@ -805,16 +813,16 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
   transition: border-color .2s, box-shadow .2s, background .2s;
   -moz-appearance: textfield; appearance: textfield;
 }
-.variant-line input.variant-input::-webkit-outer-spin-button,
-.variant-line input.variant-input::-webkit-inner-spin-button {
+input.variant-input::-webkit-outer-spin-button,
+input.variant-input::-webkit-inner-spin-button {
   -webkit-appearance: none; margin: 0;
 }
-.variant-line input.variant-input:focus {
+input.variant-input:focus {
   outline: none; border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(79, 125, 214, .18);
 }
-.variant-line input.variant-input::placeholder { color: var(--text-hint); text-align: center; }
-.variant-input.is-empty {
+input.variant-input::placeholder { color: var(--text-hint); text-align: center; }
+input.variant-input.is-empty {
   border-color: var(--red-border);
   background: var(--red-bg);
   border-width: 2px;
