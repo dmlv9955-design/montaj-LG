@@ -112,8 +112,8 @@ const MATERIALS = [
     { key: 'steel_15', variant: '15 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 15×2,8 мм.' },
     { key: 'steel_20', variant: '20 мм', system: 'АПС/СОУЭ', tableName: 'Труба стальная ВГП ДУ ГОСТ 3262-75 20×2,8 мм.' }
   ]},
-  { id: 'vata', label: 'Вата минеральная', unit: 'шт', montageOnly: true, rows: [
-    { key: 'vata', variant: '', system: 'АПС/СОУЭ', tableName: 'Вата минеральная' }
+  { id: 'vata', label: 'Вата минеральная 100 мм, 100 кг/м³', unit: 'шт', montageOnly: true, rows: [
+    { key: 'vata', variant: '', system: 'АПС/СОУЭ', tableName: 'Вата минеральная 100 мм, 100 кг/м³' }
   ]},
   { id: 'germetik', label: 'Герметик огнезащитный "ОГНЕЗА-ГТ"', unit: 'шт', montageOnly: true, rows: [
     { key: 'germetik', variant: '', system: 'АПС/СОУЭ', tableName: 'Герметик огнезащитный "ОГНЕЗА-ГТ"' }
