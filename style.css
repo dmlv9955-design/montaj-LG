@@ -691,9 +691,6 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
   text-transform: uppercase; color: var(--border-focus);
   border-top: 1px dashed var(--border);
 }
-.additional-group .zadelka-separator:first-child {
-  border-top: none; margin-top: 0;
-}
 
 .zadelka-remove-btn {
   display: inline-flex; align-items: center;
@@ -772,17 +769,14 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
   .loc-room-input { min-width: 60px; }
   .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
 
-  /* Помещения — на своей строке */
   .mat-line-room { flex: 1 1 100%; }
 
-  /* Количество — на своей строке, компактно слева */
   .mat-line-qty {
     flex: 1 1 100%;
     justify-content: flex-start;
     flex-wrap: nowrap;
   }
 
-  /* Поле ввода количества — компактное */
   input.variant-input {
     flex: 0 0 44px; width: 44px; min-width: 44px; max-width: 44px;
     padding: 6px 2px;
@@ -794,7 +788,6 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
 
 /* ============================================ */
 /*  КОЛИЧЕСТВО / КНОПКИ ± / ПОЛЕ ВВОДА            */
-/*  (работает и в материалах, и в доп. работах)   */
 /* ============================================ */
 .qty-btn {
   flex: 0 0 26px; width: 26px; height: 30px; padding: 0;
@@ -1123,7 +1116,6 @@ input.variant-input.is-empty {
   border-top: 1px solid var(--border);
 }
 .add-group.expanded .add-group-body { display: block; }
-.add-group-body .zadelka-separator:first-child { margin-top: 0; }
 
 /* ============================================ */
 /*  МОДАЛКА УВЕДОМЛЕНИЯ                          */
