@@ -254,13 +254,14 @@ input.req-field.is-invalid {
 .row > .col-2 { flex: 2 1 0; min-width: 0; }
 
 @media (max-width: 520px) {
-  .row > .col-1 { flex: 0 0 105px; max-width: 105px; }
+  .row > .col-1 { flex: 0 0 88px; max-width: 88px; }
   .row > .col-2 { flex: 1 1 auto; min-width: 0; }
   #date {
-    padding: 12px 4px;
-    font-size: 12px;
+    padding: 12px 2px;
+    font-size: 11px;
     min-width: 0;
-    max-width: 105px;
+    max-width: 88px;
+    letter-spacing: 0;
   }
   body.dark input[type="date"]::-webkit-calendar-picker-indicator {
     margin-left: 0;
