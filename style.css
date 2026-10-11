@@ -4,7 +4,10 @@
 :root {
   --bg-grad-1: #ebe6df;
   --bg-grad-2: #f2ede6;
-  --card-bg: #fdfbf7
+  --card-bg: #fdfbf7;
+  --card-shadow: 0 4px 16px rgba(80, 70, 60, .08);
+  --text-main: #2b2620;
+  --text-label: #4a4137;
   --text-title: #857a6c;
   --text-hint: #a89d8e;
   --border: #e0d8cb;
