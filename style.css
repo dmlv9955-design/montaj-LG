@@ -759,12 +759,20 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
 }
 
 @media (max-width: 520px) {
-  .loc-room-input { min-width: 70px; }
+  .loc-room-input { min-width: 60px; }
   .loc-floor-btn { padding: 6px 8px; font-size: 11px; }
 
-  /* Помещения и количество — каждая на своей строке */
-  .mat-line-room { flex: 1 1 100%; }
-  .mat-line-qty  { flex: 1 1 100%; justify-content: flex-start; }
+  /* Всё в одну строку, поля компактнее */
+  .mat-line-room { flex: 1 1 auto; }
+  .mat-line-qty  { flex: 0 0 auto; }
+
+  .variant-line input.variant-input {
+    flex: 0 0 40px; width: 40px; min-width: 40px; max-width: 40px;
+    padding: 6px 2px;
+    font-size: 13px;
+  }
+  .qty-btn { flex: 0 0 22px; width: 22px; height: 28px; font-size: 14px; }
+  .variant-unit { flex: 0 0 14px; width: 14px; font-size: 11px; }
 }
 
 /* ============================================ */
@@ -920,7 +928,7 @@ body.dark .toast { background: #5fb26e; color: #16281a; }
 .mat-line-qty {
   display: flex; align-items: center; gap: 4px;
   flex: 0 0 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .mat-line-corp {
   display: flex; flex-wrap: wrap; gap: 4px;
