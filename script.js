@@ -468,7 +468,7 @@ function compareEntries(a, b) {
 
 function compareForSheet(a, b) {
   const aMent = a.kind === 'mentorship';
-  const bMent = b.kind === 'mentorship';
+  const bMent = a.kind === 'mentorship';
   if (aMent !== bMent) return aMent ? 1 : -1;
 
   const fa = floorWeight(a.floor || '');
@@ -1018,7 +1018,7 @@ function initMainWorks() {
 
   MAIN_WORKS.forEach(({ work, suffix, emoji, alwaysOpen }) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'accordion-item' + (alwaysOpen ? ' accordion-item-always-open' : '');
+    wrapper.className = 'accordion-item';
     wrapper.dataset.work = work;
 
     const inner = document.createElement('div');
@@ -1041,7 +1041,7 @@ function initMainWorks() {
     mainState[work] = st;
 
     if (alwaysOpen) {
-      st.elements.header.classList.add('expanded', 'accordion-header-static');
+      st.elements.header.classList.add('expanded');
       st.elements.body.classList.add('open');
       st.elements.header.style.cursor = 'default';
     } else {
