@@ -971,28 +971,43 @@ input.variant-input.is-empty {
 .mat-add-floor:active { transform: scale(.98); }
 .mat-add-floor.hidden { display: none; }
 
-/* Кнопка сброса места (материалы и доп. работы) */
+/* ============================================ */
+/*  КНОПКА «СБРОСИТЬ МЕСТО» (мусорная урна)      */
+/* ============================================ */
 .mat-row-reset,
 .add-item-reset {
   position: absolute;
-  width: 24px; height: 24px;
-  border: none; border-radius: 50%;
-  background: transparent;
-  color: var(--text-hint);
-  font-size: 15px; font-weight: 700; line-height: 1;
+  width: 30px; height: 30px;
+  padding: 0;
+  border: 1.5px solid var(--red-border);
+  border-radius: 8px;
+  background: var(--red-bg);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: background .15s, color .15s, transform .1s;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.mat-row-reset::before,
+.add-item-reset::before {
+  content: '';
+  display: block;
+  width: 15px; height: 15px;
+  background-color: var(--red-border);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M6%2019a2%202%200%200%200%202%202h8a2%202%200%200%200%202-2V7H6v12zM19%204h-3.5l-1-1h-5l-1%201H5v2h14V4z'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M6%2019a2%202%200%200%200%202%202h8a2%202%200%200%200%202-2V7H6v12zM19%204h-3.5l-1-1h-5l-1%201H5v2h14V4z'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 .mat-row-reset:hover,
 .add-item-reset:hover {
-  background: var(--input-disabled-bg);
-  color: var(--text-main);
+  background: rgba(217, 115, 104, .28);
+  border-color: var(--red-focus);
+}
+.mat-row-reset:hover::before,
+.add-item-reset:hover::before {
+  background-color: var(--red-focus);
 }
 .mat-row-reset:active,
-.add-item-reset:active { transform: scale(.9); }
+.add-item-reset:active { transform: scale(.93); }
 
-.mat-row-reset { top: 6px; right: 36px; }
+.mat-row-reset { top: 3px; right: 36px; }
 .add-item-reset { top: 4px; right: 4px; }
 
 .add-item {
