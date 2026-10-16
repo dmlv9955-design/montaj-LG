@@ -1259,7 +1259,6 @@ function renderMaterialsForBlock(work) {
         resetBtn.type = 'button';
         resetBtn.className = 'mat-row-reset';
         resetBtn.title = 'Сбросить место';
-        resetBtn.textContent = '↺';
         resetBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           if (!(row.building || row.floor || row.room || row.qty)) return;
@@ -2009,7 +2008,6 @@ function renderLocationFields(workKey, container) {
     resetBtn.type = 'button';
     resetBtn.className = 'add-item-reset';
     resetBtn.title = 'Сбросить место';
-    resetBtn.textContent = '↺';
     resetBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!(item.building || item.floor || item.room || item.value)) return;
