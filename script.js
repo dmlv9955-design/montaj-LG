@@ -3036,6 +3036,24 @@ async function doActualSend() {
 }
 
 // ============================================
+//  ПЕРЕХОД В ФОТОФИКСАЦИЮ
+// ============================================
+function goToPhotos() {
+  const params = new URLSearchParams();
+  const name = nameInput.value.trim();
+  const object = objectSelect.value;
+  const date = dateInput.value;
+
+  if (name) params.set('name', name);
+  if (object) params.set('object', object);
+  if (date) params.set('date', date);
+
+  const qs = params.toString();
+  const url = 'photos.html' + (qs ? '?' + qs : '');
+  window.open(url, '_blank');
+}
+
+// ============================================
 //  СТАРТ
 // ============================================
 initMainWorks();
@@ -3055,3 +3073,4 @@ if (_restoredDraft && _restoredDraft.length > 0) {
 
 window.addAllToJournal = addAllToJournal;
 window.sendAll = sendAll;
+window.goToPhotos = goToPhotos;
