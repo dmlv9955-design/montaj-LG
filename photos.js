@@ -396,7 +396,7 @@ function updateFieldState(el) {
 }
 
 // ============================================
-//  ГЕЙТЫ: имя → дата → объект
+//  ГЕЙТЫ
 // ============================================
 function refreshNameGates() {
   const nameOk = isNameValid(nameInput.value);
@@ -474,7 +474,7 @@ nameInput.addEventListener('blur', () => {
 })();
 
 // ============================================
-//  ОБЪЕКТ — сброс фото при смене
+//  ОБЪЕКТ
 // ============================================
 let prevObject = objectSelect.value;
 
@@ -699,6 +699,8 @@ function renderPomeshchenieItem(item, idx) {
   }
   const roomInp = document.createElement('input');
   roomInp.type = 'text';
+  roomInp.inputMode = 'numeric';
+  roomInp.pattern = '[0-9]*';
   roomInp.className = 'loc-room-input';
   roomInp.placeholder = '45';
   roomInp.value = item.room || '';
@@ -902,7 +904,7 @@ function renderProhodkaItem(item, idx) {
     }
   }
 
-  // ─── ИЗ ПОМЕЩЕНИЯ / В ПОМЕЩЕНИЕ — ОДНОЙ СТРОКОЙ ───
+  // ─── ИЗ / В ПОМЕЩЕНИЕ — одной строкой ───
   const roomsLine = document.createElement('div');
   roomsLine.style.display = 'flex';
   roomsLine.style.flexWrap = 'nowrap';
@@ -922,6 +924,8 @@ function renderProhodkaItem(item, idx) {
 
   const fromInp = document.createElement('input');
   fromInp.type = 'text';
+  fromInp.inputMode = 'numeric';
+  fromInp.pattern = '[0-9]*';
   fromInp.className = 'loc-room-input';
   fromInp.style.flex = '1 1 0';
   fromInp.style.minWidth = '0';
@@ -947,6 +951,8 @@ function renderProhodkaItem(item, idx) {
 
   const toInp = document.createElement('input');
   toInp.type = 'text';
+  toInp.inputMode = 'numeric';
+  toInp.pattern = '[0-9]*';
   toInp.className = 'loc-room-input';
   toInp.style.flex = '1 1 0';
   toInp.style.minWidth = '0';
@@ -1138,6 +1144,7 @@ function renderEquipmentItem(catName, item, idx) {
 
   const inp = document.createElement('input');
   inp.type = 'text';
+  inp.inputMode = 'decimal';
   inp.className = 'loc-room-input';
   inp.style.width = '120px';
   inp.placeholder = '2.45';
@@ -1179,14 +1186,34 @@ function renderPhotoPicker(photosArr) {
     cell.style.height = '72px';
     cell.style.borderRadius = '8px';
     cell.style.overflow = 'hidden';
-    cell.style.border = '1.5px solid var(--border)';
+    cell.style.border = '1.5px solid ' + (ph._sent ? 'var(--green-border)' : 'var(--border)');
 
     const img = document.createElement('img');
     img.src = ph.dataUrl;
     img.style.width = '100%';
     img.style.height = '100%';
     img.style.objectFit = 'cover';
+    if (ph._sent) img.style.opacity = '.55';
     cell.appendChild(img);
+
+    if (ph._sent) {
+      const badge = document.createElement('div');
+      badge.textContent = '✓';
+      badge.style.position = 'absolute';
+      badge.style.bottom = '2px';
+      badge.style.left = '2px';
+      badge.style.background = 'var(--green-border)';
+      badge.style.color = '#fff';
+      badge.style.width = '18px';
+      badge.style.height = '18px';
+      badge.style.borderRadius = '50%';
+      badge.style.display = 'flex';
+      badge.style.alignItems = 'center';
+      badge.style.justifyContent = 'center';
+      badge.style.fontSize = '12px';
+      badge.style.fontWeight = '700';
+      cell.appendChild(badge);
+    }
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
@@ -1205,6 +1232,7 @@ function renderPhotoPicker(photosArr) {
     delBtn.style.cursor = 'pointer';
     delBtn.style.lineHeight = '1';
     delBtn.addEventListener('click', () => {
+      if (ph._sent && !confirm('Это фото уже отправлено. Удалить его из формы?')) return;
       photosArr.splice(pIdx, 1);
       renderAll();
     });
@@ -1242,7 +1270,8 @@ function renderPhotoPicker(photosArr) {
         photosArr.push({
           dataUrl: dataUrl,
           fileName: f.name,
-          size: approxBytesFromDataUrl(dataUrl)
+          size: approxBytesFromDataUrl(dataUrl),
+          _sent: false
         });
       } catch (e) {
         showToast('Не удалось обработать: ' + f.name);
@@ -1258,9 +1287,9 @@ function renderPhotoPicker(photosArr) {
 }
 
 // ============================================
-//  СБОР ФОТО
+//  СБОР ФОТО (пропускаем уже отправленные)
 // ============================================
-function collectPhotos() {
+function collectPhotos(includeSent) {
   const out = [];
   const object = objectSelect.value;
   const date = dateInput.value;
@@ -1269,7 +1298,9 @@ function collectPhotos() {
   photoState['Помещения'].items.forEach(item => {
     Object.keys(item.stages).forEach(stageName => {
       (item.stages[stageName] || []).forEach(ph => {
+        if (ph._sent && !includeSent) return;
         out.push({
+          _photo: ph,
           type: 'photo', object: object, date: date, name: name,
           category: 'Помещения',
           building: item.building || '',
@@ -1290,7 +1321,9 @@ function collectPhotos() {
     Object.keys(item.stages).forEach(stageName => {
       const sides = item.stages[stageName];
       (sides.from || []).forEach(ph => {
+        if (ph._sent && !includeSent) return;
         out.push({
+          _photo: ph,
           type: 'photo', object: object, date: date, name: name,
           category: 'Проходки',
           building: item.building || '',
@@ -1303,7 +1336,9 @@ function collectPhotos() {
         });
       });
       (sides.to || []).forEach(ph => {
+        if (ph._sent && !includeSent) return;
         out.push({
+          _photo: ph,
           type: 'photo', object: object, date: date, name: name,
           category: 'Проходки',
           building: item.building || '',
@@ -1322,7 +1357,9 @@ function collectPhotos() {
     const st = photoState['Оборудование'].subs[catName];
     st.items.forEach(item => {
       (item.photos || []).forEach(ph => {
+        if (ph._sent && !includeSent) return;
         out.push({
+          _photo: ph,
           type: 'photo', object: object, date: date, name: name,
           category: EQUIPMENT_SHORT[catName],
           deviceAddress: item.address || '',
@@ -1343,7 +1380,7 @@ function updateSendButtonState() {
   if (!btn) return;
   const nameOk = isNameValid(nameInput.value);
   const objOk = !!objectSelect.value;
-  const hasPhotos = collectPhotos().length > 0;
+  const hasPhotos = collectPhotos(false).length > 0;
   btn.disabled = !(nameOk && objOk && hasPhotos) || isOffline();
 }
 
@@ -1405,9 +1442,18 @@ function showReview() {
   const sub     = $('review-subtitle');
 
   const sections = buildReviewSections();
-  const totalPhotos = sections.reduce((s, sec) => s + sec.photos.length, 0);
+  let totalPhotos = 0;
+  let sentPhotos = 0;
+  sections.forEach(sec => {
+    sec.photos.forEach(p => {
+      totalPhotos++;
+      if (p.ph._sent) sentPhotos++;
+    });
+  });
 
-  sub.textContent = 'Всего фото: ' + totalPhotos;
+  const newPhotos = totalPhotos - sentPhotos;
+  sub.textContent = 'Всего фото: ' + totalPhotos +
+    (sentPhotos > 0 ? ' (из них уже отправлено: ' + sentPhotos + ', новых: ' + newPhotos + ')' : '');
 
   body.innerHTML = '';
 
@@ -1435,18 +1481,40 @@ function showReview() {
 
     sec.photos.forEach(p => {
       const cell = document.createElement('div');
+      cell.style.position = 'relative';
       cell.style.width = '64px';
       cell.style.height = '64px';
       cell.style.borderRadius = '6px';
       cell.style.overflow = 'hidden';
-      cell.style.border = '1px solid var(--border)';
+      cell.style.border = '2px solid ' + (p.ph._sent ? 'var(--green-border)' : 'var(--border)');
 
       const img = document.createElement('img');
       img.src = p.ph.dataUrl;
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'cover';
+      if (p.ph._sent) img.style.opacity = '.55';
       cell.appendChild(img);
+
+      if (p.ph._sent) {
+        const badge = document.createElement('div');
+        badge.textContent = '✓';
+        badge.style.position = 'absolute';
+        badge.style.bottom = '2px';
+        badge.style.left = '2px';
+        badge.style.background = 'var(--green-border)';
+        badge.style.color = '#fff';
+        badge.style.width = '16px';
+        badge.style.height = '16px';
+        badge.style.borderRadius = '50%';
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        badge.style.justifyContent = 'center';
+        badge.style.fontSize = '10px';
+        badge.style.fontWeight = '700';
+        cell.appendChild(badge);
+      }
+
       grid.appendChild(cell);
     });
 
@@ -1523,9 +1591,9 @@ function sendPhotos() {
     return;
   }
 
-  const all = collectPhotos();
+  const all = collectPhotos(false);
   if (all.length === 0) {
-    showMsg('⚠️ Нет фотографий. Разверните нужный раздел и добавьте фото.', 'err');
+    showMsg('⚠️ Нет новых фотографий для отправки.', 'err');
     return;
   }
 
@@ -1533,7 +1601,7 @@ function sendPhotos() {
 }
 
 async function doActualSend() {
-  const all = collectPhotos();
+  const all = collectPhotos(false);
   if (!all.length) return;
 
   document.body.classList.add('app-blocked');
@@ -1546,33 +1614,74 @@ async function doActualSend() {
   for (let i = 0; i < all.length; i++) {
     const rec = all[i];
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(rec)
       });
-      sent++;
+
+      let resp = null;
+      try {
+        const txt = await res.text();
+        resp = JSON.parse(txt);
+      } catch (_) {
+        // если не удалось распарсить — считаем что CORS-блок, сервер получил
+      }
+
+      if (resp && resp.ok === false) {
+        failed.push({ record: rec, error: resp.error || 'unknown' });
+      } else {
+        if (rec._photo) rec._photo._sent = true;
+        sent++;
+      }
     } catch (e) {
-      failed.push({ index: i, error: String(e.message || e), title: describeRecord(rec) });
+      // Сетевая ошибка или CORS-блок. Пробуем no-cors fallback.
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(rec)
+        });
+        if (rec._photo) rec._photo._sent = true;
+        sent++;
+      } catch (e2) {
+        failed.push({ record: rec, error: String(e2.message || e2) });
+      }
     }
+
     updateProgress(i + 1, all.length);
   }
 
   $('progress-overlay').classList.remove('show');
+  document.body.classList.remove('app-blocked');
+  renderAll();
+
+  const remaining = collectPhotos(false).length;
 
   if (failed.length > 0) {
-    document.body.classList.remove('app-blocked');
-    const list = failed.map(f => f.title).join('\n');
-    alert('Не удалось отправить ' + failed.length + ' фото:\n\n' + list +
-          '\n\nОстальные фото успешно отправлены.');
+    const list = failed.map((f, i) =>
+      (i + 1) + '. ' + describeRecord(f.record) + ' — ' + f.error
+    ).join('\n');
+
+    alert(
+      '❌ Не удалось отправить: ' + failed.length + ' фото\n\n' +
+      list + '\n\n' +
+      '✅ Отправлено: ' + sent + ' фото\n\n' +
+      'Неудавшиеся фото остались в форме без галочки ✓. ' +
+      'Нажмите «Отправить» ещё раз — будут досланы только они. ' +
+      'Уже отправленные помечены зелёной галочкой и повторно не пойдут.'
+    );
     return;
   }
 
-  resetAllState();
-  renderAll();
-
-  showSuccess(all.length);
+  if (remaining === 0) {
+    resetAllState();
+    renderAll();
+    showSuccess(sent);
+  } else {
+    showSuccess(sent);
+  }
 }
 
 function describeRecord(rec) {
@@ -1587,7 +1696,7 @@ function updateProgress(done, total) {
 }
 
 function showSuccess(total) {
-  $('success-sub').textContent = 'Фото: ' + total;
+  $('success-sub').textContent = 'Фото отправлено: ' + total;
   $('success-overlay').classList.add('show');
 
   const btn = $('success-close');
@@ -1595,7 +1704,6 @@ function showSuccess(total) {
   btn.parentNode.replaceChild(btnNew, btn);
   btnNew.addEventListener('click', () => {
     $('success-overlay').classList.remove('show');
-    document.body.classList.remove('app-blocked');
   });
 }
 
