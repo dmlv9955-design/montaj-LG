@@ -37,7 +37,6 @@ const MASTER_WING = 'Крыло мастерских';
 const MASTER_WING_PREFIX = 'к';
 const ATTIC = 'Чердак';
 
-// Этапы для «Помещений»
 const STAGES_POMESHCHENIYA = [
   'До работ (общие планы)',
   'Поверхности (открытые потолки)',
@@ -45,7 +44,6 @@ const STAGES_POMESHCHENIYA = [
   'После работ (закрытые потолки или кабель-каналы)'
 ];
 
-// Этапы для «Проходок»
 const STAGES_PROHODKI = [
   'До сверления',
   'Отверстие',
@@ -405,7 +403,6 @@ function refreshNameGates() {
 
   // Дата — доступна только если имя валидно
   dateInput.disabled = !nameOk;
-  if (dateInput.disabled) updateDateHighlight();
 
   // Объект — блокируется пока нет имени
   const objHint = objectSeg.querySelector('.segmented-hint');
@@ -420,6 +417,8 @@ function refreshNameGates() {
     objectSeg.classList.remove('segmented-disabled');
   }
 
+  // Подсветка всех трёх полей — как в отчёте
+  updateFieldState(nameInput);
   updateFieldState(dateInput);
   updateFieldState(objectSelect);
   updateSendButtonState();
@@ -440,7 +439,6 @@ nameInput.addEventListener('input', () => {
   }
   if (isNameValid(nameInput.value)) {
     nameErr.classList.remove('show');
-    nameInput.classList.remove('is-invalid');
   }
   refreshNameGates();
   renderAll();
@@ -451,7 +449,6 @@ nameInput.addEventListener('blur', () => {
   if (v && !isNameValid(v)) {
     nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова';
     nameErr.classList.add('show');
-    updateNameVisual(nameInput);
   } else {
     nameErr.classList.remove('show');
   }
@@ -485,7 +482,6 @@ nameInput.addEventListener('blur', () => {
 let prevObject = objectSelect.value;
 
 objectSelect.addEventListener('change', () => {
-  // Если уже были загружены фото и объект меняется — спросим
   const hasPhotos = collectPhotos().length > 0;
   if (hasPhotos && prevObject && objectSelect.value !== prevObject) {
     const ok = confirm('При смене объекта загруженные фото будут удалены. Продолжить?');
@@ -1150,7 +1146,7 @@ function renderEquipmentItem(catName, item, idx) {
 }
 
 // ============================================
-//  ПИКЕР ФОТО (универсальный)
+//  ПИКЕР ФОТО
 // ============================================
 function renderPhotoPicker(photosArr) {
   const wrap = document.createElement('div');
@@ -1246,7 +1242,7 @@ function renderPhotoPicker(photosArr) {
 }
 
 // ============================================
-//  СБОР ФОТО ДЛЯ ОТПРАВКИ
+//  СБОР ФОТО
 // ============================================
 function collectPhotos() {
   const out = [];
@@ -1254,15 +1250,11 @@ function collectPhotos() {
   const date = dateInput.value;
   const name = nameInput.value.trim();
 
-  // Помещения
   photoState['Помещения'].items.forEach(item => {
     Object.keys(item.stages).forEach(stageName => {
       (item.stages[stageName] || []).forEach(ph => {
         out.push({
-          type: 'photo',
-          object: object,
-          date: date,
-          name: name,
+          type: 'photo', object: object, date: date, name: name,
           category: 'Помещения',
           building: item.building || '',
           floor: item.building === ATTIC ? ATTIC : (item.floor || ''),
@@ -1274,7 +1266,6 @@ function collectPhotos() {
     });
   });
 
-  // Проходки
   photoState['Проходки'].items.forEach(item => {
     const floorForSend = item.betweenFloors
       ? (item.floor || '')
@@ -1311,7 +1302,6 @@ function collectPhotos() {
     });
   });
 
-  // Оборудование
   EQUIPMENT_CATEGORIES.forEach(catName => {
     const st = photoState['Оборудование'].subs[catName];
     st.items.forEach(item => {
@@ -1484,19 +1474,16 @@ function showReview() {
 function sendPhotos() {
   showMsg('');
 
-  // Та же проверка шапки, что в отчёте
   let firstProblem = null;
 
   if (objectErr) objectErr.classList.remove('show');
   nameErr.classList.remove('show');
-  nameInput.classList.remove('is-invalid');
 
   if (!isNameValid(nameInput.value)) {
     nameErr.textContent = nameInput.value.trim()
       ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)'
       : 'Введите Имя и Фамилию — ровно 2 слова';
     nameErr.classList.add('show');
-    nameInput.classList.add('is-invalid');
     if (!firstProblem) firstProblem = nameInput;
   }
 
