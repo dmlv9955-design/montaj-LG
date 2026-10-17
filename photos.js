@@ -55,7 +55,6 @@ const STAGES_PROHODKI = [
   'Герметик'
 ];
 
-// Категории оборудования
 const EQUIPMENT_CATEGORIES = [
   'BIAD звуковые оповещатели',
   'BIAL световые оповещатели',
@@ -66,8 +65,6 @@ const EQUIPMENT_CATEGORIES = [
   'SC блоки КП'
 ];
 
-// Категории в разделе «Оборудование» — те же строки, но без полного текста
-// (для запроса к бэку передаём как есть)
 const EQUIPMENT_SHORT = {
   'BIAD звуковые оповещатели':  'BIAD',
   'BIAL световые оповещатели':  'BIAL',
@@ -80,71 +77,33 @@ const EQUIPMENT_SHORT = {
 
 const MAX_IMAGE_SIDE = 1280;
 const JPEG_QUALITY   = 0.75;
+const DATE_MIN_DAYS_AGO = 7;
 
 // ============================================
 //  СОСТОЯНИЕ
 // ============================================
-//  photoState = {
-//    'Помещения':     { expanded, items: [item] },
-//    'Проходки':      { expanded, items: [item] },
-//    'Оборудование':  { expanded,
-//                        subs: {
-//                          'BIAD звуковые оповещатели': { expanded, items: [item] },
-//                          ...
-//                        }
-//                      }
-//  }
-//
-//  item для Помещений:
-//    { building, floor, room, stages: { stageName: [ {dataUrl,fileName,size} ] } }
-//  item для Проходок:
-//    { building, floor, roomFrom, roomTo, betweenFloors, floorFrom, floorTo,
-//      stages: { stageName: { from: [photos], to: [photos] } } }
-//  item для Оборудования:
-//    { address, photos: [ {dataUrl,fileName,size} ] }
-
 function makeEmptyPomeshchenieItem() {
-  return {
-    building: '',
-    floor: '',
-    room: '',
-    stages: {}
-  };
+  return { building: '', floor: '', room: '', stages: {} };
 }
 
 function makeEmptyProhodkaItem() {
   return {
-    building: '',
-    floor: '',
-    roomFrom: '',
-    roomTo: '',
+    building: '', floor: '',
+    roomFrom: '', roomTo: '',
     betweenFloors: false,
-    floorFrom: '',
-    floorTo: '',
-    stages: {} // { stageName: { from: [], to: [] } }
+    floorFrom: '', floorTo: '',
+    stages: {}
   };
 }
 
 function makeEmptyEquipmentItem() {
-  return {
-    address: '',
-    photos: []
-  };
+  return { address: '', photos: [] };
 }
 
 const photoState = {
-  'Помещения': {
-    expanded: false,
-    items: [makeEmptyPomeshchenieItem()]
-  },
-  'Проходки': {
-    expanded: false,
-    items: [makeEmptyProhodkaItem()]
-  },
-  'Оборудование': {
-    expanded: false,
-    subs: {} // заполним ниже
-  }
+  'Помещения':    { expanded: false, items: [makeEmptyPomeshchenieItem()] },
+  'Проходки':     { expanded: false, items: [makeEmptyProhodkaItem()] },
+  'Оборудование': { expanded: false, subs: {} }
 };
 
 EQUIPMENT_CATEGORIES.forEach(cat => {
@@ -153,6 +112,18 @@ EQUIPMENT_CATEGORIES.forEach(cat => {
     items: [makeEmptyEquipmentItem()]
   };
 });
+
+function resetAllState() {
+  photoState['Помещения']    = { expanded: false, items: [makeEmptyPomeshchenieItem()] };
+  photoState['Проходки']     = { expanded: false, items: [makeEmptyProhodkaItem()] };
+  photoState['Оборудование'] = { expanded: false, subs: {} };
+  EQUIPMENT_CATEGORIES.forEach(cat => {
+    photoState['Оборудование'].subs[cat] = {
+      expanded: false,
+      items: [makeEmptyEquipmentItem()]
+    };
+  });
+}
 
 // ============================================
 //  УТИЛИТЫ
@@ -191,12 +162,6 @@ function formatName(value) {
   const parts = cleaned.split(' ');
   if (parts.length > 2) cleaned = parts.slice(0, 2).join(' ');
   return cleaned;
-}
-
-function formatDateRu(iso) {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
-  const p = iso.split('-');
-  return p[2] + '.' + p[1] + '.' + p[0];
 }
 
 function toISODate(d) {
@@ -264,26 +229,20 @@ function approxBytesFromDataUrl(dataUrl) {
   return Math.round(b64.length * 0.75);
 }
 
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' Б';
-  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' КБ';
-  return (bytes / 1024 / 1024).toFixed(1) + ' МБ';
-}
-
 // ============================================
 //  ВЕРХНИЕ ЭЛЕМЕНТЫ
 // ============================================
 const objectSelect = $('object');
 const nameInput    = $('name');
 const nameErr      = $('err-name');
+const objectErr    = $('err-object');
 const dateInput    = $('date');
 const objectSeg    = $('object-segmented');
 const container    = $('photo-works-container');
 
 // ============================================
-//  DATE
+//  ДАТА — диапазон и подсветка
 // ============================================
-const DATE_MIN_DAYS_AGO = 7;
 function setupDateRange() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const minDate = new Date(today); minDate.setDate(minDate.getDate() - DATE_MIN_DAYS_AGO);
@@ -291,7 +250,27 @@ function setupDateRange() {
   dateInput.max = toISODate(today);
   if (!dateInput.value) dateInput.value = toISODate(today);
 }
+
+function updateDateHighlight() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayISO = toISODate(today);
+  const v = dateInput.value;
+  dateInput.classList.remove('is-old-date');
+  if (!v || v === todayISO) return;
+  dateInput.classList.add('is-old-date');
+}
+
 setupDateRange();
+updateDateHighlight();
+
+dateInput.addEventListener('change', () => {
+  if (dateInput.value) {
+    if (dateInput.value < dateInput.min) dateInput.value = dateInput.min;
+    if (dateInput.value > dateInput.max) dateInput.value = dateInput.max;
+  }
+  updateDateHighlight();
+  updateFieldState(dateInput);
+});
 
 // ============================================
 //  ПАРАМЕТРЫ ИЗ URL
@@ -302,27 +281,47 @@ setupDateRange();
   const object = qs.get('object');
   const date = qs.get('date');
 
-  if (name) {
-    nameInput.value = formatName(name);
+  if (name) nameInput.value = formatName(name);
+  if (date) {
+    dateInput.value = date;
+    if (dateInput.value < dateInput.min) dateInput.value = dateInput.min;
+    if (dateInput.value > dateInput.max) dateInput.value = dateInput.max;
+    updateDateHighlight();
   }
+
   if (object && (object === 'Ларинская гимназия' || object === 'ЖЕДЕПОМ')) {
-    // Применим после того как разберёмся с гейтами по имени
     setTimeout(() => {
       if (isNameValid(nameInput.value)) {
         objectSelect.value = object;
         if (objectSelect._updateSegmentedDisplay) objectSelect._updateSegmentedDisplay();
         refreshNameGates();
+        updateFieldState(objectSelect);
+        renderAll();
       }
     }, 50);
-  }
-  if (date) {
-    dateInput.value = date;
   }
 })();
 
 // ============================================
-//  SEGMENTED — как в основной форме (упрощённо)
+//  SEGMENTED CONTROL
 // ============================================
+class SegmentedControl {
+  constructor(rootEl) {
+    this.root = rootEl;
+    this.input = rootEl.querySelector('input[type="hidden"]');
+  }
+  get value() { return this.input.value; }
+  set value(v) { this.input.value = v || ''; this.updateDisplay(); }
+  get disabled() { return this.root.classList.contains('segmented-disabled'); }
+  set disabled(v) { this.root.classList.toggle('segmented-disabled', !!v); this.input.disabled = !!v; }
+  updateDisplay() {
+    const v = this.input.value;
+    this.root.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === v);
+    });
+  }
+}
+
 function initSegmented(rootId, inputId) {
   const root = $(rootId);
   const input = $(inputId);
@@ -351,11 +350,64 @@ function initSegmented(rootId, inputId) {
 initSegmented('object-segmented', 'object');
 
 // ============================================
-//  ГЕЙТЫ: имя → объект
+//  ПОДСВЕТКА ПОЛЕЙ
+// ============================================
+function updateNameVisual(el) {
+  if (!el) return;
+  el.classList.remove('is-empty', 'is-partial', 'is-filled', 'is-invalid');
+  if (el.disabled) return;
+  const v = String(el.value || '').trim();
+  if (!v) el.classList.add('is-empty');
+  else if (!isNameValid(v)) el.classList.add('is-partial');
+  else el.classList.add('is-filled');
+}
+
+function updateFieldState(el) {
+  if (!el) return;
+
+  if (el.id === 'name') {
+    updateNameVisual(el);
+    return;
+  }
+
+  const wrap = el.closest && el.closest('.segmented');
+  if (wrap) {
+    if (el.disabled || wrap.classList.contains('segmented-disabled')) {
+      wrap.classList.remove('is-empty', 'is-filled');
+      return;
+    }
+    if (el.id === 'object') {
+      wrap.classList.remove('is-empty', 'is-filled');
+      const nameOk = isNameValid(nameInput.value);
+      const val = String(el.value || '').trim();
+      const isEmpty = nameOk && !val;
+      wrap.classList.toggle('is-empty', isEmpty);
+      wrap.classList.toggle('is-filled', !!val);
+    }
+    return;
+  }
+
+  if (!el.classList.contains('req-field')) return;
+  if (el.disabled) {
+    el.classList.remove('is-empty', 'is-filled', 'is-invalid');
+    return;
+  }
+  const isEmpty = !el.value || !el.value.trim();
+  el.classList.toggle('is-empty', isEmpty);
+  el.classList.toggle('is-filled', !isEmpty);
+}
+
+// ============================================
+//  ГЕЙТЫ: имя → дата → объект
 // ============================================
 function refreshNameGates() {
   const nameOk = isNameValid(nameInput.value);
 
+  // Дата — доступна только если имя валидно
+  dateInput.disabled = !nameOk;
+  if (dateInput.disabled) updateDateHighlight();
+
+  // Объект — блокируется пока нет имени
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
@@ -368,6 +420,8 @@ function refreshNameGates() {
     objectSeg.classList.remove('segmented-disabled');
   }
 
+  updateFieldState(dateInput);
+  updateFieldState(objectSelect);
   updateSendButtonState();
 }
 
@@ -384,8 +438,12 @@ nameInput.addEventListener('input', () => {
     const newPos = Math.max(0, Math.min(after.length, pos - delta));
     nameInput.setSelectionRange(newPos, newPos);
   }
-  if (isNameValid(nameInput.value)) nameErr.classList.remove('show');
+  if (isNameValid(nameInput.value)) {
+    nameErr.classList.remove('show');
+    nameInput.classList.remove('is-invalid');
+  }
   refreshNameGates();
+  renderAll();
 });
 
 nameInput.addEventListener('blur', () => {
@@ -393,6 +451,7 @@ nameInput.addEventListener('blur', () => {
   if (v && !isNameValid(v)) {
     nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова';
     nameErr.classList.add('show');
+    updateNameVisual(nameInput);
   } else {
     nameErr.classList.remove('show');
   }
@@ -409,9 +468,11 @@ nameInput.addEventListener('blur', () => {
     btn.style.display = nameInput.value && !nameInput.disabled ? 'inline-flex' : 'none';
   }
   nameInput.addEventListener('input', update);
+  nameInput.addEventListener('change', update);
   btn.addEventListener('click', () => {
     nameInput.value = '';
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    nameInput.dispatchEvent(new Event('change', { bubbles: true }));
     nameInput.focus();
     update();
   });
@@ -419,20 +480,36 @@ nameInput.addEventListener('blur', () => {
 })();
 
 // ============================================
-//  ОБЪЕКТ
+//  ОБЪЕКТ — сброс фото при смене
 // ============================================
+let prevObject = objectSelect.value;
+
 objectSelect.addEventListener('change', () => {
+  // Если уже были загружены фото и объект меняется — спросим
+  const hasPhotos = collectPhotos().length > 0;
+  if (hasPhotos && prevObject && objectSelect.value !== prevObject) {
+    const ok = confirm('При смене объекта загруженные фото будут удалены. Продолжить?');
+    if (!ok) {
+      objectSelect.value = prevObject;
+      if (objectSelect._updateSegmentedDisplay) objectSelect._updateSegmentedDisplay();
+      updateFieldState(objectSelect);
+      return;
+    }
+    resetAllState();
+  }
+  prevObject = objectSelect.value;
+  updateFieldState(objectSelect);
   renderAll();
 });
 
 // ============================================
-//  РЕНДЕР ВСЕГО БЛОКА «ФОТОФИКСАЦИЯ»
+//  РЕНДЕР
 // ============================================
 function renderAll() {
   container.innerHTML = '';
 
   const object = objectSelect.value;
-  const enabled = !!object; // уже разблокировано благодаря имени
+  const enabled = !!object;
 
   if (!enabled) {
     const placeholder = document.createElement('div');
@@ -491,7 +568,7 @@ function renderTopLevel(title) {
 }
 
 // ============================================
-//  ОБЩИЕ ЭЛЕМЕНТЫ: корпус, этаж
+//  КОРПУС / ЭТАЖ
 // ============================================
 function renderBuildingRow(item, onChange) {
   const wrap = document.createElement('div');
@@ -556,9 +633,7 @@ function renderFloorRow(item, onChange) {
   return wrap;
 }
 
-function isAtticItem(item) {
-  return item.building === ATTIC;
-}
+function isAtticItem(item) { return item.building === ATTIC; }
 
 // ============================================
 //  ПОМЕЩЕНИЯ
@@ -594,6 +669,7 @@ function renderPomeshchenieItem(item, idx) {
     const top = document.createElement('div');
     top.className = 'mat-row-num';
     top.textContent = 'Помещение ' + (idx + 1);
+    top.style.position = 'relative';
 
     if (idx > 0) {
       const del = document.createElement('button');
@@ -605,23 +681,14 @@ function renderPomeshchenieItem(item, idx) {
         st.items.splice(idx, 1);
         renderAll();
       });
-      top.style.position = 'relative';
       top.appendChild(del);
     }
     card.appendChild(top);
   }
 
-  // Корпус
-  if (isBuildingRequired()) {
-    card.appendChild(renderBuildingRow(item, () => renderAll()));
-  }
+  if (isBuildingRequired()) card.appendChild(renderBuildingRow(item, renderAll));
+  if (!isAtticItem(item)) card.appendChild(renderFloorRow(item, renderAll));
 
-  // Этаж (кроме Чердака)
-  if (!isAtticItem(item)) {
-    card.appendChild(renderFloorRow(item, () => renderAll()));
-  }
-
-  // Помещение (поле ввода)
   const roomLine = document.createElement('div');
   roomLine.className = 'mat-line';
   const roomLbl = document.createElement('span');
@@ -651,7 +718,6 @@ function renderPomeshchenieItem(item, idx) {
   roomLine.appendChild(roomWrap);
   card.appendChild(roomLine);
 
-  // Этапы — чекбоксы в столбик
   const stagesTitle = document.createElement('div');
   stagesTitle.className = 'section-subtitle';
   stagesTitle.style.marginTop = '12px';
@@ -684,11 +750,8 @@ function renderStageCheckboxPomeshchenie(item, stageName) {
   cb.style.height = '18px';
   cb.style.flexShrink = '0';
   cb.addEventListener('change', () => {
-    if (cb.checked) {
-      item.stages[stageName] = item.stages[stageName] || [];
-    } else {
-      delete item.stages[stageName];
-    }
+    if (cb.checked) item.stages[stageName] = item.stages[stageName] || [];
+    else            delete item.stages[stageName];
     renderAll();
   });
 
@@ -705,7 +768,7 @@ function renderStageCheckboxPomeshchenie(item, stageName) {
     const zone = document.createElement('div');
     zone.style.marginTop = '6px';
     zone.style.marginLeft = '26px';
-    zone.appendChild(renderPhotoPicker(item.stages[stageName], item, stageName));
+    zone.appendChild(renderPhotoPicker(item.stages[stageName]));
     wrap.appendChild(zone);
   }
 
@@ -763,16 +826,10 @@ function renderProhodkaItem(item, idx) {
     card.appendChild(top);
   }
 
-  // Корпус
-  if (isBuildingRequired()) {
-    card.appendChild(renderBuildingRow(item, () => renderAll()));
-  }
-
-  // Этаж — либо обычный, либо между
+  if (isBuildingRequired()) card.appendChild(renderBuildingRow(item, renderAll));
   if (!isAtticItem(item)) {
-    card.appendChild(renderFloorRow(item, () => renderAll()));
+    card.appendChild(renderFloorRow(item, renderAll));
 
-    // Кнопка «Между этажами»
     const betweenLine = document.createElement('div');
     betweenLine.className = 'mat-line';
     betweenLine.style.marginTop = '6px';
@@ -808,13 +865,11 @@ function renderProhodkaItem(item, idx) {
       selFrom.className = 'loc-room-input';
       selFrom.style.width = '80px';
       const optEmpty = document.createElement('option');
-      optEmpty.value = '';
-      optEmpty.textContent = '—';
+      optEmpty.value = ''; optEmpty.textContent = '—';
       selFrom.appendChild(optEmpty);
       floors.forEach(f => {
         const o = document.createElement('option');
-        o.value = f;
-        o.textContent = f;
+        o.value = f; o.textContent = f;
         if (item.floorFrom === f) o.selected = true;
         selFrom.appendChild(o);
       });
@@ -835,13 +890,11 @@ function renderProhodkaItem(item, idx) {
       selTo.className = 'loc-room-input';
       selTo.style.width = '80px';
       const optEmpty2 = document.createElement('option');
-      optEmpty2.value = '';
-      optEmpty2.textContent = '—';
+      optEmpty2.value = ''; optEmpty2.textContent = '—';
       selTo.appendChild(optEmpty2);
       floors.forEach(f => {
         const o = document.createElement('option');
-        o.value = f;
-        o.textContent = f;
+        o.value = f; o.textContent = f;
         if (item.floorTo === f) o.selected = true;
         selTo.appendChild(o);
       });
@@ -856,7 +909,6 @@ function renderProhodkaItem(item, idx) {
     }
   }
 
-  // Из помещения / В помещение
   const roomsLine = document.createElement('div');
   roomsLine.className = 'mat-line';
   roomsLine.style.marginTop = '6px';
@@ -898,7 +950,6 @@ function renderProhodkaItem(item, idx) {
 
   card.appendChild(roomsLine);
 
-  // Этапы — чекбоксы в столбик, с двумя сторонами
   const stagesTitle = document.createElement('div');
   stagesTitle.className = 'section-subtitle';
   stagesTitle.style.marginTop = '12px';
@@ -939,11 +990,8 @@ function renderStageCheckboxProhodka(item, stageName) {
   cb.style.height = '18px';
   cb.style.flexShrink = '0';
   cb.addEventListener('change', () => {
-    if (cb.checked) {
-      item.stages[stageName] = { from: [], to: [] };
-    } else {
-      delete item.stages[stageName];
-    }
+    if (cb.checked) item.stages[stageName] = { from: [], to: [] };
+    else            delete item.stages[stageName];
     renderAll();
   });
 
@@ -962,23 +1010,21 @@ function renderStageCheckboxProhodka(item, stageName) {
     zone.style.marginTop = '6px';
     zone.style.marginLeft = '26px';
 
-    // Сторона From
     const fromLabel = document.createElement('div');
     fromLabel.style.fontWeight = '700';
     fromLabel.style.fontSize = '12px';
     fromLabel.style.marginTop = '6px';
     fromLabel.textContent = 'Из помещения ' + (item.roomFrom || '?');
     zone.appendChild(fromLabel);
-    zone.appendChild(renderPhotoPickerProhodka(stg.from, item, stageName, 'from'));
+    zone.appendChild(renderPhotoPicker(stg.from));
 
-    // Сторона To
     const toLabel = document.createElement('div');
     toLabel.style.fontWeight = '700';
-    toLabel.style.fontSize = '13px';
+    toLabel.style.fontSize = '12px';
     toLabel.style.marginTop = '10px';
     toLabel.textContent = 'Из помещения ' + (item.roomTo || '?');
     zone.appendChild(toLabel);
-    zone.appendChild(renderPhotoPickerProhodka(stg.to, item, stageName, 'to'));
+    zone.appendChild(renderPhotoPicker(stg.to));
 
     wrap.appendChild(zone);
   }
@@ -991,11 +1037,9 @@ function renderStageCheckboxProhodka(item, stageName) {
 // ============================================
 function renderOborudovanieSection() {
   const wrap = document.createElement('div');
-
   EQUIPMENT_CATEGORIES.forEach(catName => {
     wrap.appendChild(renderEquipmentSub(catName));
   });
-
   return wrap;
 }
 
@@ -1100,17 +1144,16 @@ function renderEquipmentItem(catName, item, idx) {
   photosLbl.textContent = 'Фото';
   card.appendChild(photosLbl);
 
-  card.appendChild(renderPhotoPicker(item.photos, item, null));
+  card.appendChild(renderPhotoPicker(item.photos));
 
   return card;
 }
 
 // ============================================
-//  УНИВЕРСАЛЬНЫЙ ПИКЕР ФОТО (Помещения / Оборудование)
+//  ПИКЕР ФОТО (универсальный)
 // ============================================
-function renderPhotoPicker(photosArr, item, stageName) {
+function renderPhotoPicker(photosArr) {
   const wrap = document.createElement('div');
-
   const grid = document.createElement('div');
   grid.style.display = 'flex';
   grid.style.flexWrap = 'wrap';
@@ -1157,7 +1200,6 @@ function renderPhotoPicker(photosArr, item, stageName) {
     grid.appendChild(cell);
   });
 
-  // Кнопка «+»
   const addCell = document.createElement('label');
   addCell.style.width = '72px';
   addCell.style.height = '72px';
@@ -1199,34 +1241,23 @@ function renderPhotoPicker(photosArr, item, stageName) {
 
   addCell.appendChild(fileInp);
   grid.appendChild(addCell);
-
   wrap.appendChild(grid);
   return wrap;
 }
 
 // ============================================
-//  ПИКЕР ФОТО ДЛЯ ПРОХОДКИ (с выбором стороны)
-// ============================================
-function renderPhotoPickerProhodka(photosArr, item, stageName, side) {
-  return renderPhotoPicker(photosArr, item, stageName);
-}
-
-// ============================================
-//  СБОР ЗАПИСЕЙ ДЛЯ ОТПРАВКИ
+//  СБОР ФОТО ДЛЯ ОТПРАВКИ
 // ============================================
 function collectPhotos() {
   const out = [];
-
   const object = objectSelect.value;
   const date = dateInput.value;
   const name = nameInput.value.trim();
 
-  // ─── Помещения ───
-  const pom = photoState['Помещения'];
-  pom.items.forEach(item => {
+  // Помещения
+  photoState['Помещения'].items.forEach(item => {
     Object.keys(item.stages).forEach(stageName => {
-      const photos = item.stages[stageName] || [];
-      photos.forEach(ph => {
+      (item.stages[stageName] || []).forEach(ph => {
         out.push({
           type: 'photo',
           object: object,
@@ -1243,24 +1274,17 @@ function collectPhotos() {
     });
   });
 
-  // ─── Проходки ───
-  const pr = photoState['Проходки'];
-  pr.items.forEach(item => {
+  // Проходки
+  photoState['Проходки'].items.forEach(item => {
     const floorForSend = item.betweenFloors
-      ? (item.floor || '')   // уже "2-3 этаж" или пусто
+      ? (item.floor || '')
       : (item.building === ATTIC ? ATTIC : (item.floor || ''));
 
     Object.keys(item.stages).forEach(stageName => {
       const sides = item.stages[stageName];
-      const fromArr = sides.from || [];
-      const toArr = sides.to || [];
-
-      fromArr.forEach(ph => {
+      (sides.from || []).forEach(ph => {
         out.push({
-          type: 'photo',
-          object: object,
-          date: date,
-          name: name,
+          type: 'photo', object: object, date: date, name: name,
           category: 'Проходки',
           building: item.building || '',
           floor: floorForSend,
@@ -1271,13 +1295,9 @@ function collectPhotos() {
           fileData: ph.dataUrl
         });
       });
-
-      toArr.forEach(ph => {
+      (sides.to || []).forEach(ph => {
         out.push({
-          type: 'photo',
-          object: object,
-          date: date,
-          name: name,
+          type: 'photo', object: object, date: date, name: name,
           category: 'Проходки',
           building: item.building || '',
           floor: floorForSend,
@@ -1291,16 +1311,13 @@ function collectPhotos() {
     });
   });
 
-  // ─── Оборудование ───
+  // Оборудование
   EQUIPMENT_CATEGORIES.forEach(catName => {
     const st = photoState['Оборудование'].subs[catName];
     st.items.forEach(item => {
       (item.photos || []).forEach(ph => {
         out.push({
-          type: 'photo',
-          object: object,
-          date: date,
-          name: name,
+          type: 'photo', object: object, date: date, name: name,
           category: EQUIPMENT_SHORT[catName],
           deviceAddress: item.address || '',
           fileData: ph.dataUrl
@@ -1313,7 +1330,7 @@ function collectPhotos() {
 }
 
 // ============================================
-//  СОСТОЯНИЕ КНОПКИ ОТПРАВКИ
+//  КНОПКА ОТПРАВКИ
 // ============================================
 function updateSendButtonState() {
   const btn = $('btn-send');
@@ -1330,13 +1347,10 @@ function updateSendButtonState() {
 function buildReviewSections() {
   const sections = [];
 
-  // Помещения
-  const pom = photoState['Помещения'];
-  pom.items.forEach((item, idx) => {
+  photoState['Помещения'].items.forEach(item => {
     const photos = [];
     Object.keys(item.stages).forEach(stageName => {
-      const arr = item.stages[stageName] || [];
-      arr.forEach(ph => photos.push({ stage: stageName, ph: ph }));
+      (item.stages[stageName] || []).forEach(ph => photos.push({ stage: stageName, ph: ph }));
     });
     if (!photos.length) return;
 
@@ -1348,14 +1362,12 @@ function buildReviewSections() {
     });
   });
 
-  // Проходки
-  const pr = photoState['Проходки'];
-  pr.items.forEach((item, idx) => {
+  photoState['Проходки'].items.forEach(item => {
     const photos = [];
     Object.keys(item.stages).forEach(stageName => {
       const s = item.stages[stageName];
       (s.from || []).forEach(ph => photos.push({ stage: stageName + ' (из ' + item.roomFrom + ')', ph: ph }));
-      (s.to   || []).forEach(ph => photos.push({ stage: stageName + ' (из ' + item.roomTo + ')',   ph: ph }));
+      (s.to   || []).forEach(ph => photos.push({ stage: stageName + ' (из ' + item.roomTo   + ')', ph: ph }));
     });
     if (!photos.length) return;
 
@@ -1366,7 +1378,6 @@ function buildReviewSections() {
     });
   });
 
-  // Оборудование
   EQUIPMENT_CATEGORIES.forEach(catName => {
     const st = photoState['Оборудование'].subs[catName];
     st.items.forEach(item => {
@@ -1384,8 +1395,8 @@ function buildReviewSections() {
 
 function showReview() {
   const overlay = $('review-overlay');
-  const body = $('review-body');
-  const sub = $('review-subtitle');
+  const body    = $('review-body');
+  const sub     = $('review-subtitle');
 
   const sections = buildReviewSections();
   const totalPhotos = sections.reduce((s, sec) => s + sec.photos.length, 0);
@@ -1394,7 +1405,7 @@ function showReview() {
 
   body.innerHTML = '';
 
-  sections.forEach((sec, sIdx) => {
+  sections.forEach(sec => {
     const el = document.createElement('div');
     el.className = 'rv-entry';
     el.style.marginBottom = '8px';
@@ -1450,10 +1461,8 @@ function showReview() {
   overlay.classList.add('show');
   document.body.classList.add('app-blocked');
 
-  // Слушатели
   const edit = $('review-edit');
   const send = $('review-send');
-
   const editNew = edit.cloneNode(true);
   const sendNew = send.cloneNode(true);
   edit.parentNode.replaceChild(editNew, edit);
@@ -1474,14 +1483,38 @@ function showReview() {
 // ============================================
 function sendPhotos() {
   showMsg('');
+
+  // Та же проверка шапки, что в отчёте
+  let firstProblem = null;
+
+  if (objectErr) objectErr.classList.remove('show');
+  nameErr.classList.remove('show');
+  nameInput.classList.remove('is-invalid');
+
   if (!isNameValid(nameInput.value)) {
+    nameErr.textContent = nameInput.value.trim()
+      ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)'
+      : 'Введите Имя и Фамилию — ровно 2 слова';
     nameErr.classList.add('show');
+    nameInput.classList.add('is-invalid');
+    if (!firstProblem) firstProblem = nameInput;
+  }
+
+  if (!objectSelect.value.trim()) {
+    if (objectErr) objectErr.classList.add('show');
+    updateFieldState(objectSelect);
+    if (!firstProblem) firstProblem = objectSelect;
+  }
+
+  if (firstProblem) {
+    showMsg('⚠️ Заполните поля сверху', 'err');
+    if (firstProblem.focus) firstProblem.focus();
+    if (firstProblem.scrollIntoView) {
+      firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     return;
   }
-  if (!objectSelect.value) {
-    showMsg('⚠️ Выберите объект', 'err');
-    return;
-  }
+
   if (isOffline()) {
     showMsg('📵 Нет подключения к интернету', 'err');
     return;
@@ -1489,7 +1522,7 @@ function sendPhotos() {
 
   const all = collectPhotos();
   if (all.length === 0) {
-    showMsg('⚠️ Нет фотографий', 'err');
+    showMsg('⚠️ Нет фотографий. Разверните нужный раздел и добавьте фото.', 'err');
     return;
   }
 
@@ -1529,17 +1562,11 @@ async function doActualSend() {
     document.body.classList.remove('app-blocked');
     const list = failed.map(f => f.title).join('\n');
     alert('Не удалось отправить ' + failed.length + ' фото:\n\n' + list +
-          '\n\nОстальные фото успешно отправлены. Ошибки можно будет отправить повторно — реализуем в следующей версии.');
+          '\n\nОстальные фото успешно отправлены.');
     return;
   }
 
-  // Очищаем состояние
-  photoState['Помещения'] = { expanded: false, items: [makeEmptyPomeshchenieItem()] };
-  photoState['Проходки']  = { expanded: false, items: [makeEmptyProhodkaItem()] };
-  photoState['Оборудование'] = { expanded: false, subs: {} };
-  EQUIPMENT_CATEGORIES.forEach(catName => {
-    photoState['Оборудование'].subs[catName] = { expanded: false, items: [makeEmptyEquipmentItem()] };
-  });
+  resetAllState();
   renderAll();
 
   showSuccess(all.length);
@@ -1547,7 +1574,7 @@ async function doActualSend() {
 
 function describeRecord(rec) {
   if (rec.category === 'Помещения') return 'Помещение ' + (rec.room || '?');
-  if (rec.category === 'Проходки') return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?');
+  if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?');
   return rec.category + ' · ' + (rec.deviceAddress || '?');
 }
 
@@ -1570,9 +1597,16 @@ function showSuccess(total) {
 }
 
 // ============================================
+//  ПОДКЛЮЧЕНИЕ
+// ============================================
+function setupConnectionWatcher() {
+  window.addEventListener('online', () => { showToast('✅ Соединение восстановлено'); updateSendButtonState(); });
+  window.addEventListener('offline', () => { showToast('📵 Нет подключения к интернету'); updateSendButtonState(); });
+}
+setupConnectionWatcher();
+
+// ============================================
 //  СТАРТ
 // ============================================
+refreshNameGates();
 renderAll();
-</｜｜DSML｜｜ parameter>
-</｜｜DSML｜｜ invoke>
-</｜｜DSML｜｜ calls>
