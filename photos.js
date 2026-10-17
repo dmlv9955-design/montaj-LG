@@ -401,10 +401,8 @@ function updateFieldState(el) {
 function refreshNameGates() {
   const nameOk = isNameValid(nameInput.value);
 
-  // Дата — доступна только если имя валидно
   dateInput.disabled = !nameOk;
 
-  // Объект — блокируется пока нет имени
   const objHint = objectSeg.querySelector('.segmented-hint');
   if (!nameOk) {
     objectSeg.classList.add('segmented-disabled');
@@ -417,7 +415,6 @@ function refreshNameGates() {
     objectSeg.classList.remove('segmented-disabled');
   }
 
-  // Подсветка всех трёх полей — как в отчёте
   updateFieldState(nameInput);
   updateFieldState(dateInput);
   updateFieldState(objectSelect);
@@ -905,19 +902,31 @@ function renderProhodkaItem(item, idx) {
     }
   }
 
+  // ─── ИЗ ПОМЕЩЕНИЯ / В ПОМЕЩЕНИЕ — ОДНОЙ СТРОКОЙ ───
   const roomsLine = document.createElement('div');
-  roomsLine.className = 'mat-line';
-  roomsLine.style.marginTop = '6px';
+  roomsLine.style.display = 'flex';
+  roomsLine.style.flexWrap = 'nowrap';
+  roomsLine.style.alignItems = 'center';
+  roomsLine.style.gap = '4px';
+  roomsLine.style.marginTop = '8px';
+  roomsLine.style.width = '100%';
 
   const fromLbl = document.createElement('span');
-  fromLbl.className = 'mat-line-label';
+  fromLbl.style.fontSize = '11px';
+  fromLbl.style.fontWeight = '600';
+  fromLbl.style.color = 'var(--text-hint)';
+  fromLbl.style.whiteSpace = 'nowrap';
+  fromLbl.style.flex = '0 0 auto';
   fromLbl.textContent = 'Из помещения:';
   roomsLine.appendChild(fromLbl);
 
   const fromInp = document.createElement('input');
   fromInp.type = 'text';
   fromInp.className = 'loc-room-input';
-  fromInp.style.width = '80px';
+  fromInp.style.flex = '1 1 0';
+  fromInp.style.minWidth = '0';
+  fromInp.style.width = 'auto';
+  fromInp.style.maxWidth = '70px';
   fromInp.value = item.roomFrom || '';
   fromInp.addEventListener('input', () => {
     item.roomFrom = fromInp.value.replace(/[^0-9]/g, '');
@@ -927,15 +936,22 @@ function renderProhodkaItem(item, idx) {
   roomsLine.appendChild(fromInp);
 
   const toLbl = document.createElement('span');
-  toLbl.className = 'mat-line-label';
+  toLbl.style.fontSize = '11px';
+  toLbl.style.fontWeight = '600';
+  toLbl.style.color = 'var(--text-hint)';
+  toLbl.style.whiteSpace = 'nowrap';
+  toLbl.style.flex = '0 0 auto';
+  toLbl.style.marginLeft = '4px';
   toLbl.textContent = 'В помещение:';
-  toLbl.style.marginLeft = '10px';
   roomsLine.appendChild(toLbl);
 
   const toInp = document.createElement('input');
   toInp.type = 'text';
   toInp.className = 'loc-room-input';
-  toInp.style.width = '80px';
+  toInp.style.flex = '1 1 0';
+  toInp.style.minWidth = '0';
+  toInp.style.width = 'auto';
+  toInp.style.maxWidth = '70px';
   toInp.value = item.roomTo || '';
   toInp.addEventListener('input', () => {
     item.roomTo = toInp.value.replace(/[^0-9]/g, '');
