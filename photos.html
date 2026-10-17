@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Фотофиксация</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<button class="theme-toggle" id="theme-toggle" type="button" title="Сменить тему">
+  <span id="theme-icon">🌙</span>
+</button>
+
+<div class="header">
+  <h1>📸 Фотофиксация</h1>
+  <p>Загрузите фотографии выполненной работы</p>
+</div>
+
+<!-- ============ КАРТОЧКА 1: СМЕНА ============ -->
+<div class="card">
+  <div class="section-title">Смена</div>
+
+  <div class="row">
+    <div class="col-1">
+      <label>Дата <span class="req-star">*</span></label>
+      <input type="date" id="date" class="req-field">
+    </div>
+    <div class="col-2">
+      <label>Имя Фамилия <span class="req-star">*</span></label>
+      <div class="field-with-clear">
+        <input type="text" id="name" class="req-field"
+               placeholder="Василий Пупкин"
+               autocomplete="name" autocapitalize="words" spellcheck="false"
+               maxlength="40">
+        <button type="button" class="field-clear" id="clear-name" title="Очистить">×</button>
+      </div>
+      <div class="field-error" id="err-name">Введите Имя и Фамилию — ровно 2 слова</div>
+    </div>
+  </div>
+
+  <label>Объект <span class="req-star">*</span></label>
+  <div class="segmented" id="object-segmented">
+    <input type="hidden" id="object" class="req-field" value="">
+    <span class="segmented-hint">🔒 Введите имя</span>
+    <button type="button" class="segmented-btn" data-value="Ларинская гимназия">Ларинская гимназия</button>
+    <button type="button" class="segmented-btn" data-value="ЖЕДЕПОМ">ЖЕДЕПОМ</button>
+  </div>
+  <div class="field-error" id="err-object">Заполните это поле</div>
+</div>
+
+<!-- ============ КАРТОЧКА 2: ФОТОФИКСАЦИЯ ============ -->
+<div class="card" id="photo-works-card">
+  <div class="section-title">Фотофиксация</div>
+  <p class="hint-small" style="margin:0 0 12px">
+    Раскройте нужный раздел и добавьте фото
+  </p>
+  <div id="photo-works-container"></div>
+</div>
+
+<!-- ============ КАРТОЧКА 3: ОТПРАВКА ============ -->
+<div class="card">
+  <button class="submit" id="btn-send" onclick="sendPhotos()" disabled>📤 Отправить фотофиксацию</button>
+  <div id="msg"></div>
+  <p class="hint">Поля со <span style="color:#ef4444">*</span> обязательны</p>
+</div>
+
+<div class="footer">
+  <a href="index.html" style="color: var(--text-hint); text-decoration: none;">
+    ← Вернуться к отчёту
+  </a>
+</div>
+
+<!-- ============ ЭКРАН ПРОВЕРКИ ============ -->
+<div class="review-overlay" id="review-overlay">
+  <div class="review-modal">
+    <div class="review-header">
+      <div class="review-title">Проверьте фотофиксацию</div>
+      <div class="review-subtitle" id="review-subtitle">—</div>
+    </div>
+    <div class="review-body" id="review-body"></div>
+    <div class="review-footer">
+      <button type="button" class="review-btn review-btn-edit" id="review-edit">✏️ Изменить</button>
+      <button type="button" class="review-btn review-btn-send" id="review-send">✅ Отправить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ПРОГРЕСС (БЛОКИРУЮЩИЙ) ============ -->
+<div class="progress-overlay" id="progress-overlay">
+  <div class="progress-spinner"></div>
+  <div class="progress-title">Загружаем фото</div>
+  <div class="progress-counter" id="progress-counter">0 из 0</div>
+</div>
+
+<!-- ============ ОКНО УСПЕХА ============ -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-box">
+    <div class="success-check">✓</div>
+    <div class="success-title">Фотографии отправлены</div>
+    <div class="success-sub" id="success-sub"></div>
+    <button type="button" class="success-btn" id="success-close" title="Закрыть">👍</button>
+    <div class="success-hint">Нажмите, чтобы закрыть</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="photos.js"></script>
+</body>
+</html>
