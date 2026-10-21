@@ -182,6 +182,21 @@ function isBuildingRequired() { return !!BUILDINGS_BY_OBJECT[objectSelect.value]
 function isMasterWingBuilding(b) { return b === MASTER_WING; }
 function isAtticBuilding(b) { return b === ATTIC; }
 
+// Автоматическое форматирование адреса устройства (1 15 -> 1.15, 2-111 -> 2.111)
+function formatDeviceAddress(val) {
+  let s = String(val == null ? '' : val);
+  // Заменяем любые нецифровые символы на точки
+  s = s.replace(/[^0-9]+/g, '.');
+  // Убираем точки в начале
+  s = s.replace(/^\.+/, '');
+  // Разделяем по точкам и оставляем максимум 2 части (этаж и помещение)
+  let parts = s.split('.');
+  if (parts.length > 2) {
+    parts = parts.slice(0, 2);
+  }
+  return parts.join('.');
+}
+
 // ============================================
 //  СЖАТИЕ ФОТО
 // ============================================
@@ -479,7 +494,7 @@ nameInput.addEventListener('blur', () => {
 let prevObject = objectSelect.value;
 
 objectSelect.addEventListener('change', () => {
-  const hasPhotos = collectPhotos().length > 0;
+  const hasPhotos = collectPhotos(false).length > 0 || collectPhotos(true).length > 0;
   if (hasPhotos && prevObject && objectSelect.value !== prevObject) {
     const ok = confirm('При смене объекта загруженные фото будут удалены. Продолжить?');
     if (!ok) {
@@ -1144,16 +1159,28 @@ function renderEquipmentItem(catName, item, idx) {
 
   const inp = document.createElement('input');
   inp.type = 'text';
-  inp.inputMode = 'decimal';
+  // Убираем inputMode, чтобы разрешить ввод любых символов (пробел, запятая, дефис)
   inp.className = 'loc-room-input';
   inp.style.width = '120px';
   inp.placeholder = '2.45';
   inp.value = item.address || '';
+  
   inp.addEventListener('input', () => {
-    item.address = inp.value.replace(/[^0-9.]/g, '');
-    if (inp.value !== item.address) inp.value = item.address;
+    const before = inp.value;
+    const after = formatDeviceAddress(before);
+    
+    if (before !== after) {
+      // Сохраняем позицию курсора
+      const pos = inp.selectionStart;
+      const delta = before.length - after.length;
+      inp.value = after;
+      inp.setSelectionRange(pos - delta, pos - delta);
+    }
+    
+    item.address = inp.value;
     updateSendButtonState();
   });
+  
   line.appendChild(inp);
   card.appendChild(line);
 
@@ -1624,9 +1651,7 @@ async function doActualSend() {
       try {
         const txt = await res.text();
         resp = JSON.parse(txt);
-      } catch (_) {
-        // если не удалось распарсить — считаем что CORS-блок, сервер получил
-      }
+      } catch (_) {}
 
       if (resp && resp.ok === false) {
         failed.push({ record: rec, error: resp.error || 'unknown' });
@@ -1635,7 +1660,6 @@ async function doActualSend() {
         sent++;
       }
     } catch (e) {
-      // Сетевая ошибка или CORS-блок. Пробуем no-cors fallback.
       try {
         await fetch(API_URL, {
           method: 'POST',
