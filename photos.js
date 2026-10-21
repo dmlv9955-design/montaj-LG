@@ -88,6 +88,7 @@ function makeEmptyProhodkaItem() {
   return {
     building: '', floor: '',
     roomFrom: '', roomTo: '',
+    penetrationNum: '', // <--- ДОБАВЛЕНО
     betweenFloors: false,
     floorFrom: '', floorTo: '',
     stages: {}
@@ -182,14 +183,10 @@ function isBuildingRequired() { return !!BUILDINGS_BY_OBJECT[objectSelect.value]
 function isMasterWingBuilding(b) { return b === MASTER_WING; }
 function isAtticBuilding(b) { return b === ATTIC; }
 
-// Автоматическое форматирование адреса устройства (1 15 -> 1.15, 2-111 -> 2.111)
 function formatDeviceAddress(val) {
   let s = String(val == null ? '' : val);
-  // Заменяем любые нецифровые символы на точки
   s = s.replace(/[^0-9]+/g, '.');
-  // Убираем точки в начале
   s = s.replace(/^\.+/, '');
-  // Разделяем по точкам и оставляем максимум 2 части (этаж и помещение)
   let parts = s.split('.');
   if (parts.length > 2) {
     parts = parts.slice(0, 2);
@@ -254,7 +251,7 @@ const objectSeg    = $('object-segmented');
 const container    = $('photo-works-container');
 
 // ============================================
-//  ДАТА — диапазон и подсветка
+//  ДАТА
 // ============================================
 function setupDateRange() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -983,6 +980,33 @@ function renderProhodkaItem(item, idx) {
 
   card.appendChild(roomsLine);
 
+  // ─── № ПРОХОДКИ ───
+  const numLine = document.createElement('div');
+  numLine.className = 'mat-line';
+  numLine.style.marginTop = '6px';
+
+  const numLbl = document.createElement('span');
+  numLbl.className = 'mat-line-label';
+  numLbl.textContent = '№ проходки:';
+  numLine.appendChild(numLbl);
+
+  const numInp = document.createElement('input');
+  numInp.type = 'text';
+  numInp.inputMode = 'numeric';
+  numInp.pattern = '[0-9]*';
+  numInp.className = 'loc-room-input';
+  numInp.style.width = '80px';
+  numInp.placeholder = '1';
+  numInp.value = item.penetrationNum || '';
+  numInp.addEventListener('input', () => {
+    item.penetrationNum = numInp.value.replace(/[^0-9]/g, '');
+    if (numInp.value !== item.penetrationNum) numInp.value = item.penetrationNum;
+    updateSendButtonState();
+  });
+  numLine.appendChild(numInp);
+  card.appendChild(numLine);
+  // ───────────────────
+
   const stagesTitle = document.createElement('div');
   stagesTitle.className = 'section-subtitle';
   stagesTitle.style.marginTop = '12px';
@@ -1159,7 +1183,6 @@ function renderEquipmentItem(catName, item, idx) {
 
   const inp = document.createElement('input');
   inp.type = 'text';
-  // Убираем inputMode, чтобы разрешить ввод любых символов (пробел, запятая, дефис)
   inp.className = 'loc-room-input';
   inp.style.width = '120px';
   inp.placeholder = '2.45';
@@ -1170,7 +1193,6 @@ function renderEquipmentItem(catName, item, idx) {
     const after = formatDeviceAddress(before);
     
     if (before !== after) {
-      // Сохраняем позицию курсора
       const pos = inp.selectionStart;
       const delta = before.length - after.length;
       inp.value = after;
@@ -1314,7 +1336,7 @@ function renderPhotoPicker(photosArr) {
 }
 
 // ============================================
-//  СБОР ФОТО (пропускаем уже отправленные)
+//  СБОР ФОТО
 // ============================================
 function collectPhotos(includeSent) {
   const out = [];
@@ -1357,6 +1379,7 @@ function collectPhotos(includeSent) {
           floor: floorForSend,
           roomFrom: item.roomFrom || '',
           roomTo: item.roomTo || '',
+          penetrationNum: item.penetrationNum || '', // <--- ДОБАВЛЕНО
           side: 'from',
           stage: stageName,
           fileData: ph.dataUrl
@@ -1372,6 +1395,7 @@ function collectPhotos(includeSent) {
           floor: floorForSend,
           roomFrom: item.roomFrom || '',
           roomTo: item.roomTo || '',
+          penetrationNum: item.penetrationNum || '', // <--- ДОБАВЛЕНО
           side: 'to',
           stage: stageName,
           fileData: ph.dataUrl
@@ -1443,6 +1467,7 @@ function buildReviewSections() {
 
     sections.push({
       title: 'Проходка ' + (item.roomFrom || '?') + '-' + (item.roomTo || '?') +
+             (item.penetrationNum ? ' (№' + item.penetrationNum + ')' : '') + // <--- ДОБАВЛЕНО
              (item.floor ? ' · ' + item.floor : ''),
       photos: photos
     });
@@ -1710,7 +1735,7 @@ async function doActualSend() {
 
 function describeRecord(rec) {
   if (rec.category === 'Помещения') return 'Помещение ' + (rec.room || '?');
-  if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?');
+  if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?') + (rec.penetrationNum ? ' №' + rec.penetrationNum : '');
   return rec.category + ' · ' + (rec.deviceAddress || '?');
 }
 
