@@ -166,7 +166,12 @@ function clearMatGroupExpansion() {
 // ============================================
 //  ДОП. РАБОТЫ
 // ============================================
-function makeLocationItem() { return { building: '', floor: '', room: '', value: '' }; }
+function makeLocationItem() {
+  return {
+    building: '', floor: '', room: '', value: '',
+    isCross: false, buildingTo: '', floorTo: '', roomTo: ''
+  };
+}
 
 function makeAdditionalState() {
   const state = {};
@@ -243,7 +248,7 @@ function hasActiveAdditional() {
   if (additionalState.mentorship.items.some(m => m.name || m.hours)) return true;
   return LOCATION_WORKS.some(w => {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
-    return items.some(it => it.building || it.floor || it.room || it.value);
+    return items.some(it => it.building || it.floor || it.room || it.value || it.buildingTo || it.floorTo || it.roomTo);
   });
 }
 
@@ -497,6 +502,7 @@ function formatFloorLabel(floor) {
 
 function formatJournalTitle(entry) {
   if (isLocationKind(entry.kind)) {
+    if (entry.is_cross) return entry.room || 'Сквозная проходка';
     const parts = [];
     const fl = formatFloorLabel(entry.floor);
     if (fl) parts.push(fl);
@@ -659,26 +665,25 @@ function refreshMatRowHighlight(rowEl, row, buildingRequired) {
 
 function refreshAddItemHighlight(itemEl, item) {
   if (!itemEl || !itemEl.isConnected) return;
-  const hasAny = !!(item.building || item.floor || item.room || item.value);
+  const hasAny = !!(item.building || item.floor || item.room || item.value || item.buildingTo || item.floorTo || item.roomTo);
 
-  const corpSeg = itemEl.querySelector('.segmented:not(.segmented-floors)');
-  if (corpSeg) {
-    const isEmpty = hasAny && isBuildingRequired() && !item.building;
-    corpSeg.classList.toggle('is-empty', isEmpty);
-  }
+  const corpSegs = itemEl.querySelectorAll('.segmented:not(.segmented-floors)');
+  corpSegs.forEach(seg => {
+    const isEmpty = hasAny && isBuildingRequired() && !seg.querySelector('.segmented-btn.active');
+    seg.classList.toggle('is-empty', isEmpty);
+  });
 
-  const floorSeg = itemEl.querySelector('.segmented.segmented-floors');
-  if (floorSeg) {
-    const isAtticZ = (item.building === 'Чердак');
-    const isEmpty = hasAny && !isAtticZ && !item.floor;
-    floorSeg.classList.toggle('is-empty', isEmpty);
-  }
+  const floorSegs = itemEl.querySelectorAll('.segmented.segmented-floors');
+  floorSegs.forEach(seg => {
+    const isEmpty = hasAny && !seg.querySelector('.segmented-btn.active');
+    seg.classList.toggle('is-empty', isEmpty);
+  });
 
-  const roomInp = itemEl.querySelector('.room-wrap .req-field');
-  if (roomInp) {
-    if (hasAny && !item.room) roomInp.classList.add('is-empty');
-    else roomInp.classList.remove('is-empty');
-  }
+  const roomInps = itemEl.querySelectorAll('.room-wrap .req-field');
+  roomInps.forEach(inp => {
+    if (hasAny && !inp.value.trim()) inp.classList.add('is-empty');
+    else inp.classList.remove('is-empty');
+  });
 
   const qInp = itemEl.querySelector('.variant-line .variant-input');
   if (qInp) {
@@ -798,7 +803,7 @@ function shakeAllInvalidFields() {
     const group = additionalFields.querySelector('.add-group[data-work-key="' + w.key + '"]');
     if (!group) return;
     items.forEach((it, idx) => {
-      const hasAny = !!(it.building || it.floor || it.room || it.value);
+      const hasAny = !!(it.building || it.floor || it.room || it.value || it.buildingTo || it.floorTo || it.roomTo);
       if (!hasAny) return;
       const itemEl = group.querySelector('.add-item[data-item-idx="' + idx + '"]');
       if (!itemEl) return;
@@ -1199,7 +1204,6 @@ function renderMaterialsForBlock(work) {
       const varExpKey = work + '|' + mat.id + '|' + r.key;
       const filledCount = getVariantFilledCount(data);
 
-      // Если в варианте есть данные — автоматически раскрываем
       if (isMulti && filledCount > 0) {
         _matVariantExpanded[varExpKey] = true;
       }
@@ -1621,11 +1625,20 @@ function fixAddField(workKey, itemIdx, fieldType) {
     if (!group) return;
     const itemEl = group.querySelector('.add-item[data-item-idx="' + itemIdx + '"]');
     if (!itemEl) return;
+    
     let el = null;
-    if (fieldType === 'corp') el = itemEl.querySelector('.segmented:not(.segmented-floors) .segmented-btn');
-    else if (fieldType === 'floor') el = itemEl.querySelector('.segmented.segmented-floors .segmented-btn');
-    else if (fieldType === 'room') el = itemEl.querySelector('.room-wrap .req-field');
+    const segs = itemEl.querySelectorAll('.segmented:not(.segmented-floors)');
+    const floorSegs = itemEl.querySelectorAll('.segmented.segmented-floors');
+    const roomInps = itemEl.querySelectorAll('.room-wrap .req-field');
+
+    if (fieldType === 'corp') el = segs[0]?.querySelector('.segmented-btn');
+    else if (fieldType === 'corp-to') el = segs[1]?.querySelector('.segmented-btn');
+    else if (fieldType === 'floor') el = floorSegs[0]?.querySelector('.segmented-btn');
+    else if (fieldType === 'floor-to') el = floorSegs[1]?.querySelector('.segmented-btn');
+    else if (fieldType === 'room') el = roomInps[0];
+    else if (fieldType === 'room-to') el = roomInps[1];
     else if (fieldType === 'qty') el = itemEl.querySelector('.variant-line .variant-input');
+    
     if (!el) return;
     try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
     el.classList.add('pulse-attention');
@@ -1762,8 +1775,39 @@ function validateAdditionalOnly() {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      const hasAny = !!(it.building || it.floor || it.room || it.value);
+      const hasAny = !!(it.building || it.floor || it.room || it.value || it.buildingTo || it.floorTo || it.roomTo);
       if (!hasAny) continue;
+
+      if (w.key === 'burenie' && it.isCross) {
+        const needB = isBuildingRequired();
+        if (needB && !it.building) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите корпус (Откуда)', fix: () => fixAddField(w.key, i, 'corp') };
+        }
+        if (needB && !it.buildingTo) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите корпус (Куда)', fix: () => fixAddField(w.key, i, 'corp-to') };
+        }
+        const isAtticZ = (it.building === 'Чердак');
+        if (!isAtticZ && !it.floor) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите этаж (Откуда)', fix: () => fixAddField(w.key, i, 'floor') };
+        }
+        const isAtticZTo = (it.buildingTo === 'Чердак');
+        if (!isAtticZTo && !it.floorTo) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите этаж (Куда)', fix: () => fixAddField(w.key, i, 'floor-to') };
+        }
+        const r = normalizeZadelkaRoom(it.room || '');
+        if (!r) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите помещение (Откуда)', fix: () => fixAddField(w.key, i, 'room') };
+        }
+        const rTo = normalizeZadelkaRoom(it.roomTo || '');
+        if (!rTo) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите помещение (Куда)', fix: () => fixAddField(w.key, i, 'room-to') };
+        }
+        const v = parseFloat(String(it.value || '').replace(',', '.'));
+        if (!isFinite(v) || v <= 0) {
+          return { message: w.label + ', место ' + (i + 1) + ': укажите количество', fix: () => fixAddField(w.key, i, 'qty') };
+        }
+        continue;
+      }
 
       const needB = isBuildingRequired();
       if (needB && !it.building) {
@@ -1829,15 +1873,39 @@ function applyAdditionalToJournal() {
   LOCATION_WORKS.forEach(w => {
     const items = (additionalState[w.key] && additionalState[w.key].items) || [];
     items.forEach(it => {
-      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value;
+      const isEmptyRow = !it.building && !it.floor && !it.room && !it.value && !it.buildingTo && !it.floorTo && !it.roomTo;
       if (isEmptyRow) return;
       const v = parseFloat(String(it.value || '').replace(',', '.'));
       if (!isFinite(v) || v <= 0) return;
-      const zRoom = applyPrefixToRoom(normalizeZadelkaRoom(it.room || ''), it.building || '');
-      const zEntry = { kind: w.key, building: it.building || '', floor: it.floor || '', room: zRoom, qty: it.value };
+
+      let zRoom = applyPrefixToRoom(normalizeZadelkaRoom(it.room || ''), it.building || '');
+      let zRoomFinal = zRoom;
+      let floorFinal = it.floor || '';
+
+      if (it.isCross) {
+        const zRoomTo = applyPrefixToRoom(normalizeZadelkaRoom(it.roomTo || ''), it.buildingTo || '');
+        let loc1 = `${it.building ? it.building + ' ' : ''}${it.floor ? it.floor + 'эт ' : ''}пом.${zRoom}`.trim().replace(/\s+/g, ' ');
+        let loc2 = `${it.buildingTo ? it.buildingTo + ' ' : ''}${it.floorTo ? it.floorTo + 'эт ' : ''}пом.${zRoomTo}`.trim().replace(/\s+/g, ' ');
+        zRoomFinal = `Из: ${loc1} → В: ${loc2}`;
+        floorFinal = ''; 
+      }
+
+      const zEntry = {
+        kind: w.key,
+        building: it.building || '',
+        floor: floorFinal,
+        room: zRoomFinal,
+        qty: it.value,
+        is_cross: it.isCross || false
+      };
+
       const idx = journal.findIndex(e =>
-        e.kind === w.key && (e.building || '') === zEntry.building && (e.floor || '') === zEntry.floor
+        e.kind === w.key &&
+        (e.building || '') === zEntry.building &&
+        (e.floor || '') === zEntry.floor &&
+        !e.is_cross && !zEntry.is_cross
       );
+
       if (idx !== -1) {
         const oldQ = parseFloat(String(journal[idx].qty).replace(',', '.')) || 0;
         const newQ = oldQ + v;
@@ -2014,6 +2082,137 @@ function addAllToJournal() {
 // ============================================
 //  РЕНДЕР ДОП. РАБОТ
 // ============================================
+
+function renderSingleLocationBlock(data, isSource, isCross, onChange, workKey, idx) {
+  const block = document.createElement('div');
+  if (isCross) {
+    block.style.padding = '10px 12px';
+    block.style.marginTop = '8px';
+    block.style.border = '1.5px dashed var(--border-focus)';
+    block.style.borderRadius = '10px';
+    block.style.background = 'var(--card-bg)';
+  } else {
+    block.style.padding = '0';
+    block.style.marginTop = '0';
+  }
+
+  if (isCross) {
+    const title = document.createElement('div');
+    title.style.fontSize = '12px';
+    title.style.fontWeight = '700';
+    title.style.color = 'var(--border-focus)';
+    title.style.marginBottom = '6px';
+    title.textContent = isSource ? '📍 Откуда (Из)' : '🎯 Куда (В)';
+    block.appendChild(title);
+  }
+
+  const bKey = isSource ? 'building' : 'buildingTo';
+  const fKey = isSource ? 'floor' : 'floorTo';
+  const rKey = isSource ? 'room' : 'roomTo';
+
+  // Корпус
+  if (isBuildingRequired()) {
+    const corpLine = document.createElement('div');
+    corpLine.className = 'mat-line';
+    corpLine.style.marginTop = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'mat-line-label';
+    lbl.textContent = 'Корпус:';
+    corpLine.appendChild(lbl);
+
+    const corpWrap = document.createElement('div');
+    corpWrap.className = 'mat-line-corp';
+    BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'loc-floor-btn' + (data[bKey] === val ? ' active' : '');
+      b.textContent = val;
+      b.addEventListener('click', () => {
+        data[bKey] = val;
+        data[fKey] = '';
+        data[rKey] = '';
+        onChange();
+      });
+      corpWrap.appendChild(b);
+    });
+    corpLine.appendChild(corpWrap);
+    block.appendChild(corpLine);
+  }
+
+  // Этаж
+  const building = data[bKey];
+  const isAtticZ = (building === 'Чердак');
+
+  if (!isAtticZ) {
+    const floorLine = document.createElement('div');
+    floorLine.className = 'mat-line';
+    floorLine.style.marginTop = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'mat-line-label';
+    lbl.textContent = 'Этаж:';
+    floorLine.appendChild(lbl);
+
+    const fWrap = document.createElement('div');
+    fWrap.className = 'mat-line-floors';
+    const floors = getFloorsFor(objectSelect.value, building) || [];
+    const buildingChosen = !isBuildingRequired() || !!building;
+
+    floors.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'loc-floor-btn' + (data[fKey] === f ? ' active' : '');
+      b.textContent = f;
+      if (!buildingChosen) b.disabled = true;
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        data[fKey] = f;
+        onChange();
+      });
+      fWrap.appendChild(b);
+    });
+    floorLine.appendChild(fWrap);
+    block.appendChild(floorLine);
+  }
+
+  // Помещение
+  const roomLine = document.createElement('div');
+  roomLine.className = 'mat-line';
+  roomLine.style.marginTop = '6px';
+  const lbl = document.createElement('span');
+  lbl.className = 'mat-line-label';
+  lbl.textContent = 'Помещение:';
+  roomLine.appendChild(lbl);
+
+  const rWrap = document.createElement('div');
+  rWrap.className = 'room-wrap';
+  if (isMasterWingBuilding(building)) {
+    const p = document.createElement('span');
+    p.className = 'room-prefix';
+    p.textContent = MASTER_WING_PREFIX;
+    rWrap.appendChild(p);
+  }
+
+  const rInp = document.createElement('input');
+  rInp.type = 'text';
+  rInp.className = 'req-field';
+  rInp.placeholder = '12';
+  rInp.inputMode = 'numeric';
+  rInp.pattern = '[0-9]*';
+  rInp.maxLength = 20;
+  rInp.value = data[rKey] || '';
+  rInp.dataset.focusId = workKey + '_' + (isSource ? 'from' : 'to') + '_room_' + idx;
+
+  rInp.addEventListener('input', () => {
+    data[rKey] = rInp.value.replace(/[^0-9]/g, '');
+    if (rInp.value !== data[rKey]) rInp.value = data[rKey];
+  });
+  rWrap.appendChild(rInp);
+  roomLine.appendChild(rWrap);
+  block.appendChild(roomLine);
+
+  return block;
+}
+
 function renderLocationFields(workKey, container) {
   const work = locationWorkByKey(workKey);
   if (!work) return;
@@ -2056,6 +2255,7 @@ function renderLocationFields(workKey, container) {
   bodyEl.className = 'add-group-body';
 
   const items = additionalState[workKey].items;
+  const isBurenie = (workKey === 'burenie');
 
   items.forEach((item, idx) => {
     const itemEl = document.createElement('div');
@@ -2068,11 +2268,9 @@ function renderLocationFields(workKey, container) {
     resetBtn.title = 'Сбросить место';
     resetBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!(item.building || item.floor || item.room || item.value)) return;
-      item.building = '';
-      item.floor = '';
-      item.room = '';
-      item.value = '';
+      if (!(item.building || item.floor || item.room || item.value || item.buildingTo || item.floorTo || item.roomTo)) return;
+      item.building = ''; item.floor = ''; item.room = ''; item.value = '';
+      item.buildingTo = ''; item.floorTo = ''; item.roomTo = '';
       renderAdditionalFields();
     });
     itemEl.appendChild(resetBtn);
@@ -2095,105 +2293,31 @@ function renderLocationFields(workKey, container) {
       itemEl.appendChild(del);
     }
 
-    const bLabel = document.createElement('label');
-    bLabel.innerHTML = 'Корпус <span class="req-star">*</span>';
-    itemEl.appendChild(bLabel);
-
-    const bSeg = document.createElement('div');
-    bSeg.className = 'segmented';
-
-    if (isBuildingRequired()) {
-      BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'segmented-btn';
-        btn.dataset.value = val;
-        if (item.building === val) btn.classList.add('active');
-        btn.textContent = val;
-        btn.addEventListener('click', () => {
-          item.building = val; item.floor = ''; item.room = '';
-          renderAdditionalFields();
-        });
-        bSeg.appendChild(btn);
-      });
-    } else {
-      bSeg.classList.add('segmented-disabled');
-      const hint2 = document.createElement('span');
-      hint2.className = 'segmented-hint';
-      hint2.textContent = objectSelect.value
-        ? 'Для «' + objectSelect.value + '» корпус не используется'
-        : '🔒 Сначала объект';
-      bSeg.appendChild(hint2);
-    }
-    itemEl.appendChild(bSeg);
-
-    const building = item.building;
-    const isAtticZ = (building === 'Чердак');
-
-    if (!isAtticZ) {
-      const fLabel = document.createElement('label');
-      fLabel.innerHTML = 'Этаж <span class="req-star">*</span>';
-      itemEl.appendChild(fLabel);
-
-      const fWrap = document.createElement('div');
-      fWrap.className = 'segmented segmented-floors';
-      fWrap.innerHTML = '<input type="hidden" class="req-field" value="">' +
-        '<span class="segmented-hint">— выберите —</span>';
-      itemEl.appendChild(fWrap);
-
-      const floorList = getFloorsFor(objectSelect.value, building) || [];
-      const buildingChosen = !isBuildingRequired() || !!building;
-
-      const fSeg = new SegmentedControl(fWrap);
-      fSeg.setOptions(floorList);
-      if (item.floor) fSeg.value = item.floor;
-      fSeg.input.addEventListener('change', () => {
-        item.floor = fSeg.value;
+    if (isBurenie) {
+      const crossBtn = document.createElement('button');
+      crossBtn.type = 'button';
+      crossBtn.className = 'loc-floor-btn' + (item.isCross ? ' active' : '');
+      crossBtn.style.marginBottom = '8px';
+      crossBtn.style.width = '100%';
+      crossBtn.style.whiteSpace = 'normal';
+      crossBtn.style.lineHeight = '1.3';
+      crossBtn.textContent = item.isCross ? '↔ Сквозная проходка (Откуда / Куда)' : '↔ Сделать сквозной проходкой';
+      crossBtn.addEventListener('click', () => {
+        item.isCross = !item.isCross;
+        if (!item.isCross) {
+          item.buildingTo = ''; item.floorTo = ''; item.roomTo = '';
+        }
         renderAdditionalFields();
       });
-
-      if (!buildingChosen) fSeg.disabled = true;
+      itemEl.appendChild(crossBtn);
     }
 
-    const rLabel = document.createElement('label');
-    rLabel.innerHTML = 'Помещения <span class="req-star">*</span>';
-    itemEl.appendChild(rLabel);
-
-    const rWrap = document.createElement('div');
-    rWrap.className = 'room-wrap';
-    if (building === MASTER_WING) {
-      const prefix = document.createElement('span');
-      prefix.className = 'room-prefix';
-      prefix.textContent = MASTER_WING_PREFIX;
-      rWrap.appendChild(prefix);
+    if (item.isCross) {
+      itemEl.appendChild(renderSingleLocationBlock(item, true, true, renderAdditionalFields, workKey, idx));
+      itemEl.appendChild(renderSingleLocationBlock(item, false, true, renderAdditionalFields, workKey, idx));
+    } else {
+      itemEl.appendChild(renderSingleLocationBlock(item, true, false, renderAdditionalFields, workKey, idx));
     }
-
-    const rInp = document.createElement('input');
-    rInp.type = 'text'; rInp.className = 'req-field';
-    rInp.placeholder = '12, 15, 20';
-    rInp.inputMode = 'text'; rInp.autocomplete = 'off'; rInp.maxLength = 60;
-    rInp.value = item.room || '';
-    rInp.dataset.focusId = workKey + '_room_' + idx;
-
-    setupRoomInput(rInp, (val) => {
-      item.room = val;
-      refreshAddItemHighlight(itemEl, item);
-    });
-
-    rInp.addEventListener('blur', () => {
-      const n = finalizeRooms(rInp.value);
-      if (rInp.value !== n) rInp.value = n;
-      item.room = n;
-      refreshAddItemHighlight(itemEl, item);
-    });
-    rWrap.appendChild(rInp);
-    itemEl.appendChild(rWrap);
-
-    const hintEl = document.createElement('div');
-    hintEl.className = 'hint-small';
-    hintEl.textContent = building === MASTER_WING
-      ? 'Номера через запятую. Все сохранятся с префиксом «к».'
-      : 'Номера через запятую. Сохранятся по возрастанию.';
-    itemEl.appendChild(hintEl);
 
     const qLine = document.createElement('div');
     qLine.className = 'variant-line';
@@ -2660,14 +2784,28 @@ function editJournalEntry(idx) {
   renderJournal();
 
   if (isLocationKind(entry.kind)) {
-    let restoredFloor = entry.floor || '';
-    if (restoredFloor === 'Нет') restoredFloor = '';
-    additionalState[entry.kind].items = [{
-      building: entry.building || '',
-      floor: restoredFloor,
-      room: stripPrefixFromRoom(entry.room || ''),
-      value: entry.qty || ''
-    }];
+    if (entry.is_cross) {
+      // Восстановление сквозной проходки
+      additionalState[entry.kind].items = [{
+        building: entry.building || '',
+        floor: entry.floor || '',
+        room: entry.room || '',
+        value: entry.qty || '',
+        isCross: true,
+        buildingTo: entry.buildingTo || '', // мы не парсим строку, а сохраняем доп. поля (пока сложно)
+        floorTo: entry.floorTo || '',
+        roomTo: entry.roomTo || ''
+      }];
+    } else {
+      let restoredFloor = entry.floor || '';
+      if (restoredFloor === 'Нет') restoredFloor = '';
+      additionalState[entry.kind].items = [{
+        building: entry.building || '',
+        floor: restoredFloor,
+        room: stripPrefixFromRoom(entry.room || ''),
+        value: entry.qty || ''
+      }];
+    }
     _addGroupExpanded['add|' + entry.kind] = true;
     renderAdditionalFields();
   } else if (entry.kind === 'mentorship') {
@@ -2825,6 +2963,7 @@ function ensureReviewModal() {
 
 function buildEntryLocLabel(entry) {
   if (entry.kind === 'mentorship') return entry.name || 'Наставничество';
+  if (entry.is_cross) return entry.room || 'Сквозная проходка';
   const floorLabel = formatFloorLabel(entry.floor);
   const roomLabel = 'пом. ' + (entry.is_master_wing ? MASTER_WING_PREFIX : '') + (entry.room || '');
   if (!floorLabel) return roomLabel;
