@@ -1,5 +1,5 @@
 // ============================================
-//  ТЕМА (общая с index.html)
+//  ТЕМА
 // ============================================
 (function initTheme() {
   const toggle = document.getElementById('theme-toggle');
@@ -88,9 +88,10 @@ function makeEmptyProhodkaItem() {
   return {
     building: '', floor: '',
     roomFrom: '', roomTo: '',
-    penetrationNum: '', // <--- ДОБАВЛЕНО
+    penetrationNum: '',
     betweenFloors: false,
     floorFrom: '', floorTo: '',
+    isCross: false, buildingTo: '', crossFloorTo: '',
     stages: {}
   };
 }
@@ -833,152 +834,176 @@ function renderProhodkaItem(item, idx) {
     card.appendChild(top);
   }
 
-  if (isBuildingRequired()) card.appendChild(renderBuildingRow(item, renderAll));
-  if (!isAtticItem(item)) {
-    card.appendChild(renderFloorRow(item, renderAll));
-
-    const betweenLine = document.createElement('div');
-    betweenLine.className = 'mat-line';
-    betweenLine.style.marginTop = '6px';
-
-    const betweenBtn = document.createElement('button');
-    betweenBtn.type = 'button';
-    betweenBtn.className = 'loc-floor-btn' + (item.betweenFloors ? ' active' : '');
-    betweenBtn.textContent = 'Между этажами';
-    betweenBtn.addEventListener('click', () => {
-      item.betweenFloors = !item.betweenFloors;
-      if (item.betweenFloors) {
-        item.floor = '';
-        item.floorFrom = '';
-        item.floorTo = '';
-      }
-      renderAll();
-    });
-    betweenLine.appendChild(betweenBtn);
-    card.appendChild(betweenLine);
-
-    if (item.betweenFloors) {
-      const floorRangeLine = document.createElement('div');
-      floorRangeLine.className = 'mat-line';
-      floorRangeLine.style.marginTop = '6px';
-
-      const lbl = document.createElement('span');
-      lbl.className = 'mat-line-label';
-      lbl.textContent = 'с этажа:';
-      floorRangeLine.appendChild(lbl);
-
-      const floors = getFloorsFor(objectSelect.value, item.building) || [];
-      const selFrom = document.createElement('select');
-      selFrom.className = 'loc-room-input';
-      selFrom.style.width = '80px';
-      const optEmpty = document.createElement('option');
-      optEmpty.value = ''; optEmpty.textContent = '—';
-      selFrom.appendChild(optEmpty);
-      floors.forEach(f => {
-        const o = document.createElement('option');
-        o.value = f; o.textContent = f;
-        if (item.floorFrom === f) o.selected = true;
-        selFrom.appendChild(o);
-      });
-      selFrom.addEventListener('change', () => {
-        item.floorFrom = selFrom.value;
-        item.floor = normalizeFloorRange(item.floorFrom, item.floorTo);
-        renderAll();
-      });
-      floorRangeLine.appendChild(selFrom);
-
-      const lbl2 = document.createElement('span');
-      lbl2.className = 'mat-line-label';
-      lbl2.textContent = 'по этаж:';
-      lbl2.style.marginLeft = '6px';
-      floorRangeLine.appendChild(lbl2);
-
-      const selTo = document.createElement('select');
-      selTo.className = 'loc-room-input';
-      selTo.style.width = '80px';
-      const optEmpty2 = document.createElement('option');
-      optEmpty2.value = ''; optEmpty2.textContent = '—';
-      selTo.appendChild(optEmpty2);
-      floors.forEach(f => {
-        const o = document.createElement('option');
-        o.value = f; o.textContent = f;
-        if (item.floorTo === f) o.selected = true;
-        selTo.appendChild(o);
-      });
-      selTo.addEventListener('change', () => {
-        item.floorTo = selTo.value;
-        item.floor = normalizeFloorRange(item.floorFrom, item.floorTo);
-        renderAll();
-      });
-      floorRangeLine.appendChild(selTo);
-
-      card.appendChild(floorRangeLine);
+  // Кнопка сквозной проходки
+  const crossBtn = document.createElement('button');
+  crossBtn.type = 'button';
+  crossBtn.className = 'loc-floor-btn' + (item.isCross ? ' active' : '');
+  crossBtn.style.marginBottom = '8px';
+  crossBtn.style.width = '100%';
+  crossBtn.style.whiteSpace = 'normal';
+  crossBtn.style.lineHeight = '1.3';
+  crossBtn.textContent = item.isCross ? '↔ Сквозная проходка (Откуда / Куда)' : '↔ Сделать сквозной проходкой';
+  crossBtn.addEventListener('click', () => {
+    item.isCross = !item.isCross;
+    if (!item.isCross) {
+      item.buildingTo = ''; item.crossFloorTo = '';
     }
+    renderAll();
+  });
+  card.appendChild(crossBtn);
+
+  if (item.isCross) {
+    card.appendChild(renderPhotoCrossLocation(item, true));
+    card.appendChild(renderPhotoCrossLocation(item, false));
+  } else {
+    if (isBuildingRequired()) card.appendChild(renderBuildingRow(item, renderAll));
+    if (!isAtticItem(item)) {
+      card.appendChild(renderFloorRow(item, renderAll));
+
+      // Между этажами (стандартное)
+      const betweenLine = document.createElement('div');
+      betweenLine.className = 'mat-line';
+      betweenLine.style.marginTop = '6px';
+
+      const betweenBtn = document.createElement('button');
+      betweenBtn.type = 'button';
+      betweenBtn.className = 'loc-floor-btn' + (item.betweenFloors ? ' active' : '');
+      betweenBtn.textContent = 'Между этажами';
+      betweenBtn.addEventListener('click', () => {
+        item.betweenFloors = !item.betweenFloors;
+        if (item.betweenFloors) {
+          item.floor = '';
+          item.floorFrom = '';
+          item.floorTo = '';
+        }
+        renderAll();
+      });
+      betweenLine.appendChild(betweenBtn);
+      card.appendChild(betweenLine);
+
+      if (item.betweenFloors) {
+        const floorRangeLine = document.createElement('div');
+        floorRangeLine.className = 'mat-line';
+        floorRangeLine.style.marginTop = '6px';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'mat-line-label';
+        lbl.textContent = 'с этажа:';
+        floorRangeLine.appendChild(lbl);
+
+        const floors = getFloorsFor(objectSelect.value, item.building) || [];
+        const selFrom = document.createElement('select');
+        selFrom.className = 'loc-room-input';
+        selFrom.style.width = '80px';
+        const optEmpty = document.createElement('option');
+        optEmpty.value = ''; optEmpty.textContent = '—';
+        selFrom.appendChild(optEmpty);
+        floors.forEach(f => {
+          const o = document.createElement('option');
+          o.value = f; o.textContent = f;
+          if (item.floorFrom === f) o.selected = true;
+          selFrom.appendChild(o);
+        });
+        selFrom.addEventListener('change', () => {
+          item.floorFrom = selFrom.value;
+          item.floor = normalizeFloorRange(item.floorFrom, item.floorTo);
+          renderAll();
+        });
+        floorRangeLine.appendChild(selFrom);
+
+        const lbl2 = document.createElement('span');
+        lbl2.className = 'mat-line-label';
+        lbl2.textContent = 'по этаж:';
+        lbl2.style.marginLeft = '6px';
+        floorRangeLine.appendChild(lbl2);
+
+        const selTo = document.createElement('select');
+        selTo.className = 'loc-room-input';
+        selTo.style.width = '80px';
+        const optEmpty2 = document.createElement('option');
+        optEmpty2.value = ''; optEmpty2.textContent = '—';
+        selTo.appendChild(optEmpty2);
+        floors.forEach(f => {
+          const o = document.createElement('option');
+          o.value = f; o.textContent = f;
+          if (item.floorTo === f) o.selected = true;
+          selTo.appendChild(o);
+        });
+        selTo.addEventListener('change', () => {
+          item.floorTo = selTo.value;
+          item.floor = normalizeFloorRange(item.floorFrom, item.floorTo);
+          renderAll();
+        });
+        floorRangeLine.appendChild(selTo);
+
+        card.appendChild(floorRangeLine);
+      }
+    }
+
+    // ─── ИЗ / В ПОМЕЩЕНИЕ — одной строкой ───
+    const roomsLine = document.createElement('div');
+    roomsLine.style.display = 'flex';
+    roomsLine.style.flexWrap = 'nowrap';
+    roomsLine.style.alignItems = 'center';
+    roomsLine.style.gap = '4px';
+    roomsLine.style.marginTop = '8px';
+    roomsLine.style.width = '100%';
+
+    const fromLbl = document.createElement('span');
+    fromLbl.style.fontSize = '11px';
+    fromLbl.style.fontWeight = '600';
+    fromLbl.style.color = 'var(--text-hint)';
+    fromLbl.style.whiteSpace = 'nowrap';
+    fromLbl.style.flex = '0 0 auto';
+    fromLbl.textContent = 'Из помещения:';
+    roomsLine.appendChild(fromLbl);
+
+    const fromInp = document.createElement('input');
+    fromInp.type = 'text';
+    fromInp.inputMode = 'numeric';
+    fromInp.pattern = '[0-9]*';
+    fromInp.className = 'loc-room-input';
+    fromInp.style.flex = '1 1 0';
+    fromInp.style.minWidth = '0';
+    fromInp.style.width = 'auto';
+    fromInp.style.maxWidth = '70px';
+    fromInp.value = item.roomFrom || '';
+    fromInp.addEventListener('input', () => {
+      item.roomFrom = fromInp.value.replace(/[^0-9]/g, '');
+      if (fromInp.value !== item.roomFrom) fromInp.value = item.roomFrom;
+      updateSendButtonState();
+    });
+    roomsLine.appendChild(fromInp);
+
+    const toLbl = document.createElement('span');
+    toLbl.style.fontSize = '11px';
+    toLbl.style.fontWeight = '600';
+    toLbl.style.color = 'var(--text-hint)';
+    toLbl.style.whiteSpace = 'nowrap';
+    toLbl.style.flex = '0 0 auto';
+    toLbl.style.marginLeft = '4px';
+    toLbl.textContent = 'В помещение:';
+    roomsLine.appendChild(toLbl);
+
+    const toInp = document.createElement('input');
+    toInp.type = 'text';
+    toInp.inputMode = 'numeric';
+    toInp.pattern = '[0-9]*';
+    toInp.className = 'loc-room-input';
+    toInp.style.flex = '1 1 0';
+    toInp.style.minWidth = '0';
+    toInp.style.width = 'auto';
+    toInp.style.maxWidth = '70px';
+    toInp.value = item.roomTo || '';
+    toInp.addEventListener('input', () => {
+      item.roomTo = toInp.value.replace(/[^0-9]/g, '');
+      if (toInp.value !== item.roomTo) toInp.value = item.roomTo;
+      updateSendButtonState();
+    });
+    roomsLine.appendChild(toInp);
+
+    card.appendChild(roomsLine);
   }
-
-  // ─── ИЗ / В ПОМЕЩЕНИЕ — одной строкой ───
-  const roomsLine = document.createElement('div');
-  roomsLine.style.display = 'flex';
-  roomsLine.style.flexWrap = 'nowrap';
-  roomsLine.style.alignItems = 'center';
-  roomsLine.style.gap = '4px';
-  roomsLine.style.marginTop = '8px';
-  roomsLine.style.width = '100%';
-
-  const fromLbl = document.createElement('span');
-  fromLbl.style.fontSize = '11px';
-  fromLbl.style.fontWeight = '600';
-  fromLbl.style.color = 'var(--text-hint)';
-  fromLbl.style.whiteSpace = 'nowrap';
-  fromLbl.style.flex = '0 0 auto';
-  fromLbl.textContent = 'Из помещения:';
-  roomsLine.appendChild(fromLbl);
-
-  const fromInp = document.createElement('input');
-  fromInp.type = 'text';
-  fromInp.inputMode = 'numeric';
-  fromInp.pattern = '[0-9]*';
-  fromInp.className = 'loc-room-input';
-  fromInp.style.flex = '1 1 0';
-  fromInp.style.minWidth = '0';
-  fromInp.style.width = 'auto';
-  fromInp.style.maxWidth = '70px';
-  fromInp.value = item.roomFrom || '';
-  fromInp.addEventListener('input', () => {
-    item.roomFrom = fromInp.value.replace(/[^0-9]/g, '');
-    if (fromInp.value !== item.roomFrom) fromInp.value = item.roomFrom;
-    updateSendButtonState();
-  });
-  roomsLine.appendChild(fromInp);
-
-  const toLbl = document.createElement('span');
-  toLbl.style.fontSize = '11px';
-  toLbl.style.fontWeight = '600';
-  toLbl.style.color = 'var(--text-hint)';
-  toLbl.style.whiteSpace = 'nowrap';
-  toLbl.style.flex = '0 0 auto';
-  toLbl.style.marginLeft = '4px';
-  toLbl.textContent = 'В помещение:';
-  roomsLine.appendChild(toLbl);
-
-  const toInp = document.createElement('input');
-  toInp.type = 'text';
-  toInp.inputMode = 'numeric';
-  toInp.pattern = '[0-9]*';
-  toInp.className = 'loc-room-input';
-  toInp.style.flex = '1 1 0';
-  toInp.style.minWidth = '0';
-  toInp.style.width = 'auto';
-  toInp.style.maxWidth = '70px';
-  toInp.value = item.roomTo || '';
-  toInp.addEventListener('input', () => {
-    item.roomTo = toInp.value.replace(/[^0-9]/g, '');
-    if (toInp.value !== item.roomTo) toInp.value = item.roomTo;
-    updateSendButtonState();
-  });
-  roomsLine.appendChild(toInp);
-
-  card.appendChild(roomsLine);
 
   // ─── № ПРОХОДКИ ───
   const numLine = document.createElement('div');
@@ -1018,6 +1043,118 @@ function renderProhodkaItem(item, idx) {
   });
 
   return card;
+}
+
+function renderPhotoCrossLocation(data, isSource) {
+  const block = document.createElement('div');
+  block.style.padding = '10px 12px';
+  block.style.marginTop = '8px';
+  block.style.border = '1.5px dashed var(--border-focus)';
+  block.style.borderRadius = '10px';
+  block.style.background = 'var(--card-bg)';
+
+  const title = document.createElement('div');
+  title.style.fontSize = '12px';
+  title.style.fontWeight = '700';
+  title.style.color = 'var(--border-focus)';
+  title.style.marginBottom = '6px';
+  title.textContent = isSource ? '📍 Откуда (Из)' : '🎯 Куда (В)';
+  block.appendChild(title);
+
+  const bKey = isSource ? 'building' : 'buildingTo';
+  const fKey = isSource ? 'floor' : 'crossFloorTo';
+  const rKey = isSource ? 'roomFrom' : 'roomTo';
+
+  if (isBuildingRequired()) {
+    const corpLine = document.createElement('div');
+    corpLine.className = 'mat-line';
+    corpLine.style.marginTop = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'mat-line-label';
+    lbl.textContent = 'Корпус:';
+    corpLine.appendChild(lbl);
+
+    const corpWrap = document.createElement('div');
+    corpWrap.className = 'mat-line-corp';
+    BUILDINGS_BY_OBJECT[objectSelect.value].forEach(val => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'loc-floor-btn' + (data[bKey] === val ? ' active' : '');
+      b.textContent = val;
+      b.addEventListener('click', () => {
+        data[bKey] = val;
+        data[fKey] = '';
+        data[rKey] = '';
+        renderAll();
+      });
+      corpWrap.appendChild(b);
+    });
+    corpLine.appendChild(corpWrap);
+    block.appendChild(corpLine);
+  }
+
+  const building = data[bKey];
+  const isAtticZ = (building === 'Чердак');
+
+  if (!isAtticZ) {
+    const floorLine = document.createElement('div');
+    floorLine.className = 'mat-line';
+    floorLine.style.marginTop = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'mat-line-label';
+    lbl.textContent = 'Этаж:';
+    floorLine.appendChild(lbl);
+
+    const fWrap = document.createElement('div');
+    fWrap.className = 'mat-line-floors';
+    const floors = getFloorsFor(objectSelect.value, building) || [];
+    const buildingChosen = !isBuildingRequired() || !!building;
+
+    floors.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'loc-floor-btn' + (data[fKey] === f ? ' active' : '');
+      b.textContent = f;
+      if (!buildingChosen) b.disabled = true;
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        data[fKey] = f;
+        renderAll();
+      });
+      fWrap.appendChild(b);
+    });
+    floorLine.appendChild(fWrap);
+    block.appendChild(floorLine);
+  }
+
+  const roomLine = document.createElement('div');
+  roomLine.className = 'mat-line';
+  roomLine.style.marginTop = '6px';
+  const lbl = document.createElement('span');
+  lbl.className = 'mat-line-label';
+  lbl.textContent = 'Помещение:';
+  roomLine.appendChild(lbl);
+
+  const rWrap = document.createElement('div');
+  rWrap.className = 'mat-line-room';
+
+  const rInp = document.createElement('input');
+  rInp.type = 'text';
+  rInp.className = 'loc-room-input';
+  rInp.inputMode = 'numeric';
+  rInp.pattern = '[0-9]*';
+  rInp.style.width = '80px';
+  rInp.value = data[rKey] || '';
+  rInp.addEventListener('input', () => {
+    data[rKey] = rInp.value.replace(/[^0-9]/g, '');
+    if (rInp.value !== data[rKey]) rInp.value = data[rKey];
+    updateSendButtonState();
+  });
+  rWrap.appendChild(rInp);
+  roomLine.appendChild(rWrap);
+  block.appendChild(roomLine);
+
+  return block;
 }
 
 function normalizeFloorRange(a, b) {
@@ -1067,11 +1204,18 @@ function renderStageCheckboxProhodka(item, stageName) {
     zone.style.marginTop = '6px';
     zone.style.marginLeft = '26px';
 
+    const fromLabelText = item.isCross
+      ? `Из: ${item.building || ''} ${item.floor || ''}эт пом.${item.roomFrom || '?'}`
+      : `Из помещения ${item.roomFrom || '?'}`;
+    const toLabelText = item.isCross
+      ? `Из: ${item.buildingTo || ''} ${item.crossFloorTo || ''}эт пом.${item.roomTo || '?'}`
+      : `Из помещения ${item.roomTo || '?'}`;
+
     const fromLabel = document.createElement('div');
     fromLabel.style.fontWeight = '700';
     fromLabel.style.fontSize = '12px';
     fromLabel.style.marginTop = '6px';
-    fromLabel.textContent = 'Из помещения ' + (item.roomFrom || '?');
+    fromLabel.textContent = fromLabelText;
     zone.appendChild(fromLabel);
     zone.appendChild(renderPhotoPicker(stg.from));
 
@@ -1079,7 +1223,7 @@ function renderStageCheckboxProhodka(item, stageName) {
     toLabel.style.fontWeight = '700';
     toLabel.style.fontSize = '12px';
     toLabel.style.marginTop = '10px';
-    toLabel.textContent = 'Из помещения ' + (item.roomTo || '?');
+    toLabel.textContent = toLabelText;
     zone.appendChild(toLabel);
     zone.appendChild(renderPhotoPicker(stg.to));
 
@@ -1363,9 +1507,9 @@ function collectPhotos(includeSent) {
   });
 
   photoState['Проходки'].items.forEach(item => {
-    const floorForSend = item.betweenFloors
+    const floorForSend = item.isCross ? item.floor : (item.betweenFloors
       ? (item.floor || '')
-      : (item.building === ATTIC ? ATTIC : (item.floor || ''));
+      : (item.building === ATTIC ? ATTIC : (item.floor || '')));
 
     Object.keys(item.stages).forEach(stageName => {
       const sides = item.stages[stageName];
@@ -1379,7 +1523,10 @@ function collectPhotos(includeSent) {
           floor: floorForSend,
           roomFrom: item.roomFrom || '',
           roomTo: item.roomTo || '',
-          penetrationNum: item.penetrationNum || '', // <--- ДОБАВЛЕНО
+          penetrationNum: item.penetrationNum || '',
+          isCross: item.isCross || false,
+          buildingTo: item.buildingTo || '',
+          crossFloorTo: item.crossFloorTo || '',
           side: 'from',
           stage: stageName,
           fileData: ph.dataUrl
@@ -1395,7 +1542,10 @@ function collectPhotos(includeSent) {
           floor: floorForSend,
           roomFrom: item.roomFrom || '',
           roomTo: item.roomTo || '',
-          penetrationNum: item.penetrationNum || '', // <--- ДОБАВЛЕНО
+          penetrationNum: item.penetrationNum || '',
+          isCross: item.isCross || false,
+          buildingTo: item.buildingTo || '',
+          crossFloorTo: item.crossFloorTo || '',
           side: 'to',
           stage: stageName,
           fileData: ph.dataUrl
@@ -1465,12 +1615,16 @@ function buildReviewSections() {
     });
     if (!photos.length) return;
 
-    sections.push({
-      title: 'Проходка ' + (item.roomFrom || '?') + '-' + (item.roomTo || '?') +
-             (item.penetrationNum ? ' (№' + item.penetrationNum + ')' : '') + // <--- ДОБАВЛЕНО
-             (item.floor ? ' · ' + item.floor : ''),
-      photos: photos
-    });
+    let title = '';
+    if (item.isCross) {
+      title = `Сквозная ${item.roomFrom || '?'}-${item.roomTo || '?'} (${item.building || ''} - ${item.buildingTo || ''})`;
+    } else {
+      title = 'Проходка ' + (item.roomFrom || '?') + '-' + (item.roomTo || '?') +
+              (item.floor ? ' · ' + item.floor : '');
+    }
+    if (item.penetrationNum) title += ' (№' + item.penetrationNum + ')';
+
+    sections.push({ title: title, photos: photos });
   });
 
   EQUIPMENT_CATEGORIES.forEach(catName => {
@@ -1735,7 +1889,7 @@ async function doActualSend() {
 
 function describeRecord(rec) {
   if (rec.category === 'Помещения') return 'Помещение ' + (rec.room || '?');
-  if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?') + (rec.penetrationNum ? ' №' + rec.penetrationNum : '');
+  if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?') + (rec.penetrationNum ? ' №' + rec.penetrationNum : '') + (rec.isCross ? ' (сквозная)' : '');
   return rec.category + ' · ' + (rec.deviceAddress || '?');
 }
 
