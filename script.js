@@ -142,6 +142,7 @@ const mainState = {};
 const _mainBlockStatus = {};
 
 const _matGroupExpanded = {};
+const _matVariantExpanded = {};
 const _addGroupExpanded = {};
 
 function makeEmptyMatRow() { return { building: '', floor: '', room: '', qty: '' }; }
@@ -159,6 +160,7 @@ function makeEmptyMaterialState(work) {
 
 function clearMatGroupExpansion() {
   for (const k in _matGroupExpanded) delete _matGroupExpanded[k];
+  for (const k in _matVariantExpanded) delete _matVariantExpanded[k];
 }
 
 // ============================================
@@ -1100,6 +1102,12 @@ function getMatGroupHint(mat, state) {
   return filled > 0 ? (filled + ' зап.') : '';
 }
 
+function getVariantFilledCount(data) {
+  let filled = 0;
+  (data.rows || []).forEach(row => { if (row.qty) filled++; });
+  return filled;
+}
+
 function getLocationGroupHint(workKey) {
   const items = (additionalState[workKey] && additionalState[workKey].items) || [];
   const w = locationWorkByKey(workKey);
@@ -1187,14 +1195,39 @@ function renderMaterialsForBlock(work) {
       const data = state[r.key];
       if (!data) return;
 
+      const isMulti = mat.rows.length > 1;
+      const varExpKey = work + '|' + mat.id + '|' + r.key;
+      const filledCount = getVariantFilledCount(data);
+
+      // Если в варианте есть данные — автоматически раскрываем
+      if (isMulti && filledCount > 0) {
+        _matVariantExpanded[varExpKey] = true;
+      }
+
+      const isVarExpanded = isMulti ? !!_matVariantExpanded[varExpKey] : true;
+
       const card = document.createElement('div');
       card.className = 'mat-card';
+      if (isMulti) {
+        card.classList.add('mat-variant-card');
+        if (isVarExpanded) card.classList.add('expanded');
+      } else {
+        card.classList.add('mat-simple-card');
+      }
       card.dataset.matKey = r.key;
 
       const isSimple = !r.variant && mat.rows.length === 1;
 
       const head = document.createElement('div');
       head.className = 'mat-head';
+      if (isMulti) head.classList.add('mat-head-clickable');
+
+      if (isMulti) {
+        const vArrow = document.createElement('span');
+        vArrow.className = 'mat-variant-arrow';
+        vArrow.textContent = '▸';
+        head.appendChild(vArrow);
+      }
 
       const headLeft = document.createElement('span');
       headLeft.className = 'mat-head-left';
@@ -1237,12 +1270,31 @@ function renderMaterialsForBlock(work) {
         headRight.appendChild(badge);
       }
 
+      if (isMulti) {
+        const vHint = document.createElement('span');
+        vHint.className = 'mat-variant-hint';
+        vHint.textContent = filledCount > 0 ? filledCount + ' зап.' : '';
+        headRight.appendChild(vHint);
+      }
+
       if (headRight.children.length > 0) head.appendChild(headRight);
       if (head.children.length > 0) card.appendChild(head);
 
+      if (isMulti) {
+        head.addEventListener('click', () => {
+          _matVariantExpanded[varExpKey] = !_matVariantExpanded[varExpKey];
+          renderMaterialsForBlock(work);
+        });
+      }
+
+      const bodyWrap = document.createElement('div');
+      bodyWrap.className = 'mat-variant-body';
+      if (isMulti && !isVarExpanded) bodyWrap.style.display = 'none';
+
       const rowsWrap = document.createElement('div');
       rowsWrap.className = 'mat-rows';
-      card.appendChild(rowsWrap);
+      bodyWrap.appendChild(rowsWrap);
+      card.appendChild(bodyWrap);
 
       data.rows.forEach((row, idx) => {
         const rowEl = document.createElement('div');
@@ -1482,7 +1534,7 @@ function renderMaterialsForBlock(work) {
         data.rows.push(makeEmptyMatRow());
         renderMaterialsForBlock(work);
       });
-      card.appendChild(addFloorBtn);
+      bodyWrap.appendChild(addFloorBtn);
 
       bodyEl.appendChild(card);
       updateAddFloorButton(card, r.key, work);
@@ -1530,7 +1582,10 @@ function fixMainField(work, matKey, rowIdx, fieldType) {
   if (!st) return;
   if (!st.expanded && !st.alwaysOpen) toggleMainAccordion(work);
   const info = MATERIAL_BY_KEY[matKey];
-  if (info) _matGroupExpanded[work + '|' + info.mat.id] = true;
+  if (info) {
+    _matGroupExpanded[work + '|' + info.mat.id] = true;
+    _matVariantExpanded[work + '|' + info.mat.id + '|' + matKey] = true;
+  }
   renderMaterialsForBlock(work);
 
   requestAnimationFrame(() => {
@@ -1653,6 +1708,9 @@ function resetMainBlock(work) {
   st.materials = makeEmptyMaterialState(work);
   MATERIALS.forEach(mat => {
     _matGroupExpanded[work + '|' + mat.id] = false;
+    mat.rows.forEach(r => {
+      _matVariantExpanded[work + '|' + mat.id + '|' + r.key] = false;
+    });
   });
   renderMaterialsForBlock(work);
 }
@@ -2584,7 +2642,10 @@ function editJournalEntry(idx) {
       targetRow.qty = entry.materials[matKey];
 
       const info = MATERIAL_BY_KEY[matKey];
-      if (info) _matGroupExpanded[entry.work + '|' + info.mat.id] = true;
+      if (info) {
+        _matGroupExpanded[entry.work + '|' + info.mat.id] = true;
+        _matVariantExpanded[entry.work + '|' + info.mat.id + '|' + matKey] = true;
+      }
     }
 
     renderMaterialsForBlock(entry.work);
@@ -3050,7 +3111,7 @@ function goToPhotos() {
 
   const qs = params.toString();
   const url = 'photos.html' + (qs ? '?' + qs : '');
-  window.open(url, '_blank');
+  window.location.href = url;
 }
 
 // ============================================
