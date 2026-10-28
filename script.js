@@ -1809,7 +1809,7 @@ function validateAdditionalOnly() {
         continue;
       }
 
-      // НОВАЯ ПРОВЕРКА ДЛЯ ОБЫЧНОГО БУРЕНИЯ
+      // Проверка для обычного бурения
       if (w.key === 'burenie' && !it.isCross) {
         const needB = isBuildingRequired();
         if (needB && !it.building) {
@@ -1904,20 +1904,19 @@ function applyAdditionalToJournal() {
       if (!isFinite(v) || v <= 0) return;
 
       let zRoom = applyPrefixToRoom(normalizeZadelkaRoom(it.room || ''), it.building || '');
+      let zRoomTo = it.roomTo ? applyPrefixToRoom(normalizeZadelkaRoom(it.roomTo || ''), it.buildingTo || it.building || '') : '';
       let zRoomFinal = zRoom;
       let floorFinal = it.floor || '';
 
       if (it.isCross) {
-        const zRoomTo = applyPrefixToRoom(normalizeZadelkaRoom(it.roomTo || ''), it.buildingTo || '');
         let loc1 = `${it.building ? it.building + ' ' : ''}${it.floor ? it.floor + 'эт ' : ''}пом.${zRoom}`.trim().replace(/\s+/g, ' ');
         let loc2 = `${it.buildingTo ? it.buildingTo + ' ' : ''}${it.floorTo ? it.floorTo + 'эт ' : ''}пом.${zRoomTo}`.trim().replace(/\s+/g, ' ');
         zRoomFinal = `Из: ${loc1} → В: ${loc2}`;
         floorFinal = '';
-      } else {
-        // НОВОЕ: Склеиваем "Из" и "В" для бурения
-        if (w.key === 'burenie' && it.roomTo) {
-          const zRoomTo = applyPrefixToRoom(normalizeZadelkaRoom(it.roomTo || ''), it.building || '');
-          zRoomFinal = `${zRoomFinal}-${zRoomTo}`; // Будет записано как "12-15"
+      } else if (w.key === 'burenie') {
+        // НОВОЕ: Склеиваем "Из" и "В" в один отсортированный список
+        if (zRoomTo) {
+          zRoomFinal = combineRooms(zRoom, zRoomTo);
         }
       }
 
@@ -1926,6 +1925,8 @@ function applyAdditionalToJournal() {
         building: it.building || '',
         floor: floorFinal,
         room: zRoomFinal,
+        roomFrom: zRoom, // Сохраняем отдельно для редактирования
+        roomTo: zRoomTo, // Сохраняем отдельно для редактирования
         qty: it.value,
         is_cross: it.isCross || false
       };
@@ -1942,6 +1943,8 @@ function applyAdditionalToJournal() {
         const newQ = oldQ + v;
         journal[idx].qty = String(Math.round(newQ * 100) / 100).replace('.', ',');
         journal[idx].room = combineRooms(journal[idx].room, zEntry.room);
+        journal[idx].roomFrom = combineRooms(journal[idx].roomFrom, zEntry.roomFrom);
+        journal[idx].roomTo = combineRooms(journal[idx].roomTo, zEntry.roomTo);
         merged++;
       } else { journal.push(zEntry); added++; }
     });
@@ -2226,17 +2229,21 @@ function renderSingleLocationBlock(data, isSource, isCross, onChange, workKey, i
   const rInp = document.createElement('input');
   rInp.type = 'text';
   rInp.className = 'req-field';
-  rInp.placeholder = '12';
-  rInp.inputMode = 'numeric';
-  rInp.pattern = '[0-9]*';
-  rInp.maxLength = 20;
+  rInp.placeholder = '12, 15';
+  rInp.inputMode = 'text'; // Изменено для поддержки списков
   rInp.value = data[rKey] || '';
   rInp.dataset.focusId = workKey + '_' + (isSource ? 'from' : 'to') + '_room_' + idx;
 
-  rInp.addEventListener('input', () => {
-    data[rKey] = rInp.value.replace(/[^0-9]/g, '');
-    if (rInp.value !== data[rKey]) rInp.value = data[rKey];
+  setupRoomInput(rInp, (val) => {
+    data[rKey] = val;
   });
+
+  rInp.addEventListener('blur', () => {
+    const finalVal = finalizeRooms(rInp.value);
+    if (rInp.value !== finalVal) rInp.value = finalVal;
+    data[rKey] = finalVal;
+  });
+
   rWrap.appendChild(rInp);
   roomLine.appendChild(rWrap);
   block.appendChild(roomLine);
@@ -2339,16 +2346,20 @@ function renderBurenieStandardBlock(item, onChange, workKey, idx) {
   const fromInp = document.createElement('input');
   fromInp.type = 'text';
   fromInp.className = 'req-field';
-  fromInp.placeholder = '12';
-  fromInp.inputMode = 'numeric';
-  fromInp.pattern = '[0-9]*';
+  fromInp.placeholder = '12, 15';
+  fromInp.inputMode = 'text';
   fromInp.value = item.room || '';
   fromInp.dataset.focusId = workKey + '_from_room_' + idx;
-  fromInp.addEventListener('input', () => {
-    item.room = fromInp.value.replace(/[^0-9]/g, '');
-    if (fromInp.value !== item.room) fromInp.value = item.room;
-    refreshAddItemHighlight(block.closest('.add-item'), item);
+
+  setupRoomInput(fromInp, (val) => {
+    item.room = val;
   });
+  fromInp.addEventListener('blur', () => {
+    const finalVal = finalizeRooms(fromInp.value);
+    if (fromInp.value !== finalVal) fromInp.value = finalVal;
+    item.room = finalVal;
+  });
+
   fromWrap.appendChild(fromInp);
   roomsLine.appendChild(fromWrap);
 
@@ -2371,15 +2382,19 @@ function renderBurenieStandardBlock(item, onChange, workKey, idx) {
   toInp.type = 'text';
   toInp.className = 'req-field';
   toInp.placeholder = '15';
-  toInp.inputMode = 'numeric';
-  toInp.pattern = '[0-9]*';
+  toInp.inputMode = 'text';
   toInp.value = item.roomTo || '';
   toInp.dataset.focusId = workKey + '_to_room_' + idx;
-  toInp.addEventListener('input', () => {
-    item.roomTo = toInp.value.replace(/[^0-9]/g, '');
-    if (toInp.value !== item.roomTo) toInp.value = item.roomTo;
-    refreshAddItemHighlight(block.closest('.add-item'), item);
+
+  setupRoomInput(toInp, (val) => {
+    item.roomTo = val;
   });
+  toInp.addEventListener('blur', () => {
+    const finalVal = finalizeRooms(toInp.value);
+    if (toInp.value !== finalVal) toInp.value = finalVal;
+    item.roomTo = finalVal;
+  });
+
   toWrap.appendChild(toInp);
   roomsLine.appendChild(toWrap);
 
@@ -2969,32 +2984,22 @@ function editJournalEntry(idx) {
       additionalState[entry.kind].items = [{
         building: entry.building || '',
         floor: entry.floor || '',
-        room: entry.room || '',
+        room: stripPrefixFromRoom(entry.roomFrom || entry.room || ''),
         value: entry.qty || '',
         isCross: true,
-        buildingTo: entry.buildingTo || '', // мы не парсим строку, а сохраняем доп. поля (пока сложно)
+        buildingTo: entry.buildingTo || '',
         floorTo: entry.floorTo || '',
-        roomTo: entry.roomTo || ''
+        roomTo: stripPrefixFromRoom(entry.roomTo || '')
       }];
     } else {
       let restoredFloor = entry.floor || '';
       if (restoredFloor === 'Нет') restoredFloor = '';
 
-      let roomFrom = stripPrefixFromRoom(entry.room || '');
-      let roomTo = '';
-
-      // НОВОЕ: Разбиваем "12-15" обратно на два числа
-      if (entry.kind === 'burenie' && roomFrom.includes('-')) {
-        const parts = roomFrom.split('-');
-        roomFrom = parts[0];
-        roomTo = parts[1];
-      }
-
       additionalState[entry.kind].items = [{
         building: entry.building || '',
         floor: restoredFloor,
-        room: roomFrom,
-        roomTo: roomTo,
+        room: stripPrefixFromRoom(entry.roomFrom || entry.room || ''),
+        roomTo: stripPrefixFromRoom(entry.roomTo || ''),
         value: entry.qty || ''
       }];
     }
