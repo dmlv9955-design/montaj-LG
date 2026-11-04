@@ -200,62 +200,6 @@ function formatDeviceAddress(val) {
 }
 
 // ============================================
-//  ИНДЕКС ПОМЕЩЕНИЯ
-// ============================================
-function createIndexUI(inputEl, onChange) {
-  const wrap = document.createElement('div');
-  wrap.className = 'index-wrap';
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'index-toggle';
-  btn.textContent = 'Индекс ▾';
-
-  const dropdown = document.createElement('div');
-  dropdown.className = 'index-dropdown';
-
-  const letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
-  letters.forEach(letter => {
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    pill.className = 'index-pill';
-    pill.textContent = letter;
-    pill.addEventListener('click', (e) => {
-      e.preventDefault();
-      let val = inputEl.value.trim();
-      if (!val) return;
-
-      if (/([А-Еа-е])$/.test(val)) {
-        val = val.replace(/[А-Еа-е]$/, letter);
-      } else {
-        val += letter;
-      }
-
-      inputEl.value = val;
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      dropdown.classList.remove('show');
-      if (onChange) onChange();
-    });
-    dropdown.appendChild(pill);
-  });
-
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    document.querySelectorAll('.index-dropdown.show').forEach(d => d.classList.remove('show'));
-    dropdown.classList.toggle('show');
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!wrap.contains(e.target)) dropdown.classList.remove('show');
-  });
-
-  wrap.appendChild(btn);
-  wrap.appendChild(dropdown);
-  return wrap;
-}
-
-// ============================================
 //  СЖАТИЕ ФОТО
 // ============================================
 function compressImage(file) {
@@ -772,20 +716,17 @@ function renderPomeshchenieItem(item, idx) {
   }
   const roomInp = document.createElement('input');
   roomInp.type = 'text';
-  roomInp.inputMode = 'text';
+  roomInp.inputMode = 'numeric';
+  roomInp.pattern = '[0-9]*';
   roomInp.className = 'loc-room-input';
   roomInp.placeholder = '45';
   roomInp.value = item.room || '';
   roomInp.addEventListener('input', () => {
-    item.room = roomInp.value.replace(/[^0-9А-Еа-е]/g, '');
+    item.room = roomInp.value.replace(/[^0-9]/g, '');
     if (roomInp.value !== item.room) roomInp.value = item.room;
     updateSendButtonState();
   });
   roomWrap.appendChild(roomInp);
-  roomWrap.appendChild(createIndexUI(roomInp, () => {
-    item.room = roomInp.value;
-    updateSendButtonState();
-  }));
   roomLine.appendChild(roomWrap);
   card.appendChild(roomLine);
 
@@ -1023,7 +964,8 @@ function renderProhodkaItem(item, idx) {
 
     const fromInp = document.createElement('input');
     fromInp.type = 'text';
-    fromInp.inputMode = 'text';
+    fromInp.inputMode = 'numeric';
+    fromInp.pattern = '[0-9]*';
     fromInp.className = 'loc-room-input';
     fromInp.style.flex = '1 1 0';
     fromInp.style.minWidth = '0';
@@ -1031,15 +973,11 @@ function renderProhodkaItem(item, idx) {
     fromInp.style.maxWidth = '70px';
     fromInp.value = item.roomFrom || '';
     fromInp.addEventListener('input', () => {
-      item.roomFrom = fromInp.value.replace(/[^0-9А-Еа-е]/g, '');
+      item.roomFrom = fromInp.value.replace(/[^0-9]/g, '');
       if (fromInp.value !== item.roomFrom) fromInp.value = item.roomFrom;
       updateSendButtonState();
     });
     roomsLine.appendChild(fromInp);
-    roomsLine.appendChild(createIndexUI(fromInp, () => {
-      item.roomFrom = fromInp.value;
-      updateSendButtonState();
-    }));
 
     const toLbl = document.createElement('span');
     toLbl.style.fontSize = '11px';
@@ -1053,7 +991,8 @@ function renderProhodkaItem(item, idx) {
 
     const toInp = document.createElement('input');
     toInp.type = 'text';
-    toInp.inputMode = 'text';
+    toInp.inputMode = 'numeric';
+    toInp.pattern = '[0-9]*';
     toInp.className = 'loc-room-input';
     toInp.style.flex = '1 1 0';
     toInp.style.minWidth = '0';
@@ -1061,15 +1000,11 @@ function renderProhodkaItem(item, idx) {
     toInp.style.maxWidth = '70px';
     toInp.value = item.roomTo || '';
     toInp.addEventListener('input', () => {
-      item.roomTo = toInp.value.replace(/[^0-9А-Еа-е]/g, '');
+      item.roomTo = toInp.value.replace(/[^0-9]/g, '');
       if (toInp.value !== item.roomTo) toInp.value = item.roomTo;
       updateSendButtonState();
     });
     roomsLine.appendChild(toInp);
-    roomsLine.appendChild(createIndexUI(toInp, () => {
-      item.roomTo = toInp.value;
-      updateSendButtonState();
-    }));
 
     card.appendChild(roomsLine);
   }
@@ -1210,19 +1145,16 @@ function renderPhotoCrossLocation(data, isSource) {
   const rInp = document.createElement('input');
   rInp.type = 'text';
   rInp.className = 'loc-room-input';
-  rInp.inputMode = 'text';
+  rInp.inputMode = 'numeric';
+  rInp.pattern = '[0-9]*';
   rInp.style.width = '80px';
   rInp.value = data[rKey] || '';
   rInp.addEventListener('input', () => {
-    data[rKey] = rInp.value.replace(/[^0-9А-Еа-е]/g, '');
+    data[rKey] = rInp.value.replace(/[^0-9]/g, '');
     if (rInp.value !== data[rKey]) rInp.value = data[rKey];
     updateSendButtonState();
   });
   rWrap.appendChild(rInp);
-  rWrap.appendChild(createIndexUI(rInp, () => {
-    data[rKey] = rInp.value;
-    updateSendButtonState();
-  }));
   roomLine.appendChild(rWrap);
   block.appendChild(roomLine);
 

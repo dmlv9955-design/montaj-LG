@@ -301,10 +301,9 @@ function liveFormatRooms(raw, isDeleting) {
   let s = String(raw == null ? '' : raw);
   if (!s) return '';
 
-  const trailingDelim = /[^0-9А-Еа-е]$/.test(s);
+  const trailingDelim = /[^0-9]$/.test(s);
 
-  // Разрешаем цифры, буквы (А-Е) и кириллицу для префикса "к"
-  s = s.replace(/[^0-9А-Еа-еА-Яа-я]+/g, ', ');
+  s = s.replace(/[^0-9]+/g, ', ');
   s = s.replace(/^(?:,\s*)+/, '');
   s = s.replace(/,\s*/g, ', ');
   s = s.trim();
@@ -314,55 +313,32 @@ function liveFormatRooms(raw, isDeleting) {
 }
 
 function finalizeRooms(raw) {
-  const parts = String(raw == null ? '' : raw).split(',');
-  const valid = [];
-
-  parts.forEach(p => {
-    const trimmed = p.trim();
-    const m = trimmed.match(/^([кК]?)(\d+)([А-Еа-е]?)$/);
-    if (m) {
-      const prefix = m[1] ? 'к' : '';
-      const num = parseInt(m[2], 10);
-      const letter = (m[3] || '').toUpperCase();
-      if (isFinite(num) && num > 0) {
-        valid.push({ prefix, num, letter });
-      }
-    }
-  });
-
-  // Сортировка: сначала по префиксу, затем по числу, затем по букве
-  valid.sort((a, b) => {
-    if (a.prefix !== b.prefix) return a.prefix ? 1 : -1;
-    if (a.num !== b.num) return a.num - b.num;
-    return a.letter.localeCompare(b.letter);
-  });
-
-  // Удаление дубликатов
-  const result = [];
-  const seen = new Set();
-  valid.forEach(v => {
-    const str = v.prefix + v.num + v.letter;
-    if (!seen.has(str)) {
-      seen.add(str);
-      result.push(str);
-    }
-  });
-
-  return result.join(', ');
+  const nums = String(raw == null ? '' : raw)
+      .split(',')
+      .map(p => p.replace(/[^0-9]/g, ''))
+      .filter(p => p !== '')
+      .map(p => parseInt(p, 10))
+      .filter(n => isFinite(n) && n > 0);
+  const set = new Set(nums);
+  return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
 function normalizeZadelkaRoom(value) {
-  return finalizeRooms(value);
+  const nums = String(value == null ? '' : value)
+      .split(/[^0-9]+/)
+      .map(p => parseInt(p, 10))
+      .filter(n => isFinite(n) && n > 0);
+  const set = new Set(nums);
+  return Array.from(set).sort((a, b) => a - b).join(', ');
 }
 
 function parseRooms(roomStr) {
   const plain = new Set(); const prefixed = new Set();
   String(roomStr || '').split(',').forEach(part => {
     const s = part.trim(); if (!s) return;
-    const m = s.match(/^([кК]?)(\d+)([А-Еа-е]?)$/); if (!m) return;
+    const m = s.match(/^([кК]?)(\d+)$/); if (!m) return;
     const n = parseInt(m[2], 10); if (!isFinite(n) || n <= 0) return;
-    const fullStr = m[2] + (m[3] || '').toUpperCase();
-    if (m[1]) prefixed.add(fullStr); else plain.add(fullStr);
+    if (m[1]) prefixed.add(n); else plain.add(n);
   });
   return { plain, prefixed };
 }
@@ -372,8 +348,8 @@ function combineRooms(a, b) {
   const plain = new Set(); pa.plain.forEach(n => plain.add(n)); pb.plain.forEach(n => plain.add(n));
   const prefixed = new Set(); pa.prefixed.forEach(n => prefixed.add(n)); pb.prefixed.forEach(n => prefixed.add(n));
   return []
-      .concat(Array.from(plain).sort((x, y) => x.localeCompare(y, undefined, {numeric: true})).map(n => n))
-      .concat(Array.from(prefixed).sort((x, y) => x.localeCompare(y, undefined, {numeric: true})).map(n => 'к' + n))
+      .concat(Array.from(plain).sort((x, y) => x - y).map(n => String(n)))
+      .concat(Array.from(prefixed).sort((x, y) => x - y).map(n => 'к' + n))
       .join(', ');
 }
 
@@ -416,62 +392,6 @@ function setupRoomInput(input, onValueChanged) {
 
     if (typeof onValueChanged === 'function') onValueChanged(input.value);
   });
-}
-
-function createIndexUI(inputEl, onChange) {
-  const wrap = document.createElement('div');
-  wrap.className = 'index-wrap';
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'index-toggle';
-  btn.textContent = 'Индекс ▾';
-
-  const dropdown = document.createElement('div');
-  dropdown.className = 'index-dropdown';
-
-  const letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
-  letters.forEach(letter => {
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    pill.className = 'index-pill';
-    pill.textContent = letter;
-    pill.addEventListener('click', (e) => {
-      e.preventDefault();
-      let val = inputEl.value.trim();
-      if (!val) return;
-
-      // Если строка уже заканчивается на букву А-Е, заменяем её
-      if (/([А-Еа-е])$/.test(val)) {
-        val = val.replace(/[А-Еа-е]$/, letter);
-      } else {
-        val += letter;
-      }
-
-      inputEl.value = val;
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      dropdown.classList.remove('show');
-      if (onChange) onChange();
-    });
-    dropdown.appendChild(pill);
-  });
-
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Закрываем другие дропдауны
-    document.querySelectorAll('.index-dropdown.show').forEach(d => d.classList.remove('show'));
-    dropdown.classList.toggle('show');
-  });
-
-  // Закрытие при клике вне зоны
-  document.addEventListener('click', (e) => {
-    if (!wrap.contains(e.target)) dropdown.classList.remove('show');
-  });
-
-  wrap.appendChild(btn);
-  wrap.appendChild(dropdown);
-  return wrap;
 }
 
 // ============================================
@@ -1523,14 +1443,6 @@ function renderMaterialsForBlock(work) {
         });
 
         rWrap.appendChild(rInput);
-
-        // Добавление аккордеона "Индекс"
-        rWrap.appendChild(createIndexUI(rInput, () => {
-          row.room = rInput.value;
-          updateAddFloorButton(card, r.key, work);
-          refreshMatRowHighlight(rowEl, row, buildingRequired);
-        }));
-
         mainLine.appendChild(rWrap);
 
         const qWrap = document.createElement('div');
@@ -2332,11 +2244,6 @@ function renderSingleLocationBlock(data, isSource, isCross, onChange, workKey, i
   });
 
   rWrap.appendChild(rInp);
-  rWrap.appendChild(createIndexUI(rInp, () => {
-    data[rKey] = rInp.value;
-    refreshAddItemHighlight(block.closest('.add-item'), data);
-  }));
-
   roomLine.appendChild(rWrap);
   block.appendChild(roomLine);
 
@@ -2453,10 +2360,6 @@ function renderBurenieStandardBlock(item, onChange, workKey, idx) {
   });
 
   fromWrap.appendChild(fromInp);
-  fromWrap.appendChild(createIndexUI(fromInp, () => {
-    item.room = fromInp.value;
-    refreshAddItemHighlight(block.closest('.add-item'), item);
-  }));
   roomsLine.appendChild(fromWrap);
 
   const toLbl = document.createElement('span');
@@ -2492,10 +2395,6 @@ function renderBurenieStandardBlock(item, onChange, workKey, idx) {
   });
 
   toWrap.appendChild(toInp);
-  toWrap.appendChild(createIndexUI(toInp, () => {
-    item.roomTo = toInp.value;
-    refreshAddItemHighlight(block.closest('.add-item'), item);
-  }));
   roomsLine.appendChild(toWrap);
 
   block.appendChild(roomsLine);
