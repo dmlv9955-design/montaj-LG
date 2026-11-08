@@ -92,6 +92,7 @@ function makeEmptyProhodkaItem() {
     return {
         building: '', floor: '',
         roomFrom: '', roomTo: '',
+        sideFrom: '', sideTo: '',
         penetrationNum: '',
         betweenFloors: false,
         floorFrom: '', floorTo: '',
@@ -107,10 +108,16 @@ function makeEmptyEquipmentItem() {
 const photoState = {
     'Помещения':    { expanded: false, items: [makeEmptyPomeshchenieItem()] },
     'Проходки':     { expanded: false, items: [makeEmptyProhodkaItem()] },
+    'Расключение':  { expanded: false, subs: {} },
     'Оборудование': { expanded: false, subs: {} }
 };
 
+// Добавляем категории в оба раздела
 EQUIPMENT_CATEGORIES.forEach(cat => {
+    photoState['Расключение'].subs[cat] = {
+        expanded: false,
+        items: [makeEmptyEquipmentItem()]
+    };
     photoState['Оборудование'].subs[cat] = {
         expanded: false,
         items: [makeEmptyEquipmentItem()]
@@ -120,8 +127,14 @@ EQUIPMENT_CATEGORIES.forEach(cat => {
 function resetAllState() {
     photoState['Помещения']    = { expanded: false, items: [makeEmptyPomeshchenieItem()] };
     photoState['Проходки']     = { expanded: false, items: [makeEmptyProhodkaItem()] };
+    photoState['Расключение']  = { expanded: false, subs: {} };
     photoState['Оборудование'] = { expanded: false, subs: {} };
+
     EQUIPMENT_CATEGORIES.forEach(cat => {
+        photoState['Расключение'].subs[cat] = {
+            expanded: false,
+            items: [makeEmptyEquipmentItem()]
+        };
         photoState['Оборудование'].subs[cat] = {
             expanded: false,
             items: [makeEmptyEquipmentItem()]
@@ -534,6 +547,7 @@ function renderAll() {
 
     container.appendChild(renderTopLevel('Помещения'));
     container.appendChild(renderTopLevel('Проходки'));
+    container.appendChild(renderTopLevel('Расключение'));
     container.appendChild(renderTopLevel('Оборудование'));
 
     updateSendButtonState();
@@ -551,7 +565,12 @@ function renderTopLevel(title) {
     header.className = 'accordion-header accordion-header-montazh';
     if (st.expanded) header.classList.add('expanded');
 
-    const emoji = title === 'Помещения' ? '🚪' : title === 'Проходки' ? '🔩' : '📦';
+    let emoji = '📦';
+    if (title === 'Помещения') emoji = '🚪';
+    else if (title === 'Проходки') emoji = '🔩';
+    else if (title === 'Расключение') emoji = '🔧';
+    else if (title === 'Оборудование') emoji = '📦';
+
     header.innerHTML =
         '<span class="acc-emoji">' + emoji + '</span>' +
         '<span class="acc-label">' + escapeHtml(title) + '</span>' +
@@ -570,7 +589,8 @@ function renderTopLevel(title) {
     if (st.expanded) {
         if (title === 'Помещения') body.appendChild(renderPomeshcheniyaSection());
         else if (title === 'Проходки') body.appendChild(renderProhodkiSection());
-        else if (title === 'Оборудование') body.appendChild(renderOborudovanieSection());
+        else if (title === 'Расключение') body.appendChild(renderEquipmentSection('Расключение'));
+        else if (title === 'Оборудование') body.appendChild(renderEquipmentSection('Оборудование'));
     }
 
     wrapper.appendChild(body);
@@ -602,7 +622,7 @@ function renderBuildingRow(item, onChange) {
             item.building = val;
             item.floor = '';
             if (item.room !== undefined) item.room = '';
-            if (item.roomFrom !== undefined) { item.roomFrom = ''; item.roomTo = ''; }
+            if (item.roomFrom !== undefined) { item.roomFrom = ''; item.roomTo = ''; item.sideFrom = ''; item.sideTo = ''; }
             onChange();
         });
         btns.appendChild(b);
@@ -977,6 +997,15 @@ function renderProhodkaItem(item, idx) {
             if (fromInp.value !== item.roomFrom) fromInp.value = item.roomFrom;
             updateSendButtonState();
         });
+
+        // При потере фокуса проверяем, совпадают ли помещения
+        fromInp.addEventListener('change', () => {
+            if (item.roomFrom !== item.roomTo) {
+                item.sideFrom = ''; item.sideTo = '';
+            }
+            renderAll();
+        });
+
         roomsLine.appendChild(fromInp);
 
         const toLbl = document.createElement('span');
@@ -1004,9 +1033,99 @@ function renderProhodkaItem(item, idx) {
             if (toInp.value !== item.roomTo) toInp.value = item.roomTo;
             updateSendButtonState();
         });
-        roomsLine.appendChild(toInp);
 
+        // При потере фокуса проверяем, совпадают ли помещения
+        toInp.addEventListener('change', () => {
+            if (item.roomFrom !== item.roomTo) {
+                item.sideFrom = ''; item.sideTo = '';
+            }
+            renderAll();
+        });
+
+        roomsLine.appendChild(toInp);
         card.appendChild(roomsLine);
+
+        // ─── БЛОК СТОРОН (если помещения совпадают) ───
+        if (item.roomFrom && item.roomFrom === item.roomTo) {
+            const sidesBlock = document.createElement('div');
+            sidesBlock.style.marginTop = '10px';
+            sidesBlock.style.padding = '10px';
+            sidesBlock.style.background = 'var(--input-disabled-bg)';
+            sidesBlock.style.borderRadius = '8px';
+            sidesBlock.style.border = '1px dashed var(--border)';
+
+            const title = document.createElement('div');
+            title.className = 'section-subtitle';
+            title.style.marginTop = '0';
+            title.style.marginBottom = '8px';
+            title.textContent = 'Укажите стороны (т.к. помещение одно)';
+            sidesBlock.appendChild(title);
+
+            const sides = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
+
+            // Сторона "Из"
+            const fromSideLine = document.createElement('div');
+            fromSideLine.className = 'mat-line';
+            const fromLblSide = document.createElement('span');
+            fromLblSide.className = 'mat-line-label';
+            fromLblSide.textContent = 'Из (Сторона):';
+            fromSideLine.appendChild(fromLblSide);
+
+            const fromSidesWrap = document.createElement('div');
+            fromSidesWrap.className = 'mat-line-floors';
+            sides.forEach(side => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'loc-floor-btn' + (item.sideFrom === side ? ' active' : '');
+                b.textContent = side;
+
+                // Блокируем, если эта сторона уже выбрана для "В"
+                if (item.sideTo === side) {
+                    b.disabled = true;
+                }
+
+                b.addEventListener('click', () => {
+                    item.sideFrom = side;
+                    renderAll();
+                });
+                fromSidesWrap.appendChild(b);
+            });
+            fromSideLine.appendChild(fromSidesWrap);
+            sidesBlock.appendChild(fromSideLine);
+
+            // Сторона "В"
+            const toSideLine = document.createElement('div');
+            toSideLine.className = 'mat-line';
+            toSideLine.style.marginTop = '6px';
+            const toLblSide = document.createElement('span');
+            toLblSide.className = 'mat-line-label';
+            toLblSide.textContent = 'В (Сторона):';
+            toSideLine.appendChild(toLblSide);
+
+            const toSidesWrap = document.createElement('div');
+            toSidesWrap.className = 'mat-line-floors';
+            sides.forEach(side => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'loc-floor-btn' + (item.sideTo === side ? ' active' : '');
+                b.textContent = side;
+
+                // Блокируем, если эта сторона уже выбрана для "Из"
+                if (item.sideFrom === side) {
+                    b.disabled = true;
+                }
+
+                b.addEventListener('click', () => {
+                    item.sideTo = side;
+                    renderAll();
+                });
+                toSidesWrap.appendChild(b);
+            });
+            toSideLine.appendChild(toSidesWrap);
+            sidesBlock.appendChild(toSideLine);
+
+            card.appendChild(sidesBlock);
+        }
     }
 
     // ─── № ПРОХОДКИ ───
@@ -1208,12 +1327,16 @@ function renderStageCheckboxProhodka(item, stageName) {
         zone.style.marginTop = '6px';
         zone.style.marginLeft = '26px';
 
+        // Формируем красивые подписи с учетом сторон
+        const fromRoomText = item.roomFrom ? (item.roomFrom === item.roomTo && item.sideFrom ? `пом.${item.roomFrom} (Сторона ${item.sideFrom})` : `пом.${item.roomFrom}`) : '?';
+        const toRoomText = item.roomTo ? (item.roomFrom === item.roomTo && item.sideTo ? `пом.${item.roomTo} (Сторона ${item.sideTo})` : `пом.${item.roomTo}`) : '?';
+
         const fromLabelText = item.isCross
-            ? `Из: ${item.building || ''} ${item.floor || ''}эт пом.${item.roomFrom || '?'}`
-            : `Из помещения ${item.roomFrom || '?'}`;
+            ? `Из: ${item.building || ''} ${item.floor || ''}эт ${fromRoomText}`
+            : `Из помещения ${fromRoomText}`;
         const toLabelText = item.isCross
-            ? `Из: ${item.buildingTo || ''} ${item.crossFloorTo || ''}эт пом.${item.roomTo || '?'}`
-            : `Из помещения ${item.roomTo || '?'}`;
+            ? `В: ${item.buildingTo || ''} ${item.crossFloorTo || ''}эт ${toRoomText}`
+            : `В помещение ${toRoomText}`;
 
         const fromLabel = document.createElement('div');
         fromLabel.style.fontWeight = '700';
@@ -1238,18 +1361,19 @@ function renderStageCheckboxProhodka(item, stageName) {
 }
 
 // ============================================
-//  ОБОРУДОВАНИЕ
+//  ОБОРУДОВАНИЕ / РАСКЛЮЧЕНИЕ
 // ============================================
-function renderOborudovanieSection() {
+function renderEquipmentSection(topLevel) {
     const wrap = document.createElement('div');
+
     EQUIPMENT_CATEGORIES.forEach(catName => {
-        wrap.appendChild(renderEquipmentSub(catName));
+        wrap.appendChild(renderEquipmentSub(catName, topLevel));
     });
     return wrap;
 }
 
-function renderEquipmentSub(catName) {
-    const st = photoState['Оборудование'].subs[catName];
+function renderEquipmentSub(catName, topLevel) {
+    const st = photoState[topLevel].subs[catName];
     const wrapper = document.createElement('div');
     wrapper.className = 'accordion-item';
     wrapper.style.marginTop = '8px';
@@ -1277,7 +1401,7 @@ function renderEquipmentSub(catName) {
     body.className = 'accordion-body' + (st.expanded ? ' open' : '');
     if (st.expanded) {
         st.items.forEach((item, idx) => {
-            body.appendChild(renderEquipmentItem(catName, item, idx));
+            body.appendChild(renderEquipmentItem(catName, item, idx, topLevel));
         });
 
         const addBtn = document.createElement('button');
@@ -1295,8 +1419,8 @@ function renderEquipmentSub(catName) {
     return wrapper;
 }
 
-function renderEquipmentItem(catName, item, idx) {
-    const st = photoState['Оборудование'].subs[catName];
+function renderEquipmentItem(catName, item, idx, topLevel) {
+    const st = photoState[topLevel].subs[catName];
     const card = document.createElement('div');
     card.className = 'mat-row';
     card.style.marginTop = '10px';
@@ -1517,58 +1641,52 @@ function collectPhotos(includeSent) {
 
         Object.keys(item.stages).forEach(stageName => {
             const sides = item.stages[stageName];
+
+            const basePayload = {
+                type: 'photo', object: object, date: date, name: name,
+                category: 'Проходки',
+                building: item.building || '',
+                floor: floorForSend,
+                roomFrom: item.roomFrom || '',
+                roomTo: item.roomTo || '',
+                sideFrom: item.sideFrom || '',
+                sideTo: item.sideTo || '',
+                penetrationNum: item.penetrationNum || '',
+                isCross: item.isCross || false,
+                buildingTo: item.buildingTo || '',
+                crossFloorTo: item.crossFloorTo || '',
+                stage: stageName
+            };
+
             (sides.from || []).forEach(ph => {
                 if (ph._sent && !includeSent) return;
-                out.push({
-                    _photo: ph,
-                    type: 'photo', object: object, date: date, name: name,
-                    category: 'Проходки',
-                    building: item.building || '',
-                    floor: floorForSend,
-                    roomFrom: item.roomFrom || '',
-                    roomTo: item.roomTo || '',
-                    penetrationNum: item.penetrationNum || '',
-                    isCross: item.isCross || false,
-                    buildingTo: item.buildingTo || '',
-                    crossFloorTo: item.crossFloorTo || '',
-                    side: 'from',
-                    stage: stageName,
-                    fileData: ph.dataUrl
-                });
+                out.push({ ...basePayload, _photo: ph, side: 'from', fileData: ph.dataUrl });
             });
+
             (sides.to || []).forEach(ph => {
                 if (ph._sent && !includeSent) return;
-                out.push({
-                    _photo: ph,
-                    type: 'photo', object: object, date: date, name: name,
-                    category: 'Проходки',
-                    building: item.building || '',
-                    floor: floorForSend,
-                    roomFrom: item.roomFrom || '',
-                    roomTo: item.roomTo || '',
-                    penetrationNum: item.penetrationNum || '',
-                    isCross: item.isCross || false,
-                    buildingTo: item.buildingTo || '',
-                    crossFloorTo: item.crossFloorTo || '',
-                    side: 'to',
-                    stage: stageName,
-                    fileData: ph.dataUrl
-                });
+                out.push({ ...basePayload, _photo: ph, side: 'to', fileData: ph.dataUrl });
             });
         });
     });
 
-    EQUIPMENT_CATEGORIES.forEach(catName => {
-        const st = photoState['Оборудование'].subs[catName];
-        st.items.forEach(item => {
-            (item.photos || []).forEach(ph => {
-                if (ph._sent && !includeSent) return;
-                out.push({
-                    _photo: ph,
-                    type: 'photo', object: object, date: date, name: name,
-                    category: EQUIPMENT_SHORT[catName],
-                    deviceAddress: item.address || '',
-                    fileData: ph.dataUrl
+    // Собираем из ОБОИХ разделов и передаем section
+    ['Расключение', 'Оборудование'].forEach(topSection => {
+        EQUIPMENT_CATEGORIES.forEach(catName => {
+            const st = photoState[topSection].subs[catName];
+            if (!st) return;
+
+            st.items.forEach(item => {
+                (item.photos || []).forEach(ph => {
+                    if (ph._sent && !includeSent) return;
+                    out.push({
+                        _photo: ph,
+                        type: 'photo', object: object, date: date, name: name,
+                        category: EQUIPMENT_SHORT[catName],
+                        section: topSection, // <--- ПЕРЕДАЕМ НАЗВАНИЕ РАЗДЕЛА
+                        deviceAddress: item.address || '',
+                        fileData: ph.dataUrl
+                    });
                 });
             });
         });
@@ -1615,7 +1733,7 @@ function buildReviewSections() {
         Object.keys(item.stages).forEach(stageName => {
             const s = item.stages[stageName];
             (s.from || []).forEach(ph => photos.push({ stage: stageName + ' (из ' + item.roomFrom + ')', ph: ph }));
-            (s.to   || []).forEach(ph => photos.push({ stage: stageName + ' (из ' + item.roomTo   + ')', ph: ph }));
+            (s.to   || []).forEach(ph => photos.push({ stage: stageName + ' (в ' + item.roomTo   + ')', ph: ph }));
         });
         if (!photos.length) return;
 
@@ -1623,22 +1741,31 @@ function buildReviewSections() {
         if (item.isCross) {
             title = `Сквозная ${item.roomFrom || '?'}-${item.roomTo || '?'} (${item.building || ''} - ${item.buildingTo || ''})`;
         } else {
-            title = 'Проходка ' + (item.roomFrom || '?') + '-' + (item.roomTo || '?') +
-                (item.floor ? ' · ' + item.floor : '');
+            let rFrom = item.roomFrom || '?';
+            let rTo = item.roomTo || '?';
+            if (item.roomFrom === item.roomTo) {
+                if (item.sideFrom) rFrom += `(${item.sideFrom})`;
+                if (item.sideTo) rTo += `(${item.sideTo})`;
+            }
+            title = 'Проходка ' + rFrom + '-' + rTo + (item.floor ? ' · ' + item.floor : '');
         }
         if (item.penetrationNum) title += ' (№' + item.penetrationNum + ')';
 
         sections.push({ title: title, photos: photos });
     });
 
-    EQUIPMENT_CATEGORIES.forEach(catName => {
-        const st = photoState['Оборудование'].subs[catName];
-        st.items.forEach(item => {
-            const photos = (item.photos || []).map(ph => ({ stage: '', ph: ph }));
-            if (!photos.length) return;
-            sections.push({
-                title: EQUIPMENT_SHORT[catName] + ' · ' + (item.address || '?'),
-                photos: photos
+    ['Расключение', 'Оборудование'].forEach(topSection => {
+        EQUIPMENT_CATEGORIES.forEach(catName => {
+            const st = photoState[topSection].subs[catName];
+            if (!st) return;
+
+            st.items.forEach(item => {
+                const photos = (item.photos || []).map(ph => ({ stage: '', ph: ph }));
+                if (!photos.length) return;
+                sections.push({
+                    title: topSection + ' · ' + EQUIPMENT_SHORT[catName] + ' · ' + (item.address || '?'),
+                    photos: photos
+                });
             });
         });
     });
@@ -1894,7 +2021,7 @@ async function doActualSend() {
 function describeRecord(rec) {
     if (rec.category === 'Помещения') return 'Помещение ' + (rec.room || '?');
     if (rec.category === 'Проходки')  return 'Проходка ' + (rec.roomFrom || '?') + '-' + (rec.roomTo || '?') + (rec.penetrationNum ? ' №' + rec.penetrationNum : '') + (rec.isCross ? ' (сквозная)' : '');
-    return rec.category + ' · ' + (rec.deviceAddress || '?');
+    return (rec.section || 'Оборудование') + ' · ' + rec.category + ' · ' + (rec.deviceAddress || '?');
 }
 
 function updateProgress(done, total) {
