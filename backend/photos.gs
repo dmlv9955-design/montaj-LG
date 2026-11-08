@@ -62,11 +62,14 @@ function logPhotoAttempt(d, ok, reason, tz) {
       date: d.date,
       name: d.name,
       category: d.category,
+      section: d.section,
       building: d.building,
       floor: d.floor,
       room: d.room,
       roomFrom: d.roomFrom,
       roomTo: d.roomTo,
+      sideFrom: d.sideFrom,
+      sideTo: d.sideTo,
       side: d.side,
       stage: d.stage,
       deviceAddress: d.deviceAddress,
@@ -187,8 +190,16 @@ function resolvePhotoFolder(root, d) {
       const fromLabel = applyKPrefix(from, d.building);
       const toLabel   = applyKPrefix(to,   d.building);
 
-      const dirFromTo = fromLabel + '-' + toLabel + suffix;
-      const dirToFrom = toLabel   + '-' + fromLabel + suffix;
+      let fromStr = fromLabel;
+      let toStr = toLabel;
+
+      if (from === to) {
+        if (d.sideFrom) fromStr += ' (' + d.sideFrom + ')';
+        if (d.sideTo) toStr += ' (' + d.sideTo + ')';
+      }
+
+      const dirFromTo = fromStr + '-' + toStr + suffix;
+      const dirToFrom = toStr   + '-' + fromStr + suffix;
       folderName = (d.side === 'from') ? dirFromTo : dirToFrom;
 
       folder = walkFloor(folder, d.building, d.floor);
@@ -201,11 +212,15 @@ function resolvePhotoFolder(root, d) {
     return { folder: folder, prefix: prefix, useParens: false };
   }
 
+  // ─── ОБОРУДОВАНИЕ / РАСКЛЮЧЕНИЕ ───
   const deviceCat = category;
   const address   = String(d.deviceAddress || '').trim();
   if (!address) throw new Error('empty deviceAddress');
 
-  let folder = getOrCreateChild(root, 'Оборудование');
+  // Используем section для создания правильной корневой папки
+  const topSection = String(d.section || 'Оборудование').trim();
+
+  let folder = getOrCreateChild(root, topSection);
   folder = getOrCreateChild(folder, deviceCat);
   folder = getOrCreateChild(folder, address);
 
