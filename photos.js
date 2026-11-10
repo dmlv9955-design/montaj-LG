@@ -112,16 +112,9 @@ const photoState = {
     'Оборудование': { expanded: false, subs: {} }
 };
 
-// Добавляем категории в оба раздела
 EQUIPMENT_CATEGORIES.forEach(cat => {
-    photoState['Расключение'].subs[cat] = {
-        expanded: false,
-        items: [makeEmptyEquipmentItem()]
-    };
-    photoState['Оборудование'].subs[cat] = {
-        expanded: false,
-        items: [makeEmptyEquipmentItem()]
-    };
+    photoState['Расключение'].subs[cat] = { expanded: false, items: [makeEmptyEquipmentItem()] };
+    photoState['Оборудование'].subs[cat] = { expanded: false, items: [makeEmptyEquipmentItem()] };
 });
 
 function resetAllState() {
@@ -131,18 +124,12 @@ function resetAllState() {
     photoState['Оборудование'] = { expanded: false, subs: {} };
 
     EQUIPMENT_CATEGORIES.forEach(cat => {
-        photoState['Расключение'].subs[cat] = {
-            expanded: false,
-            items: [makeEmptyEquipmentItem()]
-        };
-        photoState['Оборудование'].subs[cat] = {
-            expanded: false,
-            items: [makeEmptyEquipmentItem()]
-        };
+        photoState['Расключение'].subs[cat] = { expanded: false, items: [makeEmptyEquipmentItem()] };
+        photoState['Оборудование'].subs[cat] = { expanded: false, items: [makeEmptyEquipmentItem()] };
     });
 }
 
-let failedRecords = []; // Для повторной отправки
+let failedRecords = [];
 
 // ============================================
 //  УТИЛИТЫ
@@ -208,9 +195,7 @@ function formatDeviceAddress(val) {
     s = s.replace(/[^0-9]+/g, '.');
     s = s.replace(/^\.+/, '');
     let parts = s.split('.');
-    if (parts.length > 2) {
-        parts = parts.slice(0, 2);
-    }
+    if (parts.length > 2) parts = parts.slice(0, 2);
     return parts.join('.');
 }
 
@@ -394,17 +379,12 @@ function updateNameVisual(el) {
 
 function updateFieldState(el) {
     if (!el) return;
-
-    if (el.id === 'name') {
-        updateNameVisual(el);
-        return;
-    }
+    if (el.id === 'name') { updateNameVisual(el); return; }
 
     const wrap = el.closest && el.closest('.segmented');
     if (wrap) {
         if (el.disabled || wrap.classList.contains('segmented-disabled')) {
-            wrap.classList.remove('is-empty', 'is-filled');
-            return;
+            wrap.classList.remove('is-empty', 'is-filled'); return;
         }
         if (el.id === 'object') {
             wrap.classList.remove('is-empty', 'is-filled');
@@ -418,10 +398,7 @@ function updateFieldState(el) {
     }
 
     if (!el.classList.contains('req-field')) return;
-    if (el.disabled) {
-        el.classList.remove('is-empty', 'is-filled', 'is-invalid');
-        return;
-    }
+    if (el.disabled) { el.classList.remove('is-empty', 'is-filled', 'is-invalid'); return; }
     const isEmpty = !el.value || !el.value.trim();
     el.classList.toggle('is-empty', isEmpty);
     el.classList.toggle('is-filled', !isEmpty);
@@ -432,9 +409,7 @@ function updateFieldState(el) {
 // ============================================
 function refreshNameGates() {
     const nameOk = isNameValid(nameInput.value);
-
     dateInput.disabled = !nameOk;
-
     const objHint = objectSeg.querySelector('.segmented-hint');
     if (!nameOk) {
         objectSeg.classList.add('segmented-disabled');
@@ -446,7 +421,6 @@ function refreshNameGates() {
     } else {
         objectSeg.classList.remove('segmented-disabled');
     }
-
     updateFieldState(nameInput);
     updateFieldState(dateInput);
     updateFieldState(objectSelect);
@@ -466,9 +440,7 @@ nameInput.addEventListener('input', () => {
         const newPos = Math.max(0, Math.min(after.length, pos - delta));
         nameInput.setSelectionRange(newPos, newPos);
     }
-    if (isNameValid(nameInput.value)) {
-        nameErr.classList.remove('show');
-    }
+    if (isNameValid(nameInput.value)) nameErr.classList.remove('show');
     refreshNameGates();
     renderAll();
 });
@@ -478,9 +450,7 @@ nameInput.addEventListener('blur', () => {
     if (v && !isNameValid(v)) {
         nameErr.textContent = 'Введите Имя и Фамилию — ровно 2 слова';
         nameErr.classList.add('show');
-    } else {
-        nameErr.classList.remove('show');
-    }
+    } else nameErr.classList.remove('show');
     refreshNameGates();
 });
 
@@ -499,8 +469,7 @@ nameInput.addEventListener('blur', () => {
         nameInput.value = '';
         nameInput.dispatchEvent(new Event('input', { bubbles: true }));
         nameInput.dispatchEvent(new Event('change', { bubbles: true }));
-        nameInput.focus();
-        update();
+        nameInput.focus(); update();
     });
     update();
 })();
@@ -532,7 +501,6 @@ objectSelect.addEventListener('change', () => {
 // ============================================
 function renderAll() {
     container.innerHTML = '';
-
     const object = objectSelect.value;
     const enabled = !!object;
 
@@ -605,7 +573,6 @@ function renderTopLevel(title) {
 function renderBuildingRow(item, onChange) {
     const wrap = document.createElement('div');
     wrap.className = 'mat-line';
-
     const lbl = document.createElement('span');
     lbl.className = 'mat-line-label';
     lbl.textContent = 'Корпус:';
@@ -636,7 +603,6 @@ function renderBuildingRow(item, onChange) {
 function renderFloorRow(item, onChange) {
     const wrap = document.createElement('div');
     wrap.className = 'mat-line';
-
     const lbl = document.createElement('span');
     lbl.className = 'mat-line-label';
     lbl.textContent = 'Этаж:';
@@ -744,11 +710,12 @@ function renderPomeshchenieItem(item, idx) {
     roomInp.placeholder = '45';
     roomInp.value = item.room || '';
 
-    // Проверяем, есть ли фото в этапах
-    const hasPhotos = Object.keys(item.stages).length > 0;
-    if (hasPhotos && !item.room) {
-        roomInp.classList.add('is-empty'); // Подсветка красным
+    // Правильная проверка: есть ли реально загруженные фото в этапах?
+    let hasActualPhotos = false;
+    for (const key in item.stages) {
+        if (item.stages[key] && item.stages[key].length > 0) { hasActualPhotos = true; break; }
     }
+    if (hasActualPhotos && !item.room) roomInp.classList.add('is-empty');
 
     roomInp.addEventListener('input', () => {
         item.room = roomInp.value.replace(/[^0-9]/g, '');
@@ -893,7 +860,6 @@ function renderProhodkaItem(item, idx) {
         if (isBuildingRequired()) card.appendChild(renderBuildingRow(item, renderAll));
         if (!isAtticItem(item)) {
             card.appendChild(renderFloorRow(item, renderAll));
-            // Блок "Между этажами" удален
         }
 
         // ─── ИЗ / В ПОМЕЩЕНИЕ — одной строкой ───
@@ -925,8 +891,12 @@ function renderProhodkaItem(item, idx) {
         fromInp.style.maxWidth = '70px';
         fromInp.value = item.roomFrom || '';
 
-        const hasPhotos = Object.keys(item.stages).length > 0;
-        if (hasPhotos && !item.roomFrom) fromInp.classList.add('is-empty');
+        let hasActualPhotos = false;
+        for (const key in item.stages) {
+            const s = item.stages[key];
+            if ((s.from && s.from.length > 0) || (s.to && s.to.length > 0)) { hasActualPhotos = true; break; }
+        }
+        if (hasActualPhotos && !item.roomFrom) fromInp.classList.add('is-empty');
 
         fromInp.addEventListener('input', () => {
             item.roomFrom = fromInp.value.replace(/[^0-9]/g, '');
@@ -965,7 +935,7 @@ function renderProhodkaItem(item, idx) {
         toInp.style.maxWidth = '70px';
         toInp.value = item.roomTo || '';
 
-        if (hasPhotos && !item.roomTo) toInp.classList.add('is-empty');
+        if (hasActualPhotos && !item.roomTo) toInp.classList.add('is-empty');
 
         toInp.addEventListener('input', () => {
             item.roomTo = toInp.value.replace(/[^0-9]/g, '');
@@ -1002,7 +972,6 @@ function renderProhodkaItem(item, idx) {
 
             const sides = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
 
-            // Сторона "Из"
             const fromSideLine = document.createElement('div');
             fromSideLine.className = 'mat-line';
             const fromLblSide = document.createElement('span');
@@ -1017,9 +986,7 @@ function renderProhodkaItem(item, idx) {
                 b.type = 'button';
                 b.className = 'loc-floor-btn' + (item.sideFrom === side ? ' active' : '');
                 b.textContent = side;
-
                 if (item.sideTo === side) b.disabled = true;
-
                 b.addEventListener('click', () => {
                     item.sideFrom = side;
                     renderAll();
@@ -1029,7 +996,6 @@ function renderProhodkaItem(item, idx) {
             fromSideLine.appendChild(fromSidesWrap);
             sidesBlock.appendChild(fromSideLine);
 
-            // Сторона "В"
             const toSideLine = document.createElement('div');
             toSideLine.className = 'mat-line';
             toSideLine.style.marginTop = '6px';
@@ -1045,9 +1011,7 @@ function renderProhodkaItem(item, idx) {
                 b.type = 'button';
                 b.className = 'loc-floor-btn' + (item.sideTo === side ? ' active' : '');
                 b.textContent = side;
-
                 if (item.sideFrom === side) b.disabled = true;
-
                 b.addEventListener('click', () => {
                     item.sideTo = side;
                     renderAll();
@@ -1288,7 +1252,6 @@ function renderStageCheckboxProhodka(item, stageName) {
 // ============================================
 function renderEquipmentSection(topLevel) {
     const wrap = document.createElement('div');
-
     EQUIPMENT_CATEGORIES.forEach(catName => {
         wrap.appendChild(renderEquipmentSub(catName, topLevel));
     });
@@ -1372,7 +1335,6 @@ function renderEquipmentItem(catName, item, idx, topLevel) {
     const isKM = catName.includes('КМ-О');
 
     if (isKM) {
-        // Поля для КМ-О (От и До)
         const line1 = document.createElement('div');
         line1.className = 'mat-line';
         const lbl1 = document.createElement('span');
@@ -1386,13 +1348,14 @@ function renderEquipmentItem(catName, item, idx, topLevel) {
         inpFrom.style.width = '80px';
         inpFrom.placeholder = '1.1';
         inpFrom.value = item.addressFrom || '';
+        if (item.photos.length > 0 && !item.addressFrom) inpFrom.classList.add('is-empty');
+
         inpFrom.addEventListener('input', () => {
             const before = inpFrom.value;
             const after = formatDeviceAddress(before);
-            if (before !== after) {
-                inpFrom.value = after;
-            }
+            if (before !== after) inpFrom.value = after;
             item.addressFrom = inpFrom.value;
+            inpFrom.classList.remove('is-empty');
             updateSendButtonState();
         });
         line1.appendChild(inpFrom);
@@ -1412,19 +1375,19 @@ function renderEquipmentItem(catName, item, idx, topLevel) {
         inpTo.style.width = '80px';
         inpTo.placeholder = '1.2';
         inpTo.value = item.addressTo || '';
+        if (item.photos.length > 0 && !item.addressTo) inpTo.classList.add('is-empty');
+
         inpTo.addEventListener('input', () => {
             const before = inpTo.value;
             const after = formatDeviceAddress(before);
-            if (before !== after) {
-                inpTo.value = after;
-            }
+            if (before !== after) inpTo.value = after;
             item.addressTo = inpTo.value;
+            inpTo.classList.remove('is-empty');
             updateSendButtonState();
         });
         line2.appendChild(inpTo);
         card.appendChild(line2);
     } else {
-        // Стандартное поле для остального оборудования
         const line = document.createElement('div');
         line.className = 'mat-line';
         const lbl = document.createElement('span');
@@ -1438,14 +1401,14 @@ function renderEquipmentItem(catName, item, idx, topLevel) {
         inp.style.width = '120px';
         inp.placeholder = '2.45';
         inp.value = item.address || '';
+        if (item.photos.length > 0 && !item.address) inp.classList.add('is-empty');
 
         inp.addEventListener('input', () => {
             const before = inp.value;
             const after = formatDeviceAddress(before);
-            if (before !== after) {
-                inp.value = after;
-            }
+            if (before !== after) inp.value = after;
             item.address = inp.value;
+            inp.classList.remove('is-empty');
             updateSendButtonState();
         });
 
@@ -1614,7 +1577,6 @@ function collectPhotos(includeSent) {
 
         Object.keys(item.stages).forEach(stageName => {
             const sides = item.stages[stageName];
-
             const basePayload = {
                 type: 'photo', object: object, date: date, name: name,
                 category: 'Проходки',
@@ -1635,7 +1597,6 @@ function collectPhotos(includeSent) {
                 if (ph._sent && !includeSent) return;
                 out.push({ ...basePayload, _photo: ph, side: 'from', fileData: ph.dataUrl });
             });
-
             (sides.to || []).forEach(ph => {
                 if (ph._sent && !includeSent) return;
                 out.push({ ...basePayload, _photo: ph, side: 'to', fileData: ph.dataUrl });
@@ -1651,13 +1612,10 @@ function collectPhotos(includeSent) {
             st.items.forEach(item => {
                 (item.photos || []).forEach(ph => {
                     if (ph._sent && !includeSent) return;
-
-                    // Формируем deviceAddress для КМ-О или обычного устройства
                     let finalAddress = item.address;
                     if (catName.includes('КМ-О')) {
                         finalAddress = `${item.addressFrom || '?'}-${item.addressTo || '?'}`;
                     }
-
                     out.push({
                         _photo: ph,
                         type: 'photo', object: object, date: date, name: name,
@@ -1675,15 +1633,18 @@ function collectPhotos(includeSent) {
 }
 
 // ============================================
-//  ВАЛИДАЦИЯ (ЗАПРЕТ ОТПРАВКИ)
+//  ВАЛИДАЦИЯ (СТРОГАЯ ПРОВЕРКА)
 // ============================================
 function isFormValid() {
     let firstProblem = null;
 
-    // Проверяем помещения
+    // Проверяем помещения (только если реально есть фото в этапах)
     for (let i = 0; i < photoState['Помещения'].items.length; i++) {
         const item = photoState['Помещения'].items[i];
-        const hasPhotos = Object.keys(item.stages).length > 0;
+        let hasPhotos = false;
+        for (const key in item.stages) {
+            if (item.stages[key] && item.stages[key].length > 0) { hasPhotos = true; break; }
+        }
         if (hasPhotos && !item.room) {
             firstProblem = 'Укажите номер помещения, к которому прикреплены фото';
             break;
@@ -1694,7 +1655,11 @@ function isFormValid() {
     if (!firstProblem) {
         for (let i = 0; i < photoState['Проходки'].items.length; i++) {
             const item = photoState['Проходки'].items[i];
-            const hasPhotos = Object.keys(item.stages).length > 0;
+            let hasPhotos = false;
+            for (const key in item.stages) {
+                const s = item.stages[key];
+                if ((s.from && s.from.length > 0) || (s.to && s.to.length > 0)) { hasPhotos = true; break; }
+            }
             if (hasPhotos && (!item.roomFrom || !item.roomTo)) {
                 firstProblem = 'Укажите помещения "Из" и "В" для проходки';
                 break;
@@ -1756,9 +1721,7 @@ function buildReviewSections() {
         if (!photos.length) return;
 
         sections.push({
-            title: 'Помещение ' + (item.room || '?') +
-                (item.floor ? ' · ' + item.floor + ' этаж' : '') +
-                (item.building ? ' · ' + item.building : ''),
+            title: 'Помещение ' + (item.room || '?') + (item.floor ? ' · ' + item.floor + ' этаж' : '') + (item.building ? ' · ' + item.building : ''),
             photos: photos
         });
     });
@@ -1793,14 +1756,11 @@ function buildReviewSections() {
         EQUIPMENT_CATEGORIES.forEach(catName => {
             const st = photoState[topSection].subs[catName];
             if (!st) return;
-
             st.items.forEach(item => {
                 const photos = (item.photos || []).map(ph => ({ stage: '', ph: ph }));
                 if (!photos.length) return;
-
                 let addr = item.address;
                 if (catName.includes('КМ-О')) addr = `${item.addressFrom || '?'}-${item.addressTo || '?'}`;
-
                 sections.push({
                     title: topSection + ' · ' + EQUIPMENT_SHORT[catName] + ' · ' + (addr || '?'),
                     photos: photos
@@ -1813,7 +1773,6 @@ function buildReviewSections() {
 }
 
 function showReview() {
-    // Сначала проверяем валидность
     const valid = isFormValid();
     if (!valid.ok) {
         showMsg('⚠️ ' + valid.error, 'err');
@@ -1940,16 +1899,13 @@ function showReview() {
 // ============================================
 function sendPhotos() {
     showMsg('');
-
     let firstProblem = null;
 
     if (objectErr) objectErr.classList.remove('show');
     nameErr.classList.remove('show');
 
     if (!isNameValid(nameInput.value)) {
-        nameErr.textContent = nameInput.value.trim()
-            ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)'
-            : 'Введите Имя и Фамилию — ровно 2 слова';
+        nameErr.textContent = nameInput.value.trim() ? 'Введите Имя и Фамилию — ровно 2 слова (например: Василий Пупкин)' : 'Введите Имя и Фамилию — ровно 2 слова';
         nameErr.classList.add('show');
         if (!firstProblem) firstProblem = nameInput;
     }
@@ -1963,9 +1919,7 @@ function sendPhotos() {
     if (firstProblem) {
         showMsg('⚠️ Заполните поля сверху', 'err');
         if (firstProblem.focus) firstProblem.focus();
-        if (firstProblem.scrollIntoView) {
-            firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (firstProblem.scrollIntoView) firstProblem.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
 
@@ -2041,21 +1995,18 @@ async function doActualSend(isRetry = false) {
                 currentFailed.push({ record: rec, error: String(e2.message || e2) });
             }
         }
-
         updateProgress(i + 1, all.length);
     }
 
     $('progress-overlay').classList.remove('show');
     document.body.classList.remove('app-blocked');
 
-    if (!isRetry) {
-        renderAll(); // перерисовываем, чтобы убрать галочки
-    }
+    if (!isRetry) renderAll();
 
     const btnRetry = $('btn-retry');
 
     if (currentFailed.length > 0) {
-        failedRecords = currentFailed.map(f => f.record); // сохраняем только записи
+        failedRecords = currentFailed.map(f => f.record);
         const list = currentFailed.map((f, i) => (i + 1) + '. ' + describeRecord(f.record) + ' — ' + f.error).join('\n');
 
         if (btnRetry) {
@@ -2063,21 +2014,14 @@ async function doActualSend(isRetry = false) {
             btnRetry.textContent = `🔄 Повторить неудавшиеся (${failedRecords.length})`;
         }
 
-        alert(
-            '❌ Не удалось отправить: ' + currentFailed.length + ' фото\n\n' +
-            list + '\n\n' +
-            '✅ Отправлено: ' + sent + ' фото\n\n' +
-            'Нажмите «Повторить неудавшиеся», чтобы отправить их еще раз.'
-        );
+        alert('❌ Не удалось отправить: ' + currentFailed.length + ' фото\n\n' + list + '\n\n✅ Отправлено: ' + sent + ' фото\n\nНажмите «Повторить неудавшиеся», чтобы отправить их еще раз.');
         return;
     }
 
-    // Если всё успешно, сбрасываем состояние
     failedRecords = [];
     if (btnRetry) btnRetry.style.display = 'none';
 
     const remaining = collectPhotos(false).length;
-
     if (remaining === 0) {
         resetAllState();
         renderAll();
@@ -2110,17 +2054,11 @@ function showSuccess(total) {
     });
 }
 
-// ============================================
-//  ПОДКЛЮЧЕНИЕ
-// ============================================
 function setupConnectionWatcher() {
     window.addEventListener('online', () => { showToast('✅ Соединение восстановлено'); updateSendButtonState(); });
     window.addEventListener('offline', () => { showToast('📵 Нет подключения к интернету'); updateSendButtonState(); });
 }
 setupConnectionWatcher();
 
-// ============================================
-//  СТАРТ
-// ============================================
 refreshNameGates();
 renderAll();
