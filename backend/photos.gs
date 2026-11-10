@@ -142,15 +142,12 @@ function resolvePhotoFolder(root, d) {
 
     const roomLabel = applyKPrefix(room, d.building);
 
-    // 1. Создаем путь: Помещения -> Этаж -> Помещение
     let folder = getOrCreateChild(root, 'Помещения');
     folder = walkFloor(folder, d.building, d.floor);
     folder = getOrCreateChild(folder, roomLabel);
 
-    // 2. Извлекаем краткое название этапа (без скобок)
     const stage = stripStageBrackets(d.stage);
 
-    // 3. Создаем подпапку с названием этапа (До работ, Поверхности и т.д.)
     if (stage) {
       folder = getOrCreateChild(folder, stage);
     }
@@ -217,7 +214,6 @@ function resolvePhotoFolder(root, d) {
   const address   = String(d.deviceAddress || '').trim();
   if (!address) throw new Error('empty deviceAddress');
 
-  // Используем section для создания правильной корневой папки
   const topSection = String(d.section || 'Оборудование').trim();
 
   let folder = getOrCreateChild(root, topSection);
